@@ -1,0 +1,2911 @@
+@page
+@model LoginModel
+@using System.Linq
+@using System.Text.Json
+
+@{
+    Layout = "_LoginLayout";
+
+    var loginModelStateErrorMessage = ViewData.ModelState.Values
+        .SelectMany(v => v.Errors)
+        .Select(e => !string.IsNullOrWhiteSpace(e.ErrorMessage) ? e.ErrorMessage : e.Exception?.Message)
+        .FirstOrDefault(e => !string.IsNullOrWhiteSpace(e));
+
+    var loginTempDataErrorMessage = TempData["LoginErrorMessage"]?.ToString();
+
+    var loginServerErrorMessage = !string.IsNullOrWhiteSpace(Model.ErrorMessage)
+        ? Model.ErrorMessage
+        : (!string.IsNullOrWhiteSpace(loginTempDataErrorMessage)
+            ? loginTempDataErrorMessage
+            : loginModelStateErrorMessage);
+
+    var profiles = Model.EmployeeLoginProfiles ?? new List<LoginModel.LoginEmployeeProfile>();
+    var firstProfile = profiles.FirstOrDefault();
+
+    var postedEmail = Model.Input?.Email ?? string.Empty;
+    var postedEmailExistsInProfiles = profiles.Any(p =>
+        string.Equals(p.Email, postedEmail, StringComparison.OrdinalIgnoreCase));
+
+    /*
+        لو المستخدم دخل من إضافة مستخدم وظهر Error مثل "لا يسمح بالدخول" أو Invalid login،
+        نخليه على شاشة الإيميل والباسورد ولا نرجعهش لشاشة صور المستخدمين.
+        أما لو الخطأ لحساب موجود في صور الجهاز، يفضل على شاشة الصورة المختارة.
+    */
+    var manualLogin = Model.ManualLogin
+        || (!string.IsNullOrWhiteSpace(loginServerErrorMessage)
+            && !string.IsNullOrWhiteSpace(postedEmail)
+            && !postedEmailExistsInProfiles);
+
+    var manualEmailValue = manualLogin ? postedEmail : string.Empty;
+
+    var selectedEmail = !manualLogin && !string.IsNullOrWhiteSpace(postedEmail)
+        ? postedEmail
+        : firstProfile?.Email;
+
+    var selectedProfile = profiles.FirstOrDefault(p => string.Equals(p.Email, selectedEmail, StringComparison.OrdinalIgnoreCase))
+        ?? firstProfile;
+
+    // نبدأ بإخفاء كروت الحسابات لحد ما IP الجهاز يتحمّل ويتعمل فلترة،
+    // عشان بعد Logout ما تظهرش كل الحسابات لثانية قبل الإخفاء.
+    var profileHeroInitialClass = manualLogin ? "login-mode-hidden" : "login-ip-filter-pending";
+    var profileHeroInitialStyle = manualLogin ? "" : "visibility:hidden;";
+
+    var profilesJson = JsonSerializer.Serialize(profiles.Select(p => new
+    {
+        email = p.Email,
+        name = p.Name,
+        imageUrl = p.ImageUrl,
+        allowedIpAddress = p.AllowedIpAddress
+    }));
+}
+
+<button type="button"
+        id="loginOpenProfilesDrawer"
+        class="login-top-user-btn"
+        aria-label="إعدادات المستخدمين"
+        title="إعدادات المستخدمين">
+    <svg class="login-top-user-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M12 12c2.35 0 4.25-1.9 4.25-4.25S14.35 3.5 12 3.5s-4.25 1.9-4.25 4.25S9.65 12 12 12Zm0 2.15c-3.45 0-6.75 1.72-6.75 4.05v.55c0 .55.45 1 1 1h11.5c.55 0 1-.45 1-1v-.55c0-2.33-3.3-4.05-6.75-4.05Z" />
+    </svg>
+</button>
+
+<div id="loginProfilesOverlay" class="login-profiles-overlay"></div>
+
+<aside id="loginProfilesDrawer" class="login-profiles-drawer" aria-hidden="true">
+    <div class="login-profiles-header-panel">
+        <button type="button" id="loginCloseProfilesDrawer" class="login-profiles-back-btn" aria-label="رجوع">›</button>
+        <div class="login-profiles-title">إعدادات المستخدم</div>
+    </div>
+
+    <div class="login-profiles-card">
+        <div id="loginProfilesList" class="login-profiles-list login-ip-filter-pending" style="visibility:hidden;">
+            @foreach (var profile in profiles)
+            {
+                <button type="button"
+                        class="login-profile-row"
+                        draggable="false"
+                        data-email="@profile.Email"
+                        data-name="@profile.Name"
+                        data-image="@profile.ImageUrl"
+                        data-allowed-ips="@profile.AllowedIpAddress">
+                    <span class="login-profile-drag">☰</span>
+
+                    <span class="login-profile-avatar-wrap">
+                        <img src="@profile.ImageUrl"
+                             alt="@profile.Name"
+                             class="login-profile-avatar"
+                             onerror="this.onerror=null;this.src='/static/DefaultImage.svg';" />
+                    </span>
+
+                    <span class="login-profile-text">
+                        <span class="login-profile-name">@profile.Name</span>
+                    </span>
+                </button>
+            }
+        </div>
+
+        <div id="loginNoIpUsersMessage" class="login-no-ip-users-message login-mode-hidden">
+            لا يوجد موظفون متاحون على نفس IP الحالي
+        </div>
+    </div>
+
+    <button type="button" id="loginAddUserBtn" class="login-add-user-card-button">
+        <span class="login-add-plus">+</span>
+        <span>إضافة مستخدم</span>
+
+    </button>
+</aside>
+
+<div class="d-flex justify-content-center">
+    <div class="col-lg-3 col-sm-12 col-md-12 text-center login-box">
+        <div id="loginManualHero" class="login-manual-hero @(manualLogin ? "" : "login-mode-hidden")">
+            <img id="loginMainLogo"
+                 src="/static/011.png"
+                 width="100"
+                 height="100"
+                 class="login-main-logo" />
+
+            <h2 class="mt-4 login-main-title">مرحبا بكم</h2>
+        </div>
+
+        <div id="loginProfileHeroBlock" class="login-profile-hero-block @profileHeroInitialClass" style="@profileHeroInitialStyle">
+            <div id="loginEmployeeHero" class="login-employee-hero">
+                <button type="button" id="loginCarouselPrevArrow" class="login-carousel-arrow login-carousel-arrow-prev login-mode-hidden" aria-label="السابق">‹</button>
+
+                <button type="button" id="loginPrevProfile" class="login-side-profile-btn login-side-profile-prev" aria-label="السابق">
+                    <img id="loginPrevProfileImage"
+                         src="/static/DefaultImage.svg"
+                         alt="السابق"
+                         class="login-side-profile-image"
+                         onerror="this.onerror=null;this.src='/static/DefaultImage.svg';" />
+                </button>
+
+                <img id="loginSelectedProfileImage"
+                     src="@(selectedProfile?.ImageUrl ?? "/static/DefaultImage.svg")"
+                     alt="@(selectedProfile?.Name ?? "User")"
+                     width="108"
+                     height="108"
+                     class="login-main-logo login-selected-profile-image"
+                     onerror="this.onerror=null;this.src='/static/DefaultImage.svg';" />
+
+                <button type="button" id="loginNextProfile" class="login-side-profile-btn login-side-profile-next" aria-label="التالي">
+                    <img id="loginNextProfileImage"
+                         src="/static/DefaultImage.svg"
+                         alt="التالي"
+                         class="login-side-profile-image"
+                         onerror="this.onerror=null;this.src='/static/DefaultImage.svg';" />
+                </button>
+
+                <button type="button" id="loginCarouselNextArrow" class="login-carousel-arrow login-carousel-arrow-next login-mode-hidden" aria-label="التالي">›</button>
+            </div>
+
+            <h2 id="loginSelectedProfileName" class="mt-4 login-main-title">
+                @(selectedProfile?.Name ?? "اختر المستخدم")
+            </h2>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(loginServerErrorMessage))
+        {
+            <div id="loginIpErrorPopup" class="login-ip-error-popup login-warning-popup" role="alert" aria-live="assertive">
+                <div class="login-ip-error-icon login-warning-icon" aria-hidden="true">
+                    <svg class="login-warning-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" focusable="false">
+                        <path d="M12 2.75c.65 0 1.23.35 1.55.91l8.22 14.24c.32.56.32 1.24-.01 1.8-.33.55-.91.9-1.55.9H3.79c-.64 0-1.22-.35-1.55-.9-.33-.56-.33-1.24-.01-1.8L10.45 3.66c.32-.56.9-.91 1.55-.91Z" />
+                        <path class="login-warning-svg-cut" d="M12 8.1c.52 0 .94.42.94.94v4.72a.94.94 0 0 1-1.88 0V9.04c0-.52.42-.94.94-.94Zm0 8.05a1.12 1.12 0 1 1 0 2.24 1.12 1.12 0 0 1 0-2.24Z" />
+                    </svg>
+                </div>
+                <div class="login-ip-error-content login-warning-content">
+                    <div class="login-ip-error-title login-warning-title">تنبيه</div>
+                    <div class="login-ip-error-text login-warning-text">@loginServerErrorMessage</div>
+                </div>
+            </div>
+        }
+
+        <form id="account" method="post">
+            <input type="hidden"
+                   asp-for="Input.ClientPublicIp"
+                   id="ClientPublicIp" />
+
+            <input type="hidden"
+                   asp-for="Input.ClientIpLocation"
+                   id="ClientIpLocation" />
+
+            <input type="hidden"
+                   name="Input.ClientDeviceType"
+                   id="ClientDeviceType" />
+
+            <input type="hidden"
+                   name="Input.ClientUserAgent"
+                   id="ClientUserAgent" />
+
+            <input type="hidden"
+                   asp-for="ManualLogin"
+                   id="ManualLogin"
+                   value="@(manualLogin ? "true" : "false")" />
+
+            <input type="hidden"
+                   asp-for="Input.Email"
+                   id="loginSelectedEmail"
+                   value="@(manualLogin ? manualEmailValue : selectedProfile?.Email)" />
+
+            <div id="loginManualEmailGroup" class="form-group mt-3 @(manualLogin ? "" : "login-mode-hidden")">
+                <input placeholder="أدخل البريد الإلكتروني"
+                       id="loginManualEmailInput"
+                       name="ManualEmailPreview"
+                       value="@manualEmailValue"
+                       class="form-control input centered-placeholder login-email-input"
+                       autocomplete="off"
+                       data-lpignore="true"
+                       aria-required="true" />
+
+                <span asp-validation-for="Input.Email" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mt-3">
+                <input placeholder="أدخل كلمة المرور"
+                       asp-for="Input.Password"
+                       class="form-control input centered-placeholder"
+                       autocomplete="new-password"
+                       data-lpignore="true"
+                       data-form-type="other"
+                       value=""
+                       aria-required="true" />
+
+                <span asp-validation-for="Input.Password" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mt-3">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            </div>
+
+            <div class="form-group mt-3">
+                <button id="loginSubmitBtn"
+                        type="submit"
+                        class="btn btn-primary login-submit-btn">
+                    تسجيل الدخول
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<style id="login-show-same-ip-employees-only-style">
+    .login-profile-row.is-ip-hidden,
+    #loginProfilesList .login-profile-row.is-ip-hidden {
+        display: none !important;
+    }
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        window.loginEmployeeProfiles = @Html.Raw(profilesJson);
+        window.loginManualMode = @(manualLogin ? "true" : "false");
+        window.loginCurrentPublicIp = "";
+        window.loginClientIpIsLoaded = false;
+        window.loginClientIpLoadPromise = null;
+
+        (function setLoginDeviceInformation() {
+            function detectLoginDeviceType() {
+                var ua = navigator.userAgent || "";
+                var uaLower = ua.toLowerCase();
+                var platform = navigator.platform || "";
+
+                var isIpadDesktopMode =
+                    platform.toLowerCase() === "macintel" &&
+                    navigator.maxTouchPoints &&
+                    navigator.maxTouchPoints > 1;
+
+                var isTablet =
+                    /ipad|tablet|kindle|silk|playbook/i.test(ua) ||
+                    isIpadDesktopMode ||
+                    (uaLower.indexOf("android") >= 0 && uaLower.indexOf("mobile") < 0);
+
+                var isMobile =
+                    /mobi|iphone|ipod|windows phone|blackberry|opera mini|opera mobi/i.test(ua) ||
+                    (uaLower.indexOf("android") >= 0 && uaLower.indexOf("mobile") >= 0);
+
+                if (isTablet) {
+                    return "tablet";
+                }
+
+                if (isMobile) {
+                    return "mobile";
+                }
+
+                return "desktop";
+            }
+
+            var deviceTypeInput = document.getElementById("ClientDeviceType");
+            var userAgentInput = document.getElementById("ClientUserAgent");
+
+            if (deviceTypeInput) {
+                deviceTypeInput.value = detectLoginDeviceType();
+            }
+
+            if (userAgentInput) {
+                userAgentInput.value = navigator.userAgent || "";
+            }
+        })();
+
+        (function () {
+            function normalizeIpForLogin(ip) {
+                if (!ip) return "";
+
+                ip = String(ip).trim();
+
+                if (ip.indexOf(",") >= 0) {
+                    ip = ip.split(",")[0].trim();
+                }
+
+                if (ip === "::1") {
+                    return "127.0.0.1";
+                }
+
+                if (ip.indexOf("::ffff:") === 0) {
+                    ip = ip.replace("::ffff:", "");
+                }
+
+                return ip;
+            }
+
+            function notifyClientIpLoaded(ip) {
+                const normalizedIp = normalizeIpForLogin(ip);
+
+                window.loginCurrentPublicIp = normalizedIp;
+                window.loginClientIpIsLoaded = true;
+
+                window.dispatchEvent(new CustomEvent("loginClientIpLoaded", {
+                    detail: {
+                        ip: normalizedIp
+                    }
+                }));
+            }
+
+            async function loadClientPublicIpForLogin() {
+                const publicIpInput = document.getElementById('ClientPublicIp');
+                const locationInput = document.getElementById('ClientIpLocation');
+
+                function buildLocationText(data) {
+                    const parts = [];
+
+                    if (data.city) parts.push(data.city);
+                    if (data.region) parts.push(data.region);
+                    if (data.country_name) parts.push(data.country_name);
+
+                    return parts.join(' - ');
+                }
+
+                try {
+                    const response = await fetch('https://ipapi.co/json/', {
+                        method: 'GET',
+                        cache: 'no-store'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load public IP location');
+                    }
+
+                    const data = await response.json();
+                    const currentPublicIp = data && data.ip ? data.ip : "";
+                    const currentLocation = data ? buildLocationText(data) : "";
+
+                    if (publicIpInput) {
+                        publicIpInput.value = normalizeIpForLogin(currentPublicIp);
+                    }
+
+                    if (locationInput) {
+                        locationInput.value = currentLocation;
+                    }
+
+                    notifyClientIpLoaded(currentPublicIp);
+                } catch (error) {
+                    try {
+                        const fallbackResponse = await fetch('https://api.ipify.org?format=json', {
+                            method: 'GET',
+                            cache: 'no-store'
+                        });
+
+                        const fallbackData = await fallbackResponse.json();
+                        const fallbackIp = fallbackData && fallbackData.ip ? fallbackData.ip : "";
+
+                        if (publicIpInput) {
+                            publicIpInput.value = normalizeIpForLogin(fallbackIp);
+                        }
+
+                        if (locationInput) {
+                            locationInput.value = "";
+                        }
+
+                        notifyClientIpLoaded(fallbackIp);
+                    } catch {
+                        notifyClientIpLoaded("");
+                    }
+                }
+            }
+
+            window.loginClientIpLoadPromise = loadClientPublicIpForLogin();
+        })();
+
+        (function setupLoginProfilesDrawer() {
+            const storageKey = 'luxiraLoginProfileOrder';
+            const lastSelectedStorageKey = 'luxiraLoginLastSelectedProfileEmail';
+
+            function getLoginQueryValue(name) {
+                try {
+                    return new URLSearchParams(window.location.search).get(name) || '';
+                } catch {
+                    return '';
+                }
+            }
+
+            function getCookieValue(name) {
+                const encodedName = encodeURIComponent(name) + '=';
+                const parts = document.cookie ? document.cookie.split(';') : [];
+
+                for (let i = 0; i < parts.length; i++) {
+                    const part = parts[i].trim();
+
+                    if (part.indexOf(encodedName) === 0) {
+                        return decodeURIComponent(part.substring(encodedName.length));
+                    }
+                }
+
+                return '';
+            }
+
+            const preferredAdminEmailFromLogout =
+                getLoginQueryValue('selectedEmail') ||
+                getCookieValue('LuxiraLoginPreferredEmail') ||
+                sessionStorage.getItem(lastSelectedStorageKey) ||
+                '';
+
+            if (preferredAdminEmailFromLogout) {
+                localStorage.setItem(lastSelectedStorageKey, preferredAdminEmailFromLogout);
+            }
+
+            const openBtn = document.getElementById('loginOpenProfilesDrawer');
+            const closeBtn = document.getElementById('loginCloseProfilesDrawer');
+            const drawer = document.getElementById('loginProfilesDrawer');
+            const overlay = document.getElementById('loginProfilesOverlay');
+            const list = document.getElementById('loginProfilesList');
+            const noIpUsersMessage = document.getElementById('loginNoIpUsersMessage');
+
+            const selectedEmailInput = document.getElementById('loginSelectedEmail');
+            const selectedImage = document.getElementById('loginSelectedProfileImage');
+            const selectedName = document.getElementById('loginSelectedProfileName');
+
+            const prevBtn = document.getElementById('loginPrevProfile');
+            const nextBtn = document.getElementById('loginNextProfile');
+            const carouselPrevArrow = document.getElementById('loginCarouselPrevArrow');
+            const carouselNextArrow = document.getElementById('loginCarouselNextArrow');
+            const prevImage = document.getElementById('loginPrevProfileImage');
+            const nextImage = document.getElementById('loginNextProfileImage');
+            const employeeHero = document.getElementById('loginEmployeeHero');
+
+            const manualLoginInput = document.getElementById('ManualLogin');
+            const manualHero = document.getElementById('loginManualHero');
+            const profileHeroBlock = document.getElementById('loginProfileHeroBlock');
+            const manualEmailGroup = document.getElementById('loginManualEmailGroup');
+            const manualEmailInput = document.getElementById('loginManualEmailInput');
+            const accountForm = document.getElementById('account');
+
+            let draggedRow = null;
+            let currentPublicIp = "";
+            let isSubmittingAfterIpWait = false;
+
+            function removeIpFilterPendingState() {
+                if (list) {
+                    list.classList.remove('login-ip-filter-pending');
+                    list.style.visibility = '';
+                }
+
+                if (profileHeroBlock) {
+                    profileHeroBlock.classList.remove('login-ip-filter-pending');
+                    profileHeroBlock.style.visibility = '';
+                }
+            }
+
+            function normalizeIp(ip) {
+                if (!ip) return "";
+
+                ip = String(ip).trim();
+
+                if (ip.indexOf(",") >= 0) {
+                    ip = ip.split(",")[0].trim();
+                }
+
+                if (ip === "::1") {
+                    return "127.0.0.1";
+                }
+
+                if (ip.indexOf("::ffff:") === 0) {
+                    ip = ip.replace("::ffff:", "");
+                }
+
+                return ip;
+            }
+
+            function splitAllowedIps(value) {
+                if (!value) return [];
+
+                return String(value)
+                    .split(/[,;\s]+/)
+                    .map(normalizeIp)
+                    .filter(Boolean);
+            }
+
+            function emailsEqual(firstEmail, secondEmail) {
+                return (firstEmail || '').toLowerCase() === (secondEmail || '').toLowerCase();
+            }
+
+            function getRows(includeHidden) {
+                const rows = Array.from(document.querySelectorAll('.login-profile-row'));
+
+                if (includeHidden) {
+                    return rows;
+                }
+
+                return rows.filter(row => !row.classList.contains('is-ip-hidden'));
+            }
+
+            function getStoredLastSelectedEmail() {
+                return localStorage.getItem(lastSelectedStorageKey) || '';
+            }
+
+            function saveLastSelectedEmail(email) {
+                if (!email) return;
+
+                localStorage.setItem(lastSelectedStorageKey, email);
+            }
+
+            function clearLoginWarningMessage() {
+                const errorPopup = document.getElementById('loginIpErrorPopup');
+
+                if (errorPopup) {
+                    errorPopup.classList.add('login-mode-hidden');
+                    errorPopup.setAttribute('aria-hidden', 'true');
+                }
+
+                document.querySelectorAll('#account .validation-summary-errors, #account .field-validation-error').forEach(function (element) {
+                    element.classList.add('login-mode-hidden');
+                });
+            }
+
+            function setManualMode(clearEmail) {
+                window.loginManualMode = true;
+
+                if (manualLoginInput) {
+                    manualLoginInput.value = 'true';
+                }
+
+                if (manualHero) {
+                    manualHero.classList.remove('login-mode-hidden');
+                }
+
+                if (profileHeroBlock) {
+                    profileHeroBlock.classList.add('login-mode-hidden');
+                    profileHeroBlock.classList.remove('login-ip-filter-pending');
+                    profileHeroBlock.style.visibility = '';
+                }
+
+                if (list) {
+                    list.classList.remove('login-ip-filter-pending');
+                    list.style.visibility = '';
+                }
+
+                if (manualEmailGroup) {
+                    manualEmailGroup.classList.remove('login-mode-hidden');
+                }
+
+                getRows(true).forEach(r => r.classList.remove('is-selected'));
+
+                if (selectedEmailInput) {
+                    selectedEmailInput.value = '';
+                }
+
+                if (clearEmail && manualEmailInput) {
+                    manualEmailInput.value = '';
+                }
+
+                const passwordInput = document.getElementById('Input_Password');
+
+                if (passwordInput) {
+                    passwordInput.value = '';
+                    passwordInput.setAttribute('autocomplete', 'new-password');
+                }
+
+                if (manualEmailInput) {
+                    setTimeout(() => manualEmailInput.focus(), 120);
+                }
+            }
+
+            function setProfileMode() {
+                window.loginManualMode = false;
+
+                if (manualLoginInput) {
+                    manualLoginInput.value = 'false';
+                }
+
+                if (manualHero) {
+                    manualHero.classList.add('login-mode-hidden');
+                }
+
+                if (profileHeroBlock) {
+                    profileHeroBlock.classList.remove('login-mode-hidden');
+                    profileHeroBlock.classList.remove('login-ip-filter-pending');
+                    profileHeroBlock.style.visibility = '';
+                }
+
+                if (list) {
+                    list.classList.remove('login-ip-filter-pending');
+                    list.style.visibility = '';
+                }
+
+                if (manualEmailGroup) {
+                    manualEmailGroup.classList.add('login-mode-hidden');
+                }
+            }
+
+            function saveCurrentOrder() {
+                if (!list) return;
+
+                const emails = getRows(true)
+                    .map(row => row.dataset.email)
+                    .filter(Boolean);
+
+                localStorage.setItem(storageKey, JSON.stringify(emails));
+            }
+
+            function applyStoredOrder() {
+                if (!list) return;
+
+                let saved = [];
+
+                try {
+                    saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                } catch {
+                    saved = [];
+                }
+
+                if (!saved.length) return;
+
+                const rows = getRows(true);
+                const byEmail = {};
+
+                rows.forEach(row => {
+                    byEmail[(row.dataset.email || '').toLowerCase()] = row;
+                });
+
+                saved.forEach(email => {
+                    const row = byEmail[(email || '').toLowerCase()];
+
+                    if (row) {
+                        list.appendChild(row);
+                    }
+                });
+            }
+
+            function setSideProfile(button, image, row) {
+                if (!button || !image || !row) return;
+
+                const imageUrl = row.dataset.image || '/static/DefaultImage.svg';
+                const name = row.dataset.name || row.dataset.email || 'User';
+
+                image.src = imageUrl;
+                image.alt = name;
+                button.title = name;
+                button.classList.remove('login-mode-hidden');
+                button.disabled = false;
+            }
+
+            function hideSideProfile(button) {
+                if (!button) return;
+
+                button.classList.add('login-mode-hidden');
+                button.disabled = true;
+                button.removeAttribute('title');
+            }
+
+            function setCarouselArrowsVisible(visible) {
+                [carouselPrevArrow, carouselNextArrow].forEach(function (btn) {
+                    if (!btn) return;
+
+                    btn.classList.toggle('login-mode-hidden', !visible);
+                    btn.disabled = !visible;
+                });
+            }
+
+            function showNoProfilesState() {
+                /*
+                    مفيش أي حساب محفوظ/متاح على نفس الجهاز الحالي:
+                    نفتح شاشة اللوجين اليدوي مباشرة بدل ما نعرض كارت صور فاضي.
+                */
+                setManualMode(false);
+
+                if (selectedEmailInput) {
+                    selectedEmailInput.value = '';
+                }
+
+                getRows(true).forEach(r => r.classList.remove('is-selected'));
+
+                hideSideProfile(prevBtn);
+                hideSideProfile(nextBtn);
+
+                if (employeeHero) {
+                    employeeHero.classList.remove('is-single-profile', 'is-two-profiles', 'is-three-profiles', 'is-many-profiles', 'has-extra-profiles');
+                }
+
+                setCarouselArrowsVisible(false);
+
+                if (noIpUsersMessage) {
+                    noIpUsersMessage.classList.add('login-mode-hidden');
+                }
+            }
+
+            function updateHeroSideImages() {
+                const rows = getRows();
+
+                if (!rows.length) {
+                    showNoProfilesState();
+                    return;
+                }
+
+                if (noIpUsersMessage) {
+                    noIpUsersMessage.classList.add('login-mode-hidden');
+                }
+
+                if (employeeHero) {
+                    employeeHero.classList.remove('is-single-profile', 'is-two-profiles', 'is-three-profiles', 'is-many-profiles', 'has-extra-profiles');
+                }
+
+                setCarouselArrowsVisible(false);
+
+                const currentIndex = getSelectedIndex();
+
+                if (rows.length === 1) {
+                    /* حساب واحد فقط: صورة واحدة في النص + الاسم + الباسورد بدون خيارات صور جانبية */
+                    hideSideProfile(prevBtn);
+                    hideSideProfile(nextBtn);
+
+                    if (employeeHero) {
+                        employeeHero.classList.add('is-single-profile');
+                    }
+
+                    return;
+                }
+
+                if (rows.length === 2) {
+                    /* حسابين فقط: الصورة المختارة + صورة الحساب الثاني فقط، بدون أزرار أسهم */
+                    const otherIndex = (currentIndex + 1) % rows.length;
+
+                    hideSideProfile(prevBtn);
+                    setSideProfile(nextBtn, nextImage, rows[otherIndex]);
+
+                    if (employeeHero) {
+                        employeeHero.classList.add('is-two-profiles');
+                    }
+
+                    return;
+                }
+
+                const prevIndex = (currentIndex - 1 + rows.length) % rows.length;
+                const nextIndex = (currentIndex + 1) % rows.length;
+
+                setSideProfile(prevBtn, prevImage, rows[prevIndex]);
+                setSideProfile(nextBtn, nextImage, rows[nextIndex]);
+
+                if (employeeHero) {
+                    if (rows.length === 3) {
+                        /* 3 حسابات: صورة في النص وصورتين على الجنب فقط، بدون أسهم */
+                        employeeHero.classList.add('is-three-profiles');
+                    } else {
+                        /* أكثر من 3 حسابات: تظهر أسهم التقليب لأن فيه حسابات زيادة مش ظاهرة */
+                        employeeHero.classList.add('is-many-profiles', 'has-extra-profiles');
+                        setCarouselArrowsVisible(true);
+                    }
+                }
+            }
+
+            function selectProfile(row, closeAfterSelect, shouldPersist) {
+                if (!row || row.classList.contains('is-ip-hidden')) return;
+
+                if (shouldPersist !== false || closeAfterSelect === true) {
+                    clearLoginWarningMessage();
+                }
+
+                setProfileMode();
+
+                const email = row.dataset.email || '';
+                const name = row.dataset.name || email;
+                const image = row.dataset.image || '/static/DefaultImage.svg';
+
+                if (selectedEmailInput) selectedEmailInput.value = email;
+
+                if (selectedImage) {
+                    selectedImage.src = image;
+                    selectedImage.alt = name;
+                }
+
+                if (selectedName) selectedName.textContent = name;
+
+                getRows(true).forEach(r => r.classList.remove('is-selected'));
+                row.classList.add('is-selected');
+
+                if (shouldPersist !== false) {
+                    saveLastSelectedEmail(email);
+                }
+
+                updateHeroSideImages();
+
+                if (closeAfterSelect) {
+                    closeDrawer();
+                }
+
+                const passwordInput = document.getElementById('Input_Password');
+                if (passwordInput) {
+                    passwordInput.value = '';
+                    passwordInput.setAttribute('autocomplete', 'new-password');
+
+                    setTimeout(() => passwordInput.focus(), 150);
+                }
+            }
+
+            function getSelectedIndex() {
+                const rows = getRows();
+
+                if (!rows.length) return -1;
+
+                const currentEmail = selectedEmailInput ? (selectedEmailInput.value || '').toLowerCase() : '';
+                let index = rows.findIndex(row => (row.dataset.email || '').toLowerCase() === currentEmail);
+
+                return index < 0 ? 0 : index;
+            }
+
+            function findVisibleRowByEmail(email) {
+                if (!email) return null;
+
+                return getRows().find(row => emailsEqual(row.dataset.email, email)) || null;
+            }
+
+            function selectInitialVisibleProfile() {
+                const rows = getRows();
+
+                if (!rows.length) {
+                    showNoProfilesState();
+                    return;
+                }
+
+                const savedEmail = getStoredLastSelectedEmail();
+                const currentEmail = selectedEmailInput ? selectedEmailInput.value : '';
+
+                const selectedRow =
+                    findVisibleRowByEmail(preferredAdminEmailFromLogout)
+                    || findVisibleRowByEmail(savedEmail)
+                    || findVisibleRowByEmail(currentEmail)
+                    || rows[0];
+
+                selectProfile(selectedRow, false, false);
+            }
+
+            function moveProfile(step) {
+                const rows = getRows();
+                if (!rows.length) return;
+
+                const currentIndex = getSelectedIndex();
+                const nextIndex = (currentIndex + step + rows.length) % rows.length;
+
+                selectProfile(rows[nextIndex], false, true);
+            }
+
+            function openDrawer() {
+                drawer.classList.add('is-open');
+                overlay.classList.add('is-open');
+                drawer.setAttribute('aria-hidden', 'false');
+
+                if (openBtn) {
+                    openBtn.classList.add('is-hidden');
+                }
+            }
+
+            function closeDrawer() {
+                drawer.classList.remove('is-open');
+                overlay.classList.remove('is-open');
+                drawer.setAttribute('aria-hidden', 'true');
+
+                if (openBtn) {
+                    openBtn.classList.remove('is-hidden');
+                }
+            }
+
+            function getDragAfterElement(container, y) {
+                const draggableElements = [...container.querySelectorAll('.login-profile-row:not(.is-dragging):not(.is-ip-hidden)')];
+
+                return draggableElements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = y - box.top - box.height / 2;
+
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset: offset, element: child };
+                    }
+
+                    return closest;
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+            }
+
+            function setupSorting() {
+                if (!list) return;
+
+                let placeholder = null;
+                let floatingRow = null;
+                let dragOffsetY = 0;
+                let dragOffsetX = 0;
+                let activePointerId = null;
+                let lastPointerX = 0;
+                let lastPointerY = 0;
+                let justFinishedDrag = false;
+
+                function getPointerClient(event) {
+                    return {
+                        x: event.clientX || 0,
+                        y: event.clientY || 0
+                    };
+                }
+
+                function createPlaceholder(row) {
+                    const rowRect = row.getBoundingClientRect();
+                    const place = document.createElement('div');
+
+                    place.className = 'login-profile-drag-placeholder';
+                    place.style.height = rowRect.height + 'px';
+
+                    return place;
+                }
+
+                function createFloatingRow(row, startX, startY) {
+                    const rowRect = row.getBoundingClientRect();
+                    const listRect = list.getBoundingClientRect();
+                    const clone = row.cloneNode(true);
+
+                    clone.classList.remove('is-selected', 'is-dragging', 'is-being-dragged-source');
+                    clone.classList.add('login-profile-floating-drag');
+                    clone.removeAttribute('id');
+                    clone.setAttribute('draggable', 'false');
+
+                    clone.style.width = listRect.width + 'px';
+                    clone.style.left = listRect.left + 'px';
+                    clone.style.top = rowRect.top + 'px';
+
+                    dragOffsetY = startY - rowRect.top;
+                    dragOffsetX = startX - rowRect.left;
+
+                    document.body.appendChild(clone);
+
+                    return clone;
+                }
+
+                function updateFloatingPosition(clientX, clientY) {
+                    if (!floatingRow) return;
+
+                    const listRect = list.getBoundingClientRect();
+                    const drawerRect = drawer ? drawer.getBoundingClientRect() : listRect;
+                    const floatingHeight = floatingRow.offsetHeight || 70;
+
+                    let top = clientY - dragOffsetY;
+
+                    const minTop = Math.max(drawerRect.top + 4, listRect.top - 8);
+                    const maxTop = Math.min(drawerRect.bottom - floatingHeight - 4, window.innerHeight - floatingHeight - 4);
+
+                    if (Number.isFinite(minTop) && Number.isFinite(maxTop) && maxTop > minTop) {
+                        top = Math.max(minTop, Math.min(top, maxTop));
+                    }
+
+                    floatingRow.style.left = listRect.left + 'px';
+                    floatingRow.style.width = listRect.width + 'px';
+                    floatingRow.style.top = top + 'px';
+                }
+
+                function movePlaceholder(clientY) {
+                    if (!placeholder) return;
+
+                    const afterElement = getDragAfterElement(list, clientY);
+
+                    if (afterElement == null) {
+                        list.appendChild(placeholder);
+                    } else if (afterElement !== placeholder) {
+                        list.insertBefore(placeholder, afterElement);
+                    }
+                }
+
+                function finishDrag() {
+                    document.removeEventListener('pointermove', onPointerMove, true);
+                    document.removeEventListener('pointerup', onPointerUp, true);
+                    document.removeEventListener('pointercancel', onPointerCancel, true);
+
+                    if (draggedRow && placeholder && placeholder.parentNode === list) {
+                        list.insertBefore(draggedRow, placeholder);
+                    }
+
+                    if (draggedRow) {
+                        draggedRow.classList.remove('is-dragging', 'is-being-dragged-source');
+                        draggedRow.style.display = '';
+                    }
+
+                    if (placeholder && placeholder.parentNode) {
+                        placeholder.parentNode.removeChild(placeholder);
+                    }
+
+                    if (floatingRow && floatingRow.parentNode) {
+                        floatingRow.parentNode.removeChild(floatingRow);
+                    }
+
+                    placeholder = null;
+                    floatingRow = null;
+                    activePointerId = null;
+
+                    if (draggedRow) {
+                        justFinishedDrag = true;
+                        setTimeout(function () {
+                            justFinishedDrag = false;
+                        }, 250);
+                    }
+
+                    draggedRow = null;
+                    saveCurrentOrder();
+                    updateHeroSideImages();
+                }
+
+                function cancelDrag() {
+                    finishDrag();
+                }
+
+                function onPointerMove(event) {
+                    if (!draggedRow || activePointerId !== event.pointerId) return;
+
+                    event.preventDefault();
+
+                    const point = getPointerClient(event);
+                    lastPointerX = point.x;
+                    lastPointerY = point.y;
+
+                    updateFloatingPosition(point.x, point.y);
+                    movePlaceholder(point.y);
+                }
+
+                function onPointerUp(event) {
+                    if (activePointerId !== null && activePointerId !== event.pointerId) return;
+
+                    event.preventDefault();
+                    finishDrag();
+                }
+
+                function onPointerCancel(event) {
+                    if (activePointerId !== null && activePointerId !== event.pointerId) return;
+
+                    event.preventDefault();
+                    cancelDrag();
+                }
+
+                function startDrag(row, event) {
+                    if (!row || row.classList.contains('is-ip-hidden')) return;
+
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const point = getPointerClient(event);
+                    lastPointerX = point.x;
+                    lastPointerY = point.y;
+
+                    draggedRow = row;
+                    activePointerId = event.pointerId;
+
+                    placeholder = createPlaceholder(row);
+                    floatingRow = createFloatingRow(row, point.x, point.y);
+
+                    row.classList.add('is-dragging', 'is-being-dragged-source');
+
+                    list.insertBefore(placeholder, row);
+                    row.style.display = 'none';
+
+                    updateFloatingPosition(point.x, point.y);
+
+                    document.addEventListener('pointermove', onPointerMove, true);
+                    document.addEventListener('pointerup', onPointerUp, true);
+                    document.addEventListener('pointercancel', onPointerCancel, true);
+                }
+
+                getRows(true).forEach(row => {
+                    row.setAttribute('draggable', 'false');
+
+                    const dragHandle = row.querySelector('.login-profile-drag');
+
+                    if (!dragHandle) return;
+
+                    dragHandle.setAttribute('role', 'button');
+                    dragHandle.setAttribute('aria-label', 'تغيير ترتيب المستخدم');
+                    dragHandle.setAttribute('title', 'تغيير ترتيب المستخدم');
+
+                    dragHandle.addEventListener('pointerdown', function (event) {
+                        startDrag(row, event);
+                    }, { passive: false });
+
+                    dragHandle.addEventListener('click', function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    });
+                });
+
+                list.addEventListener('dragstart', function (event) {
+                    event.preventDefault();
+                }, true);
+
+                list.addEventListener('click', function (event) {
+                    if (!justFinishedDrag) return;
+
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    if (typeof event.stopImmediatePropagation === 'function') {
+                        event.stopImmediatePropagation();
+                    }
+                }, true);
+            }
+
+            function applyCurrentIpFilter(ip) {
+                currentPublicIp = normalizeIp(ip);
+
+                /*
+                    عرض موظفي نفس IP فقط:
+                    الموظف يظهر في صفحة تسجيل الدخول إذا كان IP الحالي موجودًا
+                    داخل AllowedIpAddress الخاص بالشيفت الفعال.
+                */
+                let visibleRowsCount = 0;
+
+                getRows(true).forEach(row => {
+                    const allowedIps = splitAllowedIps(row.dataset.allowedIps || row.getAttribute('data-allowed-ips') || '');
+                    const isSameIp =
+                        currentPublicIp &&
+                        allowedIps.some(allowedIp => normalizeIp(allowedIp) === currentPublicIp);
+
+                    row.classList.toggle('is-ip-hidden', !isSameIp);
+
+                    if (isSameIp) {
+                        visibleRowsCount++;
+                    }
+                });
+
+                removeIpFilterPendingState();
+
+                if (noIpUsersMessage) {
+                    noIpUsersMessage.classList.toggle('login-mode-hidden', visibleRowsCount > 0);
+                }
+
+                /*
+                    مهم: لو الصفحة في Manual Login بسبب إضافة مستخدم أو بسبب Error،
+                    ما نرجعهاش تلقائيًا لشاشة الصور بعد ما IP يتحمل.
+                */
+                if (window.loginManualMode === true || (manualLoginInput && manualLoginInput.value === 'true')) {
+                    return;
+                }
+
+                if (visibleRowsCount === 0) {
+                    showNoProfilesState();
+                    return;
+                }
+
+                selectInitialVisibleProfile();
+            }
+
+            function setupHeroTouchNavigation() {
+                if (!employeeHero) return;
+
+                let touchStartX = 0;
+                let touchStartY = 0;
+                let touchStartTime = 0;
+
+                employeeHero.addEventListener('touchstart', function (event) {
+                    if (window.loginManualMode === true || (manualLoginInput && manualLoginInput.value === 'true')) return;
+                    if (getRows().length < 2) return;
+                    if (!event.touches || event.touches.length !== 1) return;
+
+                    touchStartX = event.touches[0].clientX;
+                    touchStartY = event.touches[0].clientY;
+                    touchStartTime = Date.now();
+                }, { passive: true });
+
+                employeeHero.addEventListener('touchend', function (event) {
+                    if (window.loginManualMode === true || (manualLoginInput && manualLoginInput.value === 'true')) return;
+                    if (getRows().length < 2) return;
+                    if (!event.changedTouches || event.changedTouches.length !== 1) return;
+
+                    const endX = event.changedTouches[0].clientX;
+                    const endY = event.changedTouches[0].clientY;
+                    const diffX = endX - touchStartX;
+                    const diffY = endY - touchStartY;
+                    const elapsed = Date.now() - touchStartTime;
+
+                    if (elapsed > 900) return;
+                    if (Math.abs(diffX) < 42) return;
+                    if (Math.abs(diffX) < Math.abs(diffY) * 1.15) return;
+
+                    if (diffX < 0) {
+                        moveProfile(1);
+                    } else {
+                        moveProfile(-1);
+                    }
+                }, { passive: true });
+            }
+
+            applyStoredOrder();
+            setupSorting();
+            setupHeroTouchNavigation();
+
+            if (window.loginManualMode) {
+                setManualMode(false);
+            } else if (window.loginClientIpIsLoaded) {
+                applyCurrentIpFilter(window.loginCurrentPublicIp);
+            }
+
+            window.addEventListener('loginClientIpLoaded', function (event) {
+                const ip = event && event.detail ? event.detail.ip : '';
+                applyCurrentIpFilter(ip);
+            });
+
+            if (openBtn) openBtn.addEventListener('click', openDrawer);
+            if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+            if (overlay) overlay.addEventListener('click', closeDrawer);
+
+            getRows(true).forEach(row => {
+                row.addEventListener('click', function () {
+                    if (row.classList.contains('is-dragging') || row.classList.contains('is-ip-hidden')) return;
+                    selectProfile(row, true, true);
+                });
+            });
+
+            if (prevBtn) {
+                prevBtn.addEventListener('click', function () {
+                    moveProfile(-1);
+                });
+            }
+
+            if (nextBtn) {
+                nextBtn.addEventListener('click', function () {
+                    moveProfile(1);
+                });
+            }
+
+            if (carouselPrevArrow) {
+                carouselPrevArrow.addEventListener('click', function () {
+                    moveProfile(-1);
+                });
+            }
+
+            if (carouselNextArrow) {
+                carouselNextArrow.addEventListener('click', function () {
+                    moveProfile(1);
+                });
+            }
+
+            const addBtn = document.getElementById('loginAddUserBtn');
+
+            if (addBtn) {
+                addBtn.addEventListener('click', function () {
+                    closeDrawer();
+                    clearLoginWarningMessage();
+                    setManualMode(true);
+
+                    if (window.history && window.history.replaceState) {
+                        window.history.replaceState(null, document.title, window.location.pathname);
+                    }
+                });
+            }
+
+            if (manualEmailInput) {
+                manualEmailInput.addEventListener('input', clearLoginWarningMessage);
+                manualEmailInput.addEventListener('change', clearLoginWarningMessage);
+            }
+
+            function ensureClientPublicIpBeforeSubmit() {
+                const publicIpInput = document.getElementById('ClientPublicIp');
+
+                if (publicIpInput && !publicIpInput.value && window.loginCurrentPublicIp) {
+                    publicIpInput.value = normalizeIp(window.loginCurrentPublicIp);
+                }
+            }
+
+            function prepareLoginFormBeforeSubmit() {
+                ensureClientPublicIpBeforeSubmit();
+
+                if (manualLoginInput && manualLoginInput.value === 'true') {
+                    if (selectedEmailInput && manualEmailInput) {
+                        selectedEmailInput.value = (manualEmailInput.value || '').trim();
+                    }
+                } else if (selectedEmailInput) {
+                    saveLastSelectedEmail(selectedEmailInput.value);
+                }
+            }
+
+            function waitForClientIpReady(timeoutMs) {
+                if (window.loginClientIpIsLoaded) {
+                    return Promise.resolve();
+                }
+
+                const ipPromise = window.loginClientIpLoadPromise && typeof window.loginClientIpLoadPromise.then === 'function'
+                    ? window.loginClientIpLoadPromise
+                    : Promise.resolve();
+
+                const timeoutPromise = new Promise(resolve => {
+                    setTimeout(resolve, timeoutMs);
+                });
+
+                return Promise.race([ipPromise, timeoutPromise]);
+            }
+
+            if (accountForm) {
+                accountForm.setAttribute('autocomplete', 'off');
+
+                accountForm.addEventListener('submit', function (event) {
+                    if (!isSubmittingAfterIpWait && !window.loginClientIpIsLoaded) {
+                        event.preventDefault();
+
+                        waitForClientIpReady(1800).then(function () {
+                            prepareLoginFormBeforeSubmit();
+                            isSubmittingAfterIpWait = true;
+
+                            if (accountForm.requestSubmit) {
+                                accountForm.requestSubmit();
+                            } else {
+                                accountForm.submit();
+                            }
+                        });
+
+                        return;
+                    }
+
+                    prepareLoginFormBeforeSubmit();
+                });
+            }
+        })();
+    </script>
+}
+
+<script>
+    (function scrollLoginIpErrorIntoView() {
+        const errorPopup = document.getElementById('loginIpErrorPopup');
+
+        if (errorPopup) {
+            setTimeout(function () {
+                errorPopup.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            }, 200);
+        }
+    })();
+</script>
+
+<style id="login-ip-filter-no-flicker-fix">
+    /*
+                            يمنع ظهور كل الحسابات للحظة بعد Logout.
+                            الحسابات والصورة الرئيسية يفضلوا مخفيين لحد ما Public IP يتحمّل
+                            وبعدها JavaScript يظهر الحسابات المطابقة فقط.
+                        */
+    .login-profiles-list.login-ip-filter-pending .login-profile-row {
+        display: none !important;
+    }
+
+    .login-profile-hero-block.login-ip-filter-pending {
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+</style>
+
+<style>
+    body {
+        overflow-x: hidden;
+    }
+
+    .login-mode-hidden {
+        display: none !important;
+    }
+
+    input {
+        border: 1px solid #1d273b !important;
+        background-color: #ffffff;
+        font-size: 15px;
+        font-weight: bold;
+    }
+
+    .form-group {
+        border-radius: 30px !important;
+    }
+
+    .btn {
+        box-shadow: 0px 0px 3px 3px rgba(0, 0, 0, 0.075);
+        border-radius: 30px;
+    }
+
+    .centered-placeholder::placeholder {
+        text-align: center;
+        line-height: normal;
+    }
+
+    ul {
+        list-style: none;
+    }
+
+    .login-box {
+        max-width: 390px;
+        padding-top: 5rem !important;
+    }
+
+    .login-submit-btn {
+        background-color: #1d273b !important;
+        border-color: #1d273b !important;
+        min-width: 130px;
+        font-weight: 800;
+    }
+
+    .login-top-user-btn {
+        position: fixed;
+        top: 18px;
+        right: 18px;
+        width: 34px;
+        height: 34px;
+        border: 0;
+        border-radius: 50%;
+        background: rgba(24, 160, 136, 0.18);
+        color: #1d273b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1100;
+        box-shadow: 0 5px 14px rgba(15, 23, 42, 0.12);
+        cursor: pointer;
+    }
+
+    .login-top-user-icon {
+        font-size: 18px;
+        line-height: 1;
+    }
+
+    .login-profiles-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.18);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        z-index: 1098;
+    }
+
+        .login-profiles-overlay.is-open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+    .login-profiles-drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: min(420px, 94vw);
+        height: 100vh;
+        background: #f6f7f8;
+        transform: translateX(110%);
+        transition: transform 0.25s ease;
+        z-index: 1099;
+        padding: 46px 18px 28px;
+        direction: rtl;
+        overflow-y: auto;
+        box-shadow: -8px 0 28px rgba(15, 23, 42, 0.12);
+    }
+
+        .login-profiles-drawer.is-open {
+            transform: translateX(0);
+        }
+
+    .login-profiles-header {
+        position: relative;
+        text-align: center;
+        font-size: 26px;
+        font-weight: 900;
+        color: #3f3f46;
+        margin-bottom: 34px;
+    }
+
+    .login-profiles-back-btn {
+        position: absolute;
+        right: 6px;
+        top: -8px;
+        border: 0;
+        background: transparent;
+        color: #3f3f46;
+        font-size: 58px;
+        line-height: 1;
+        cursor: pointer;
+        transform: rotate(180deg);
+    }
+
+    .login-profiles-card {
+        background: #ffffff;
+        border-radius: 18px;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.10);
+        overflow: hidden;
+        margin: 0 4px;
+    }
+
+    .login-profiles-list {
+        max-height: 640px;
+        overflow-y: auto;
+    }
+
+    .login-profile-row {
+        width: 100%;
+        border: 0;
+        background: #ffffff;
+        min-height: 86px;
+        display: grid;
+        grid-template-columns: 36px 54px 1fr;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 18px;
+        border-bottom: 1px solid #e5e7eb;
+        cursor: pointer;
+        text-align: right;
+    }
+
+        .login-profile-row:hover,
+        .login-profile-row.is-selected {
+            background: #f2f4f7;
+        }
+
+    .login-profile-drag {
+        color: #b8b8b8;
+        font-size: 26px;
+        line-height: 1;
+    }
+
+    .login-profile-avatar-wrap {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        overflow: hidden;
+        background: #e8ebf1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .login-profile-avatar {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .login-profile-name {
+        display: block;
+        color: #111827;
+        font-size: 19px;
+        font-weight: 700;
+        line-height: 1.35;
+        max-width: 260px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .login-profile-email {
+        display: block;
+        color: #7c7f86;
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1.35;
+        max-width: 260px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        direction: ltr;
+        text-align: right;
+    }
+
+    .login-add-user-btn {
+        width: 100%;
+        border: 0;
+        background: #ffffff;
+        color: #ff9800;
+        min-height: 76px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 14px;
+        padding: 0 22px;
+        font-size: 24px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .login-add-plus {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: #ff9800;
+        color: #ffffff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 30px;
+        line-height: 1;
+    }
+
+    .login-selected-profile-card {
+        margin: 16px auto 10px;
+        padding: 10px 14px;
+        border: 1px solid #1d273b;
+        border-radius: 999px;
+        background: #ffffff;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        direction: rtl;
+        box-shadow: 0 5px 16px rgba(24, 160, 136, 0.10);
+    }
+
+    .login-selected-profile-image {
+        width: 46px;
+        height: 46px;
+        min-width: 46px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: #e8ebf1;
+    }
+
+    .login-selected-profile-info {
+        flex: 1;
+        min-width: 0;
+        text-align: right;
+    }
+
+    .login-selected-profile-name {
+        color: #0f172a;
+        font-size: 15px;
+        font-weight: 900;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .login-selected-profile-email {
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 800;
+        direction: ltr;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .login-add-user-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.34);
+        z-index: 1200;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+        direction: rtl;
+    }
+
+        .login-add-user-modal.is-open {
+            display: flex;
+        }
+
+    .login-add-user-card {
+        position: relative;
+        width: min(92vw, 410px);
+        background: #ffffff;
+        border-radius: 22px;
+        box-shadow: 0 20px 55px rgba(15, 23, 42, 0.22);
+        padding: 24px 22px 22px;
+        text-align: center;
+    }
+
+    .login-add-user-close {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        width: 32px;
+        height: 32px;
+        border: 0;
+        border-radius: 50%;
+        background: #f1f5f9;
+        color: #334155;
+        font-size: 24px;
+        cursor: pointer;
+        line-height: 1;
+    }
+
+    .login-add-user-logo img {
+        width: 74px;
+        height: 74px;
+        margin-bottom: 12px;
+    }
+
+    .login-add-user-card h3 {
+        color: #0f172a;
+        font-size: 22px;
+        font-weight: 900;
+        margin-bottom: 8px;
+    }
+
+    .login-add-user-card p {
+        color: #64748b;
+        font-size: 15px;
+        font-weight: 700;
+        margin-bottom: 16px;
+    }
+
+    .login-add-user-confirm,
+    .login-popup-submit {
+        border: 0;
+        border-radius: 999px;
+        background: #1d273b;
+        color: #ffffff;
+        padding: 10px 28px;
+        font-weight: 900;
+        cursor: pointer;
+        box-shadow: 0 8px 18px rgba(24, 160, 136, 0.20);
+    }
+
+    .login-popup-input {
+        width: 100%;
+        height: 46px;
+        border-radius: 999px;
+        margin-bottom: 12px;
+        padding: 0 16px;
+        text-align: center;
+        direction: ltr;
+    }
+
+    .login-public-ip-note {
+        color: #334155;
+        font-weight: 700;
+        font-size: 14px;
+        direction: rtl;
+    }
+
+    #loginCurrentPublicIpText {
+        color: #1d273b;
+        direction: ltr;
+        display: inline-block;
+        font-weight: 800;
+    }
+
+    .login-ip-error-popup {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(220, 38, 38, 0.08);
+        border: 1px solid rgba(220, 38, 38, 0.25);
+        color: #dc2626;
+        border-radius: 18px;
+        padding: 12px 14px;
+        margin: 16px auto 6px;
+        text-align: right;
+        direction: rtl;
+        box-shadow: 0 8px 20px rgba(220, 38, 38, 0.08);
+        animation: loginErrorFadeIn 0.22s ease-out;
+    }
+
+    .login-ip-error-icon {
+        width: 30px;
+        height: 30px;
+        min-width: 30px;
+        border-radius: 50%;
+        background: #dc2626;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 900;
+        font-size: 20px;
+    }
+
+    .login-ip-error-content {
+        flex: 1;
+    }
+
+    .login-ip-error-title {
+        font-size: 16px;
+        font-weight: 800;
+        margin-bottom: 2px;
+    }
+
+    .login-ip-error-text {
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.6;
+        word-break: break-word;
+    }
+
+    @@keyframes loginErrorFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .login-box {
+            padding-left: 16px;
+            padding-right: 16px;
+        }
+
+        .login-profiles-drawer {
+            width: 100vw;
+        }
+
+        .login-profile-name {
+            font-size: 17px;
+        }
+
+        .login-profile-email {
+            font-size: 13px;
+        }
+    }
+</style>
+
+
+<style id="login-profile-selector-final-polish">
+    html,
+    body {
+        overflow-x: hidden !important;
+    }
+
+    .login-top-user-btn {
+        position: fixed !important;
+        top: 18px !important;
+        right: 18px !important;
+        width: 30px !important;
+        height: 30px !important;
+        border: 0 !important;
+        border-radius: 50% !important;
+        background: rgba(24, 160, 136, 0.16) !important;
+        color: #1d273b !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 1090 !important;
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.10) !important;
+        cursor: pointer !important;
+        padding: 0 !important;
+    }
+
+        .login-top-user-btn.is-hidden {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+    .login-top-user-svg {
+        width: 18px !important;
+        height: 18px !important;
+        fill: currentColor !important;
+        display: block !important;
+    }
+
+    /* منع ظهور أي أيقونة ثانية داخل زر إعدادات المستخدم */
+    .login-top-user-btn::before,
+    .login-top-user-btn::after {
+        content: none !important;
+        display: none !important;
+    }
+
+    .login-top-user-btn > :not(.login-top-user-svg) {
+        display: none !important;
+    }
+
+    .login-profiles-overlay {
+        overflow: hidden !important;
+    }
+
+    .login-profiles-drawer {
+        width: min(430px, 94vw) !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        background: #f6f7f8 !important;
+        padding: 44px 18px 28px !important;
+        box-sizing: border-box !important;
+    }
+
+    .login-profiles-header {
+        text-align: center !important;
+        font-size: 26px !important;
+        font-weight: 400 !important;
+        color: #3f3f46 !important;
+        margin-bottom: 34px !important;
+        line-height: 1.3 !important;
+    }
+
+    .login-profiles-title {
+        font-weight: 400 !important;
+    }
+
+    .login-profiles-back-btn {
+        position: absolute !important;
+        right: 4px !important;
+        top: -13px !important;
+        border: 0 !important;
+        background: transparent !important;
+        color: #3f3f46 !important;
+        font-size: 64px !important;
+        font-weight: 400 !important;
+        line-height: 1 !important;
+        cursor: pointer !important;
+        transform: rotate(180deg) !important;
+        padding: 0 !important;
+    }
+
+    .login-profiles-card {
+        width: 100% !important;
+        max-width: 390px !important;
+        margin: 0 auto !important;
+        background: #ffffff !important;
+        border-radius: 18px !important;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.10) !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    .login-profiles-list {
+        max-height: 640px !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+    }
+
+    .login-profile-row {
+        width: 100% !important;
+        min-width: 0 !important;
+        border: 0 !important;
+        background: #ffffff !important;
+        min-height: 86px !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 12px !important;
+        padding: 12px 18px !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        cursor: pointer !important;
+        text-align: right !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+        direction: ltr !important;
+    }
+
+        .login-profile-row:hover,
+        .login-profile-row.is-selected {
+            background: #f6f7f8 !important;
+        }
+
+    /* الثلاث شرط تبقى في الشمال آخر الصف */
+    .login-profile-drag {
+        order: 1 !important;
+        width: 30px !important;
+        min-width: 30px !important;
+        color: #b8b8b8 !important;
+        font-size: 25px !important;
+        font-weight: 400 !important;
+        line-height: 1 !important;
+        text-align: left !important;
+    }
+
+    .login-profile-text {
+        order: 2 !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        text-align: right !important;
+        direction: rtl !important;
+        overflow: hidden !important;
+    }
+
+    .login-profile-avatar-wrap {
+        order: 3 !important;
+        width: 48px !important;
+        height: 48px !important;
+        min-width: 48px !important;
+        border-radius: 50% !important;
+        overflow: hidden !important;
+        background: #e8ebf1 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .login-profile-avatar {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+        display: block !important;
+    }
+
+    .login-profile-name {
+        display: block !important;
+        color: #111827 !important;
+        font-size: 19px !important;
+        font-weight: 400 !important;
+        line-height: 1.35 !important;
+        max-width: 100% !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .login-profile-email {
+        display: block !important;
+        color: #7c7f86 !important;
+        font-size: 15px !important;
+        font-weight: 400 !important;
+        line-height: 1.35 !important;
+        max-width: 100% !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        direction: ltr !important;
+        text-align: right !important;
+    }
+
+    .login-add-user-btn {
+        width: fit-content !important;
+        max-width: calc(100% - 24px) !important;
+        min-height: 56px !important;
+        border: 0 !important;
+        background: #ffffff !important;
+        color: #ff9800 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        gap: 10px !important;
+        padding: 0 18px 0 12px !important;
+        margin: 0 0 0 auto !important;
+        font-size: 19px !important;
+        font-weight: 400 !important;
+        cursor: pointer !important;
+        float: right !important;
+        direction: rtl !important;
+    }
+
+    .login-add-plus {
+        width: 34px !important;
+        height: 34px !important;
+        min-width: 34px !important;
+        border-radius: 50% !important;
+        background: #ff9800 !important;
+        color: #ffffff !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 24px !important;
+        font-weight: 400 !important;
+        line-height: 1 !important;
+    }
+
+    .login-selected-profile-name,
+    .login-selected-profile-email {
+        font-weight: 400 !important;
+    }
+
+    .login-add-user-card h3,
+    .login-add-user-card p,
+    .login-add-user-confirm,
+    .login-popup-submit {
+        font-weight: 400 !important;
+    }
+
+    @@media (max-width: 576px) {
+        .login-profiles-drawer {
+            width: 100vw !important;
+            padding-left: 18px !important;
+            padding-right: 18px !important;
+        }
+
+        .login-profiles-card {
+            max-width: 100% !important;
+        }
+
+        .login-profile-name {
+            font-size: 17px !important;
+        }
+
+        .login-profile-email {
+            font-size: 13px !important;
+        }
+    }
+</style>
+
+
+<style id="login-active-users-list-final-rules">
+    /* الليست تعرض كل الموظفين Active فقط من الباك، وتبدأ Scroll بعد 10 صفوف */
+    .login-profiles-list {
+        max-height: 860px !important; /* 10 rows × 86px */
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+    }
+
+    .login-profile-row {
+        min-height: 86px !important;
+        font-weight: 400 !important;
+    }
+
+    .login-profile-name,
+    .login-profile-email,
+    .login-profiles-title,
+    .login-add-user-btn,
+    .login-add-plus {
+        font-weight: 400 !important;
+    }
+</style>
+
+
+<style id="login-final-active-manual-design">
+    html,
+    body {
+        overflow-x: hidden !important;
+    }
+
+    body {
+        background: #f6f7f8 !important;
+    }
+
+    input {
+        border: 1px solid #1d273b !important;
+        background-color: #ffffff !important;
+        font-size: 15px !important;
+        font-weight: 400 !important;
+    }
+
+    .login-box {
+        max-width: 390px !important;
+        padding-top: 5rem !important;
+    }
+
+    .login-submit-btn {
+        background-color: #1d273b !important;
+        border-color: #1d273b !important;
+        min-width: 130px !important;
+        font-weight: 400 !important;
+    }
+
+    .login-top-user-btn {
+        width: 30px !important;
+        height: 30px !important;
+        background: rgba(24, 160, 136, 0.16) !important;
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.10) !important;
+        padding: 0 !important;
+    }
+
+        .login-top-user-btn.is-hidden {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+    .login-profiles-drawer {
+        width: min(430px, 94vw) !important;
+        background: #f6f7f8 !important;
+        padding: 0 18px 28px !important;
+        overflow-x: hidden !important;
+    }
+
+    .login-profiles-header-panel {
+        position: relative !important;
+        height: 92px !important;
+        display: flex !important;
+        align-items: flex-end !important;
+        justify-content: center !important;
+        padding-bottom: 18px !important;
+        margin: 0 -18px 34px !important;
+        border-bottom: 1px solid #d1d5db !important;
+        background: #f6f7f8 !important;
+        box-sizing: border-box !important;
+    }
+
+    .login-profiles-back-btn {
+        right: 24px !important;
+        bottom: 8px !important;
+        top: auto !important;
+        font-size: 30px !important;
+        font-weight: 400 !important;
+        color: #3f3f46 !important;
+    }
+
+    login-profiles-title {
+        font-size: 23px !important;
+        /* font-weight: 400 !important; */
+        color: #3f3f46 !important;
+        line-height: 0.5 !important;
+    }
+
+    .login-profiles-card {
+        max-width: 390px !important;
+        margin: 0 auto 34px !important;
+        border-radius: 18px !important;
+        overflow: hidden !important;
+    }
+
+    .login-profiles-list {
+        max-height: 560px !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+    }
+
+        .login-profiles-list::-webkit-scrollbar {
+            width: 0 !important;
+            height: 0 !important;
+            display: none !important;
+        }
+
+    .login-profile-row {
+        min-height: 70px !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 10px !important;
+        padding: 8px 18px !important;
+        direction: ltr !important;
+        font-weight: 400 !important;
+        user-select: none !important;
+    }
+
+        .login-profile-row.is-dragging {
+            opacity: .55 !important;
+            background: #ecfdf5 !important;
+        }
+
+    .login-profile-drag {
+        order: 1 !important;
+        width: 28px !important;
+        min-width: 28px !important;
+        color: #b8b8b8 !important;
+        font-size: 23px !important;
+        font-weight: 400 !important;
+        text-align: left !important;
+        cursor: grab !important;
+    }
+
+    .login-profile-text {
+        order: 2 !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        text-align: right !important;
+        direction: rtl !important;
+    }
+
+    .login-profile-avatar-wrap {
+        order: 3 !important;
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+    }
+
+    .login-profile-name {
+        font-size: 19px !important;
+        font-weight: 400 !important;
+        max-width: 100% !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .login-profile-email {
+        display: none !important;
+    }
+
+    .login-add-user-btn {
+        display: none !important;
+    }
+
+    .login-add-user-card-button {
+        width: 100% !important;
+        max-width: 390px !important;
+        min-height: 64px !important;
+        margin: 0 auto !important;
+        border: 0 !important;
+        border-radius: 18px !important;
+        background: #ffffff !important;
+        color: #ff9800 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 10px !important;
+        padding: 0 18px !important;
+        font-size: 20px !important;
+        font-weight: 400 !important;
+        cursor: pointer !important;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.10) !important;
+        direction: rtl !important;
+    }
+
+    .login-add-plus {
+        width: 34px !important;
+        height: 34px !important;
+        min-width: 34px !important;
+        font-size: 24px !important;
+        font-weight: 400 !important;
+    }
+
+    .login-main-logo {
+        width: 100px !important;
+        height: 100px !important;
+        border-radius: 50% !important;
+        object-fit: cover !important;
+    }
+
+    .login-employee-hero {
+        position: relative !important;
+        width: 168px !important;
+        height: 100px !important;
+        margin: 0 auto !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .login-profile-nav-btn {
+        position: absolute !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        width: 28px !important;
+        height: 28px !important;
+        border: 0 !important;
+        background: rgba(24, 160, 136, 0.12) !important;
+        color: #1d273b !important;
+        border-radius: 50% !important;
+        font-size: 30px !important;
+        line-height: 24px !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        font-weight: 400 !important;
+    }
+
+    .login-profile-nav-prev {
+        left: 0 !important;
+    }
+
+    .login-profile-nav-next {
+        right: 0 !important;
+    }
+
+    .login-main-title,
+    .login-selected-profile-name,
+    .login-selected-profile-email {
+        font-weight: 400 !important;
+        font-size: 24px !important;
+        color: #111827 !important;
+    }
+
+    .login-selected-profile-card {
+        display: none !important;
+    }
+
+    .login-email-input {
+        direction: ltr !important;
+        text-align: center !important;
+    }
+
+    @@media (max-width: 576px) {
+        .login-profiles-drawer {
+            width: 100vw !important;
+        }
+
+        .login-profile-name {
+            font-size: 17px !important;
+        }
+    }
+</style>
+
+<style id="login-requested-final-overrides">
+    .login-profile-row.is-ip-hidden {
+        display: none !important;
+    }
+
+    .login-no-ip-users-message {
+        padding: 18px 16px !important;
+        text-align: center !important;
+        color: #6b7280 !important;
+        font-size: 15px !important;
+        font-weight: 400 !important;
+        direction: rtl !important;
+        background: #ffffff !important;
+    }
+
+    .login-profiles-header-panel {
+        height: 74px !important;
+        padding-bottom: 12px !important;
+        margin-bottom: 24px !important;
+    }
+
+    .login-profiles-title {
+        font-size: 18px !important;
+        font-weight: 400 !important;
+        color: #3f3f46 !important;
+        line-height: 1.2 !important;
+    }
+
+    .login-profiles-back-btn {
+        right: 22px !important;
+        bottom: 9px !important;
+        top: auto !important;
+        font-size: 22px !important;
+        line-height: 1 !important;
+        width: 28px !important;
+        height: 28px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+    }
+
+    .login-add-user-card-button {
+        direction: ltr !important;
+        flex-direction: row !important;
+        justify-content: center !important;
+        gap: 10px !important;
+    }
+
+        .login-add-user-card-button > span:not(.login-add-plus) {
+            order: 1 !important;
+            direction: rtl !important;
+        }
+
+    .login-add-plus {
+        order: 2 !important;
+    }
+
+    .login-employee-hero {
+        position: relative !important;
+        width: 260px !important;
+        height: 116px !important;
+        margin: 0 auto !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 16px !important;
+        direction: ltr !important;
+    }
+
+    .login-selected-profile-image {
+        width: 108px !important;
+        height: 108px !important;
+        min-width: 108px !important;
+        border-radius: 50% !important;
+        object-fit: cover !important;
+        background: #e8ebf1 !important;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14) !important;
+        border: 3px solid #ffffff !important;
+        z-index: 2 !important;
+    }
+
+    .login-side-profile-btn {
+        width: 62px !important;
+        height: 62px !important;
+        min-width: 62px !important;
+        border: 0 !important;
+        border-radius: 50% !important;
+        background: transparent !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        opacity: 0.72 !important;
+        box-shadow: 0 7px 18px rgba(15, 23, 42, 0.10) !important;
+        transition: transform 0.18s ease, opacity 0.18s ease !important;
+    }
+
+        .login-side-profile-btn:hover {
+            opacity: 0.95 !important;
+            transform: scale(1.04) !important;
+        }
+
+        .login-side-profile-btn:disabled {
+            cursor: default !important;
+            opacity: 0.35 !important;
+        }
+
+    .login-side-profile-image {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+        border-radius: 50% !important;
+        background: #e8ebf1 !important;
+        display: block !important;
+        border: 2px solid #ffffff !important;
+    }
+
+    .login-main-title {
+        margin-top: 1.05rem !important;
+        font-size: 23px !important;
+        font-weight: 400 !important;
+    }
+
+    @@media (max-width: 576px) {
+        .login-employee-hero {
+            width: 236px !important;
+            height: 108px !important;
+            gap: 13px !important;
+        }
+
+        .login-selected-profile-image {
+            width: 100px !important;
+            height: 100px !important;
+            min-width: 100px !important;
+        }
+
+        .login-side-profile-btn {
+            width: 56px !important;
+            height: 56px !important;
+            min-width: 56px !important;
+        }
+
+        .login-profiles-title {
+            font-size: 17px !important;
+        }
+    }
+</style>
+
+
+
+<style id="login-device-count-display-rules">
+    /*
+                                    قواعد عرض صور الحسابات حسب عدد الحسابات المتاحة على نفس الجهاز:
+                                    0 حساب: يتم فتح شاشة اللوجين اليدوي من JavaScript.
+                                    1 حساب: صورة واحدة فقط في المنتصف.
+                                    2 حساب: الصورة المختارة + صورة الحساب الثاني فقط.
+                                    3+ حسابات: صورة في المنتصف وصورتين على الجانبين.
+                                */
+    .login-employee-hero.is-single-profile {
+        width: 150px !important;
+        justify-content: center !important;
+    }
+
+    .login-employee-hero.is-two-profiles {
+        width: 220px !important;
+        justify-content: center !important;
+        gap: 18px !important;
+    }
+
+        .login-employee-hero.is-two-profiles .login-side-profile-next {
+            position: static !important;
+            transform: none !important;
+            width: 64px !important;
+            height: 64px !important;
+            min-width: 64px !important;
+            order: 2 !important;
+            opacity: .82 !important;
+        }
+
+        .login-employee-hero.is-two-profiles #loginSelectedProfileImage {
+            order: 1 !important;
+        }
+
+    .login-employee-hero.is-three-profiles,
+    .login-employee-hero.is-many-profiles {
+        width: 290px !important;
+    }
+
+    .login-employee-hero.is-single-profile .login-side-profile-btn,
+    .login-employee-hero.is-single-profile .login-side-profile-image {
+        display: none !important;
+    }
+
+    .login-employee-hero.is-two-profiles .login-side-profile-prev {
+        display: none !important;
+    }
+</style>
+
+
+
+<style id="login-touch-carousel-and-arrows-fix">
+    .login-employee-hero {
+        touch-action: pan-y !important;
+    }
+
+    .login-carousel-arrow {
+        position: absolute !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        width: 30px !important;
+        height: 30px !important;
+        border: 0 !important;
+        border-radius: 50% !important;
+        background: #1d273b !important;
+        color: #ffffff !important;
+        display: none !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 5 !important;
+        font-size: 25px !important;
+        line-height: 1 !important;
+        padding: 0 0 3px 0 !important;
+        cursor: pointer !important;
+        box-shadow: 0 7px 18px rgba(15, 23, 42, 0.16) !important;
+        opacity: 0.96 !important;
+    }
+
+    .login-carousel-arrow-prev {
+        left: -34px !important;
+    }
+
+    .login-carousel-arrow-next {
+        right: -34px !important;
+    }
+
+    .login-employee-hero.has-extra-profiles .login-carousel-arrow:not(.login-mode-hidden) {
+        display: flex !important;
+    }
+
+    .login-employee-hero:not(.has-extra-profiles) .login-carousel-arrow {
+        display: none !important;
+    }
+
+    @@media (max-width: 576px) {
+        .login-carousel-arrow-prev {
+            left: -27px !important;
+        }
+
+        .login-carousel-arrow-next {
+            right: -27px !important;
+        }
+
+        .login-carousel-arrow {
+            width: 28px !important;
+            height: 28px !important;
+            font-size: 23px !important;
+        }
+    }
+</style>
+
+<style id="login-profile-custom-drag-data-visible-fixed">
+    /*
+                                Custom drag:
+                                - السحب من الثلاث شرط فقط.
+                                - الصف المتحرك يظهر بالداتا كاملة: الاسم + الصورة + الثلاث شرط.
+                                - مكان الصف الأصلي يفضل فاضي.
+                                - عرض الصف المتحرك نفس عرض الليست/السايد بار وليس عرض الشاشة.
+                            */
+
+    .login-profile-row,
+    .login-profile-row * {
+        -webkit-user-drag: none !important;
+    }
+
+    .login-profile-drag {
+        touch-action: none !important;
+        user-select: none !important;
+        cursor: grab !important;
+    }
+
+        .login-profile-drag:active {
+            cursor: grabbing !important;
+        }
+
+    .login-profile-row.is-being-dragged-source {
+        display: none !important;
+    }
+
+    .login-profile-drag-placeholder {
+        width: 100% !important;
+        min-height: 70px !important;
+        border: 1px dashed rgba(24, 160, 136, 0.35) !important;
+        background: rgba(24, 160, 136, 0.04) !important;
+        border-radius: 14px !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+        box-shadow: inset 0 0 0 999px rgba(24, 160, 136, 0.015) !important;
+    }
+
+    .login-profile-floating-drag {
+        position: fixed !important;
+        z-index: 2147483600 !important;
+        max-width: 390px !important;
+        min-width: 0 !important;
+        min-height: 70px !important;
+        border: 1px solid rgba(24, 160, 136, 0.22) !important;
+        border-radius: 16px !important;
+        background: #ffffff !important;
+        color: #111827 !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 10px !important;
+        padding: 8px 18px !important;
+        direction: ltr !important;
+        text-align: right !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+        pointer-events: none !important;
+        opacity: 0.98 !important;
+        box-shadow: 0 18px 38px rgba(15, 23, 42, 0.22) !important;
+        transform: none !important;
+    }
+
+        .login-profile-floating-drag .login-profile-drag {
+            order: 1 !important;
+            width: 28px !important;
+            min-width: 28px !important;
+            color: #1d273b !important;
+            font-size: 23px !important;
+            text-align: left !important;
+            cursor: grabbing !important;
+        }
+
+        .login-profile-floating-drag .login-profile-text {
+            order: 2 !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            text-align: right !important;
+            direction: rtl !important;
+            overflow: hidden !important;
+            display: block !important;
+        }
+
+        .login-profile-floating-drag .login-profile-avatar-wrap {
+            order: 3 !important;
+            width: 38px !important;
+            height: 38px !important;
+            min-width: 38px !important;
+            border-radius: 50% !important;
+            overflow: hidden !important;
+            background: #e8ebf1 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .login-profile-floating-drag .login-profile-avatar {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            display: block !important;
+        }
+
+        .login-profile-floating-drag .login-profile-name {
+            display: block !important;
+            color: #111827 !important;
+            font-size: 19px !important;
+            font-weight: 400 !important;
+            line-height: 1.35 !important;
+            max-width: 100% !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+
+        .login-profile-floating-drag .login-profile-email {
+            display: none !important;
+        }
+
+    @@media (max-width: 576px) {
+        .login-profile-floating-drag {
+            max-width: calc(100vw - 36px) !important;
+        }
+
+            .login-profile-floating-drag .login-profile-name {
+                font-size: 17px !important;
+            }
+    }
+</style>
+
+
+<style id="login-single-settings-icon-fix">
+    .login-top-user-btn::before,
+    .login-top-user-btn::after {
+        content: none !important;
+        display: none !important;
+    }
+
+    .login-top-user-btn > :not(.login-top-user-svg) {
+        display: none !important;
+    }
+
+    .login-top-user-svg {
+        width: 18px !important;
+        height: 18px !important;
+        fill: currentColor !important;
+        flex: 0 0 auto !important;
+    }
+</style>
+
+
+<style id="login-warning-popup-white-red-final">
+    /* شكل رسالة التحذير في صفحة تسجيل الدخول */
+    #loginIpErrorPopup.login-warning-popup {
+        width: min(100%, 380px) !important;
+        margin: 18px auto 8px !important;
+        padding: 16px 16px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 12px !important;
+        direction: rtl !important;
+        text-align: right !important;
+        background: #ffffff !important;
+        color: #991b1b !important;
+        border: 1px solid rgba(220, 38, 38, 0.22) !important;
+        border-right: 5px solid #dc2626 !important;
+        border-radius: 18px !important;
+        box-shadow: 0 16px 34px rgba(15, 23, 42, 0.14), 0 6px 14px rgba(220, 38, 38, 0.08) !important;
+        animation: loginWarningPopupIn 0.24s ease-out both !important;
+    }
+
+    #loginIpErrorPopup .login-warning-icon {
+        width: 42px !important;
+        height: 42px !important;
+        min-width: 42px !important;
+        border-radius: 50% !important;
+        background: rgba(220, 38, 38, 0.10) !important;
+        color: #dc2626 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.16) !important;
+    }
+
+    #loginIpErrorPopup .login-warning-svg {
+        width: 26px !important;
+        height: 26px !important;
+        display: block !important;
+        fill: #dc2626 !important;
+    }
+
+    #loginIpErrorPopup .login-warning-svg-cut {
+        fill: #ffffff !important;
+    }
+
+    #loginIpErrorPopup .login-warning-content {
+        flex: 1 !important;
+        min-width: 0 !important;
+    }
+
+    #loginIpErrorPopup .login-warning-title {
+        color: #dc2626 !important;
+        font-size: 16px !important;
+        font-weight: 800 !important;
+        margin-bottom: 3px !important;
+        line-height: 1.4 !important;
+    }
+
+    #loginIpErrorPopup .login-warning-text {
+        color: #7f1d1d !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        line-height: 1.75 !important;
+        word-break: break-word !important;
+    }
+
+    /* منع تكرار نفس رسالة السيرفر تحت الباسورد لأن البوب أب هو مكان عرض التحذير */
+    #account .validation-summary-errors {
+        display: none !important;
+    }
+
+    @@keyframes loginWarningPopupIn {
+        from {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.98);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    @@media (max-width: 576px) {
+        #loginIpErrorPopup.login-warning-popup {
+            width: 100% !important;
+            padding: 14px 13px !important;
+        }
+
+        #loginIpErrorPopup .login-warning-icon {
+            width: 38px !important;
+            height: 38px !important;
+            min-width: 38px !important;
+        }
+
+        #loginIpErrorPopup .login-warning-svg {
+            width: 24px !important;
+            height: 24px !important;
+        }
+    }
+</style>

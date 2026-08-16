@@ -1,0 +1,70 @@
+﻿<div id="pageOverlay"></div>
+
+<div id="dynamicNotification" class="container centered" style="display: none;">
+    <div class="row justify-content-center align-items-center" style="min-height: 100vh;">
+        <div style="background-color:white" class="w-30   flex-column b-r-8 d-flex justify-content-center">
+            <div class="">
+                <div class="text-center pt-3">
+                    <div id="notificationIconWrapper" style="display:inline-flex;align-items:center;justify-content:center;border-radius:50%;width:60px;height:60px;">
+                        <img id="notificationIcon" src="/static/trash-can-regular.svg" width="30" />
+                    </div>
+                </div>
+                <p id="notificationText" class="text-center pb-3 text-nowrap"></p>
+            </div>
+            <div id="notificationAutoBar" style="display:none;" class="border-top">
+                <div id="notificationLoadBar"></div>
+            </div>
+            <div id="notificationButtons" class="border-top">
+                <div class="row">
+                    <div id="confirmAction" class="col-6 py-2 text-center text-green-v2 text-decoration-underline">
+                        موافقه
+                    </div>
+                    <div class="col-6 py-2 text-center border-right text-grey-v2 text-decoration-underline" id="closeNotification">
+                        تراجع
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+
+
+    /* CSS for the overlay effect */
+    #pageOverlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1066;
+        display: none;
+    }
+
+    #dynamicNotification {
+        z-index: 1100; /* Ensure it's above the overlay */
+    }
+
+    #notificationAutoBar {
+        overflow: hidden;
+    }
+
+    #notificationLoadBar {
+        height: 4px;
+        background-color: #f5c518;
+        width: 100%;
+        transform-origin: left;
+        animation: none;
+    }
+
+    @@keyframes notificationDrain {
+        from { width: 100%; }
+        to   { width: 0%; }
+    }
+
+
+
+</style>
+

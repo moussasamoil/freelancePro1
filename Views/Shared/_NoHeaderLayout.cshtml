@@ -1,0 +1,503 @@
+@using lotus_blue.Models
+@{
+    var (headerText, iconClass) = Common.GetHeaderContent(Context.Request.Path.Value);
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    @Html.Partial("_Head")
+
+   
+  
+</head>
+<body class="background-white-green">
+
+
+    <div class=" mx-3">
+        <main role="main" class="pb-3 " style="direction:rtl;">
+            @RenderBody()
+        </main>
+    </div>
+
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+
+
+
+<style>
+    .background-gold {
+        background-color: #1d273b;
+    }
+
+    .fw-900 {
+        font-weight: 900;
+    }
+
+
+    :focus {
+        outline: none !important;
+        outline-width: 0 !important;
+        -webkit-box-shadow: none !important;
+        border-color: #ced4da !important;
+    }
+
+    .fs-13 {
+        font-size: 13px;
+    }
+
+    .color-green {
+        color: #1d273b !important;
+    }
+
+    .background-green {
+        background-color: #1d273b !important;
+        border-color: #1d273b !important;
+        color: white;
+    }
+
+        .background-green:hover {
+            background-color: #1d273b !important;
+            border-color: #1d273b !important;
+            color: white;
+        }
+
+    .w-97 {
+        width: 97% !important;
+    }
+
+    @@font-face {
+        font-family: 'NotoNaskhArabic-Regular';
+        src: url('/Fonts/NotoNaskhArabic-Regular.ttf') format('truetype');
+        font-weight: normal;
+        font-style: normal;
+    }
+
+    .grey-color {
+        color: #6c757d;
+    }
+
+    body {
+        font-family: 'NotoNaskhArabic-Regular', sans-serif !important;
+    }
+
+    body {
+        font-family: 'Open Sans', sans-serif;
+    }
+
+    .nav-shadow {
+        box-shadow: 0 0.7px 0.7px rgb(0 0 0 / 10%);
+        height: 35px;
+    }
+
+    .custom-shadow {
+        color: black;
+        box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2); /* Box shadow */
+        border-radius: 8px !important; /* Border radius for the entire <thead> */
+        padding-right: 1rem;
+        padding-left: 1rem;
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+
+
+
+    div.input-group label.form-control {
+        background-color: #ffffff;
+        box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+        border-radius: 8px !important;
+    }
+
+
+
+        div.input-group label.form-control:hover {
+            border-radius: 8px !important;
+            box-shadow: 0px 0px 4px rgba(13, 110, 253, 1); /* Box shadow with the same color */
+        }
+
+
+
+    select {
+        color: #ffffff;
+        box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2); /* Box shadow */
+        border-radius: 8px !important; /* Border radius for the entire <thead> */
+    }
+
+    .custom-shadow {
+        box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2); /* Box shadow */
+        border-radius: 8px !important; /* Border radius for the entire <thead> */
+    }
+
+    .btn-outline-warning:hover {
+        color: white;
+    }
+
+
+  
+
+
+
+  
+
+    
+
+
+    .btn {
+        border-radius: 8px;
+    }
+
+    .btn-outline-primary {
+        border-color: #0d6efd; /* Bootstrap 5 primary color */
+        background-color: #0d6efd; /* Bootstrap 5 primary color */
+        color: white;
+        border-radius: 8px;
+        box-shadow: 0px 0px 6px rgba(13, 110, 253, 1); /* Box shadow with the same color */
+    }
+
+    .btn-primary {
+        border-color: #0d6efd; /* Bootstrap 5 primary color */
+        color: white; /* Bootstrap 5 primary color */
+        border-radius: 8px;
+        box-shadow: 0px 0px 6px rgba(13, 110, 253, 1); /* Box shadow with the same color */
+    }
+
+
+
+
+
+    .btn-outline-warning {
+        border-color: #fc9512; /* Outline (border) color */
+        background-color: #fc9512; /* Text color */
+        color: white !important;
+        border-radius: 8px;
+        box-shadow: 0px 0px 6px rgba(252, 149, 18, 1); /* Box shadow with the same color */
+    }
+
+    .btn-outline-danger {
+        background-color: red; /* Text color */
+        border-color: red; /* Outline (border) color */
+        color: white;
+        border-radius: 8px;
+        box-shadow: 0px 0px 6px red; /* Box shadow with the same color */
+    }
+
+    .btn-outline-success {
+        border-color: #2ab149; /* Outline (border) color */
+
+        background-color: #2ab149; /* Text color */
+        color: white; /* Outline (border) color */
+        border-radius: 8px;
+        box-shadow: 0px 0px 6px rgba(42, 177, 73, 1); /* Box shadow with the same color */
+    }
+
+    .btn-success {
+        background-color: #2ab149 !important; /* Text color */
+        border-color: #2ab149 !important; /* Outline (border) color */
+        border-radius: 8px;
+        box-shadow: 0px 0px 6px rgba(42, 177, 73, 1); /* Box shadow with the same color */
+    }
+
+        .btn-success:hover {
+            text-decoration: none !important;
+            background-color: #2ab149 !important;
+            color: white !important;
+        }
+
+    .btn-outline-success:hover {
+        text-decoration: none;
+        background-color: #2ab149 !important;
+        border-color: #2ab149 !important; /* Outline (border) color */
+    }
+
+    .btn-outline-warning:hover {
+        background-color: #fc9512 !important;
+        border-color: #fc9512; /* Outline (border) color */
+        text-decoration: none;
+    }
+
+    .btn-primary:hover {
+        background-color: #0d6efd !important; /* Bootstrap 5 primary color */
+        border-color: #0d6efd !important; /* Bootstrap 5 primary color */
+        color: white !important; /* Bootstrap 5 primary color */
+    }
+
+    .btn-outline-danger:hover {
+        background-color: red !important;
+        border-color: red; /* Outline (border) color */
+    }
+
+    .btn-outline-primaryhover {
+        background-color: #198754 !important; /* Bootstrap 5 success color */
+        border-color: #198754 !important; /* Bootstrap 5 success color */
+    }
+
+    tr:hover td {
+        background-color: #f0f0f0; /* Background color on hover for the entire row */
+        cursor: pointer; /* Add a pointer cursor on hover for the entire row */
+    }
+
+    .page-item:not(:first-child) .page-link {
+        margin-left: 0px !important;
+    }
+
+    .pagination .page-link {
+        color: #333; /* Set the default text color */
+        padding: 6px 12px; /* Adjust padding */
+        border: none; /* Remove the border */
+    }
+
+    .pagination .page-item.disabled .page-link,
+    .page-link.page-link-custom {
+        color: black !important; /* Set the text color to black for both cases */
+    }
+
+    /* Change text color to white on selection */
+    .pagination .page-item.active .page-link {
+        color: white !important;
+        background: #1d273b;
+    }
+
+
+    /* Change text color to white on hover for page numbers */
+    .pagination .numbers.page-item:not(.active):hover .page-link {
+        color: black !important; /* Set text color to white on hover for non-selected page numbers */
+        box-shadow: none;
+        border: none;
+        margin: 0;
+    }
+
+
+
+    .numbers.page-item:not(.active) {
+        box-shadow: none;
+        border: 1px solid #ccc; /* Add border */
+        margin: 2px; /* Add margin */
+    }
+
+        .numbers.page-item:not(.active):not(a:hover) {
+            box-shadow: none;
+            border: none; /* Add border */
+            margin: 0; /* Add margin */
+        }
+
+    /* Adjust styles for active page */
+    .numbers.page-item.active {
+        border: 1px solid #1d273b; /* Border color for active page */
+    }
+
+    .page-link:focus {
+        box-shadow: none !important;
+    }
+
+
+    .page-item {
+        border: 1px solid #d3d3d3 !important;
+        margin-left: 8px !important;
+        border-radius: 8px !important;
+        overflow: hidden; /* Ensure that child elements do not overflow the border-radius */
+    }
+
+    .page-link {
+        padding-right: 16px !important;
+        padding-left: 16px !important;
+        display: block; /* This ensures the anchor tag fills the .page-item */
+        /* Apply border-radius here too if .page-link has its own background or border */
+        border-radius: 8px !important;
+    }
+
+
+
+    .page-item.active {
+        background-color: #1d273b !important;
+    }
+
+    .page-link:hover {
+        background-color: #8de285 !important;
+    }
+
+
+
+    .search-input {
+        height: 2rem !important; /* Adjust the height to your preference */
+    }
+
+    .input-group {
+        position: relative;
+    }
+
+    .icon {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .clear-search-icon {
+        left: 10px;
+        cursor: pointer;
+    }
+
+    .search-icon {
+        right: 15px;
+        position: absolute; /* You can use "relative", "absolute", "fixed", or "sticky" depending on your layout needs */
+        z-index: 1;
+    }
+
+    .icon.search-icon {
+        z-index: 9999 !important; /* Set a high z-index value */
+    }
+
+    #searching {
+        visibility: hidden;
+        z-index: 9999 !important;
+    }
+
+    .hidden {
+        visibility: hidden !important;
+    }
+
+    @@media (max-width: 991px) {
+        .navbar .container-fluid .navbar-collapse {
+            display: flex !important;
+            flex-basis: auto;
+            margin-bottom: 16px !important;
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+
+        .navbar {
+            padding-top: 0 !important;
+            padding-bottom: 8px !important;
+        }
+
+        .navbar-collapse.collapse {
+            display: flex !important;
+        }
+        /* Override the order and flex properties as needed */
+        .navbar .order-1, .navbar .order-2, .navbar .order-3 {
+            order: initial !important;
+        }
+    }
+
+
+
+
+    .inpage-search-input {
+        caret-color: #1d273b; /* This sets the caret color to blue */
+    }
+
+    .inpage-search-input-container {
+        height: 2rem !important; /* Adjust the height to your preference */
+    }
+
+    .inpage-input-group {
+        position: relative;
+    }
+
+    .inpage-icon {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .inpage-clear-search-icon {
+        left: 10px;
+        cursor: pointer;
+    }
+
+    .inpage-search-icon {
+        right: 15px;
+        position: absolute; /* You can use "relative", "absolute", "fixed", or "sticky" depending on your layout needs */
+        z-index: 1;
+    }
+
+    .inpage-icon.inpage-search-icon {
+        z-index: 9999 !important; /* Set a high z-index value */
+    }
+
+    #inpage-searchingshow {
+        visibility: hidden;
+        z-index: 9999 !important;
+    }
+
+    .inpage-hidden {
+        visibility: hidden !important;
+    }
+
+    .text-green {
+        color: #1d273b;
+    }
+
+    .custom-shadow-small {
+        background-color: white;
+        box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+        border: none;
+        border-radius: 8px !important;
+        color: black;
+    }
+
+</style>
+<script>
+
+    document.addEventListener("DOMContentLoaded", function () {
+        var images = document.querySelectorAll('img:not([src])');
+        images.forEach(function (img) {
+            img.src = 'static/DefaultImage.svg'; // Your default image path
+            img.setAttribute('width', '18'); // Set the width to 20px
+            img.setAttribute('height', '18'); // Set the height to 20px
+        });
+    });
+
+    // Function to adjust the top style
+    function adjustTop() {
+        // Select the element with the specified classes
+        var element = document.querySelector('.select2-container.select2-container--default.select2-container--open');
+
+        // Check if the element exists
+        if (element) {
+            // Get the current top style, assuming it's always in px
+            var currentTop = element.style.top;
+
+            // Parse the current top to get the numerical value
+            var topValue = parseFloat(currentTop);
+
+            // Check if the current top is a number
+            if (!isNaN(topValue)) {
+                // Subtract 8 px from the current top value
+                var newTop = topValue - 8;
+
+                // Apply the new top value back to the element
+                element.style.top = `${newTop}px`;
+
+                console.log(`Adjusted top from ${currentTop} to ${newTop}px`);
+            } else {
+                console.log('Current top value is not a valid number:', currentTop);
+            }
+        } else {
+            console.log('No element found with the specified classes');
+        }
+    }
+
+    // Call the function to adjust the top style
+    adjustTop();
+
+
+
+    // $('select').on('select2:open', function (e) {
+    //     // Immediately try to hide the first option
+    //     // This is placed outside setTimeout to attempt to hide the option as soon as possible
+    //     $('.select2-results__option:first-child').hide();
+
+    //     // Then, use a minimal timeout to ensure the operation in case of any rendering delays
+    //     setTimeout(function () {
+    //         // Re-attempt to hide the first option to ensure it's hidden if the first attempt was too early
+    //         $('.select2-results__option:first-child').hide();
+    //     }, 1);
+    // });
+
+
+
+
+</script> 

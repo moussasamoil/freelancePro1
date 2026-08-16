@@ -1,0 +1,187 @@
+@model lotus_blue.ViewModels.CampaignViewModel
+@using static lotus_blue.Models.Common
+@{
+    ViewData["Title"] = "إضافة حملة جديدة";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var allCountries = Enum.GetValues(typeof(Countries)).Cast<Countries>().ToList();
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>@ViewData["Title"]</h1>
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> العودة للقائمة
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form asp-action="Create" method="post" enctype="multipart/form-data">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label class="control-label fw-bold">صور الحملة</label>
+                            <div id="image-inputs">
+                                <div class="image-input-row d-flex align-items-center mb-2">
+                                    <input type="file" name="ImageFiles" class="form-control campaign-image-input" accept="image/*" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="MainWarehouseId">المنتج الرئيسي</label>
+                            <select id="MainWarehouseId" name="MainWarehouseId" class="form-control">
+                                <option value="">-- اختار المنتج الرئيسي --</option>
+                            </select>
+                            <span asp-validation-for="MainWarehouseId" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label asp-for="ManufacturingCompanyId" class="control-label"></label>
+                            <select asp-for="ManufacturingCompanyId" id="ManufacturingCompanyId" class="form-control">
+                                <option value="">-- اختار المتجر --</option>
+                            </select>
+                            <span asp-validation-for="ManufacturingCompanyId" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label asp-for="IsActive" class="control-label"></label>
+                            <select asp-for="IsActive" class="form-control">
+                                <option value="true">نشط</option>
+                                <option value="false">غير نشط</option>
+                            </select>
+                            <span asp-validation-for="IsActive" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label class="control-label fw-bold">البلدان <span class="text-danger">*</span></label>
+                            <span asp-validation-for="SelectedCountries" class="text-danger d-block mb-1"></span>
+                            <div class="rounded p-2" style="border: 1px solid #dee2e6;">
+                                <div class="mb-2 border-bottom pb-1">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="selectAllCountries" />
+                                        <label class="form-check-label fw-semibold" for="selectAllCountries">تحديد الكل</label>
+                                    </div>
+                                </div>
+                                <table class="table table-sm table-hover mb-0">
+                                    <tbody>
+                                        @foreach (var country in allCountries)
+                                        {
+                                            <tr>
+                                                <td style="width: 40px;">
+                                                    <input type="checkbox"
+                                                           class="country-checkbox"
+                                                           name="SelectedCountries"
+                                                           value="@((int)country)"
+                                                           id="country_@((int)country)" />
+                                                </td>
+                                                <td>
+                                                    <label class="form-check-label w-100" for="country_@((int)country)">
+                                                        @country.ToString().Replace("_", " ")
+                                                    </label>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group mt-3">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> حفظ
+                    </button>
+                    <a asp-action="Index" class="btn btn-secondary">إلغاء</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $.ajax({
+                url: '@Url.Action("GetMainWarehouses", "Datalist")',
+                type: 'GET',
+                success: function (data) {
+                    var dropdown = $('#MainWarehouseId');
+                    dropdown.empty();
+                    dropdown.append('<option value="">-- اختار المنتج الرئيسي --</option>');
+                    $.each(data, function (i, warehouse) {
+                        dropdown.append('<option value="' + warehouse.id + '">' + warehouse.name + '</option>');
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error fetching Main Products:', error);
+                }
+            });
+
+            $.ajax({
+                url: '@Url.Action("GetAllStores", "Datalist")',
+                type: 'GET',
+                success: function (data) {
+                    var dropdown = $('#ManufacturingCompanyId');
+                    dropdown.empty();
+                    dropdown.append('<option value="">-- اختار المتجر --</option>');
+                    $.each(data, function (i, store) {
+                        dropdown.append('<option value="' + store.id + '">' + store.name + '</option>');
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error fetching Stores:', error);
+                }
+            });
+
+            $('#selectAllCountries').on('change', function () {
+                $('.country-checkbox').prop('checked', $(this).is(':checked'));
+            });
+
+            $(document).on('change', '.country-checkbox', function () {
+                var all = $('.country-checkbox').length;
+                var checked = $('.country-checkbox:checked').length;
+                $('#selectAllCountries').prop('checked', all === checked);
+            });
+
+            $(document).on('change', '.campaign-image-input', function () {
+                var $row = $(this).closest('.image-input-row');
+
+                // Remove existing preview if re-selecting
+                $row.find('.img-preview').remove();
+
+                if (this.files && this.files[0]) {
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        $row.append('<img src="' + e.target.result + '" class="img-preview img-thumbnail ms-2" style="width:50px;height:50px;object-fit:cover;">');
+                    };
+                    reader.readAsDataURL(this.files[0]);
+                }
+
+                // If this was the last empty input, add a new row
+                var $allInputs = $('#image-inputs .campaign-image-input');
+                var lastInput = $allInputs.last()[0];
+                if (lastInput === this && this.files && this.files[0]) {
+                    var $newRow = $('<div class="image-input-row d-flex align-items-center mb-2">' +
+                        '<input type="file" name="ImageFiles" class="form-control campaign-image-input" accept="image/*" />' +
+                        '<button type="button" class="btn btn-sm btn-danger ms-2 remove-image-row"><i class="fas fa-times"></i></button>' +
+                        '</div>');
+                    $('#image-inputs').append($newRow);
+                }
+            });
+
+            $(document).on('click', '.remove-image-row', function () {
+                $(this).closest('.image-input-row').remove();
+            });
+        });
+    </script>
+}

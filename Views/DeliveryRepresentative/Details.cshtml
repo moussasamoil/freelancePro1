@@ -1,0 +1,238 @@
+﻿@model lotus_blue.Models.ViewModel.DeliveryCompanyViewModel
+@{
+    ViewData["Title"] = "تفاصيل مندوب التوصيل";
+}
+
+<div class="container-fluid">
+    <div class="main-body">   
+        <div class="row gutters-xxl">
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        @if (Model.Logo != null)
+                        {
+                            <img loading="lazy" src="@Model.Logo" alt="Company Logo">
+
+                        }
+                        else
+                        {
+                            <img loading="lazy" src="/static/userlogindetails.png" alt="Company Logo">
+                        }
+                        <div class="mt-3">
+                            <h4>@Model.Name </h4>
+                            <p class="text-muted"> @Model.Specialty </p>
+                            <p class="text-muted">@Model.Address</p>
+                            
+                        </div>
+                    </div>
+                </div>
+                <div class="card mt-3">
+                    <ul class="list-group p-0 list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">الموقع الالكتروني</h6>
+                            <span class="text-secondary">
+                                <a href="/@Model.Website"> @Model.Website </a>
+                            </span>
+                        </li>
+                       
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">توتير</h6>
+                            <span class="text-secondary">bootdey</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">اسنغرام</h6>
+                            <span class="text-secondary">bootdey</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">فيسبوك</h6>
+                            <span class="text-secondary">bootdey</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">واتساب</h6>
+                            <span class="text-secondary">
+                                <a href="https://wa.me/@Model.PhoneNumber">@Model.PhoneNumber </a>
+                            </span>
+                        </li>
+
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-sm-3">
+                                <h6 class="mb-0">  اسم المندوب </h6>
+                            </div>
+                            <div class="col-sm-9 text-secondary">
+                               @Model.Name
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-sm-3">
+                                <h6 class="mb-0">البريد الالكتروني</h6>
+                            </div>
+                            <div class="col-sm-9 text-secondary">
+                                @Model.Email
+                           </div>
+                        </div>
+                        <hr>
+
+                        <div class="row">
+                            <div class="col-sm-3">
+                                <h6 class="mb-0">  الرقم الضريبي</h6>
+                            </div>
+                            <div class="col-sm-9 text-secondary">
+                                @Model.TaxRegistrationNumber
+                            </div>
+                        </div>
+                        <hr>
+
+                        <div class="row">
+                            <div class="col-sm-3">
+                                <h6 class="mb-0"> رقم الهوية</h6>
+                            </div>
+                            <div class="col-sm-9 text-secondary">
+                                @Model.IdNumber
+                            </div>
+                        </div>
+
+                        <hr>
+                        <div class="row">
+                            <div class="col-sm-3">
+                                <h6 class="mb-0">رقم الهاتف</h6>
+                            </div>
+                            <div class="col-sm-9 text-secondary">
+                                @Model.PhoneNumber
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-sm-3">
+                                <h6 class="mb-0">عنوان المندوب</h6>
+                            </div>
+                            <div class="col-sm-9 text-secondary">
+                               @Model.Address
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-sm-3">
+                                <h6 class="mb-0">الدولة</h6>
+                            </div>
+                            <div class="col-sm-9 text-secondary">
+                                @Model.Country
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-sm-3">
+                                <h6 class="mb-0">المدينة</h6>
+                            </div>
+                            <div class="col-sm-9 text-secondary">
+                                @Model.City
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-sm-3">
+                                <h6 class="mb-0">الملاحظات</h6>
+                            </div>
+                            <div class="col-sm-9 text-secondary">
+                                @Model.Notes
+                            </div>
+                        </div>
+                       
+                    </div>
+                </div>
+                <!-- Project Status Cards -->
+                <div class="row gutters-xxl">
+                    <div class="col-sm-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="mb-3"><i class="bi bi-file-earmark-text text-info me-2"></i> التقيممات</h6>
+                                <small>انتظار التجهيز </small>
+                                <div class="progress mb-3">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: @Model.WaitingForPreparationCount%; background-color: #007bff !important;" aria-valuenow="@Model.WaitingForPreparationCount" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                              
+                                <small> تم التجهيز</small>
+                                <div class="progress mb-3">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width:@Model.PreparedCount% ;background-color:#007bff !important;" aria-valuenow="@Model.PreparedCount" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+
+                                <small> مؤجلات </small>
+                                <div class="progress mb-3">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: @Model.DeferredCount% ;background-color:#007bff !important;" aria-valuenow="@Model.DeferredCount" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+
+                                <small> قيد التوصيل</small>
+                                <div class="progress">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: @Model.DeliveredCount%; background-color:#ffc107 !important" aria-valuenow="@Model.DeliveredCount" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                               
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="mb-3"><i class="bi bi-file-earmark-text text-info me-2"></i>التقيممات </h6>
+                                <small> تم التسليم</small>
+                                <div class="progress mb-3">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: @Model.DeliveredCount%; background-color:#2ab149!important" aria-valuenow="@Model.DeliveredCount" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <small> فشل التسليم</small>
+                                <div class="progress mb-3">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: @Model.DeliveryFailedCount%; background-color:red !important; " aria-valuenow="@Model.DeliveryFailedCount" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <small>انتظار المعالجة </small>
+                                <div class="progress mb-3">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: @Model.WaitingForProcessingCount%; background-color:red !important;" aria-valuenow="@Model.WaitingForProcessingCount" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <small> الطلبات المرجعة</small>
+                                <div class="progress mb-3">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: @Model.ReturnedOrdersCount%; background-color:red !important;" aria-valuenow="@Model.ReturnedOrdersCount" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <small> مدفوع </small>
+                                <div class="progress">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: @Model.PaidCount%; background-color:#2ab149!important" aria-valuenow="@Model.PaidCount" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Project Status Cards -->
+            </div>
+        </div>
+    </div>
+</div>
+
+ 
+<style>
+    .card-body {
+        background-color:#ffffff;
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2); /* Box shadow */
+        border-radius: 8px !important; /* Border radius for the entire <thead> */
+    }
+
+    .card{
+        background-color: #ffffff;
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2); /* Box shadow */
+        border-radius: 8px !important; /* Border radius for the entire <thead> */
+    }
+
+    h6{
+        font-size:0.9rem;
+        color: #6c757d;
+    }
+
+    .list-group-item {
+
+        width: 95%;
+        border: 1px solid rgba(0, 0, 0, 0.125);
+        margin: 0 auto; /* This centers the element horizontally */
+    }
+
+</style>

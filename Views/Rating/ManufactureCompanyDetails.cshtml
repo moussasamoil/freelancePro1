@@ -1,0 +1,674 @@
+﻿@model lotus_blue.Models.ViewModel.Rating.ManufacturingOrderSummaryViewModel
+@using lotus_blue.Models
+@using lotus_blue.Services
+@inject CurrencyExchangeService CurrencyExchangeServiceInstance
+@inject GetCurrentTimeInIstanbul Currenttime
+
+@{
+
+    ViewData["Title"] = "تقيم الحملات الأعلانية حسبة الشركات المصنعة";
+
+    var firstFourPlatformNames = Enum.GetNames(typeof(OrderSourceEnum))
+        .Where(name => name != "سناب_شات")
+        .Take(3);
+
+    DateTime now = Currenttime.GetIstanbulTimeWithOffset();
+
+    // Check if the current time is before 11 AM
+    if (now.Hour < 11)
+    {
+        // If before 11 AM, consider it as the previous day
+        now = now.AddDays(-1);
+    }
+
+    // Set the start time to 11 AM of the determined date
+    DateTime startDateTime = new DateTime(now.Year, now.Month, now.Day, 11, 0, 0);
+
+    // Calculate end time which is exactly 1 day after start time
+    DateTime endDateTime = startDateTime.AddDays(1);
+
+}
+
+
+
+<div id="total" class="main-hover ">
+        <div class="row align-items-center background-white custom-shadow-inpage py-0">
+
+            <div class="col-md-auto text-md-end mb-3 mb-md-0">
+                <div id="navigateButton" class="fw-bold text-white btn background-gold" onclick="navigateToPage()">
+                    يحصل الأن
+                </div>
+            </div>
+
+            @if (User.IsInRole("Admin"))
+            {
+                <div class="col-lg col-6 col-md">
+                    <div class="text-muted text-nowrap mb-2">
+                        إجمالي المبلغ الذي تم انفاقه
+                    </div>
+                    <div class="d-flex text-green align-items-center">
+                        <div class="fw-bold">
+                            TRY
+                        </div>
+                        <div class="fw-bold ms-2">
+                            @Model.TotalPriceTRY
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg col-6 col-md">
+                    <div class="text-muted text-nowrap mb-2">
+                        إجمالي المبلغ الذي تم انفاقه
+                    </div>
+                    <div class="d-flex text-green align-items-center">
+                        <div class="fw-bold">
+                            USD
+                        </div>
+                        <div class="fw-bold ms-2">
+                            @Model.TotalPriceUSD
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="col-lg col-6 col-md ordersDiv">
+                <div class="text-muted mb-2">
+                    عدد الطلبات
+                </div>
+                <div class="fw-bold text-green">
+                    @Model.TotalOrders
+                </div>
+            </div>
+
+            <div class="col-lg col-6 col-md processedDiv">
+                <div class="text-muted mb-2">
+                    تم المعالجة
+                </div>
+                <div class="fw-bold text-green">
+                    @Model.FixedOrdersCount
+                </div>
+            </div>
+
+            <div class="col-lg col-6 col-md offersDiv">
+                <div class="text-muted mb-2">
+                    العروض
+                </div>
+                <div class="fw-bold text-green">
+                    @Model.OrderFromOffersCount
+                </div>
+            </div>
+
+            <div class="col-lg col-6 col-md discountdiv">
+                <div class="text-muted mb-2">
+                    التخفضيفات
+                </div>
+                <div class="fw-bold text-green">
+                    @Model.OrderFromOfferDiscountsCount
+                </div>
+            </div>
+
+            <div class="col-lg col-6 col-md employeebonusdiv">
+                <div class="text-muted mb-2">
+                    عمولة المبيعات
+                </div>
+                <div class="fw-bold text-green">
+                    @Model.NumberOfBonuses
+                </div>
+            </div>
+
+            <div class="col-lg col-6 col-md productcountdiv">
+                <div class="text-muted mb-2">
+                    عدد القطع
+                </div>
+                <div class="fw-bold text-green">
+                    @Model.TotalProductsCount
+                </div>
+            </div>
+
+            <div class="col-lg col-6 col-md commentsdiv">
+                <div class="text-muted mb-2">
+                    التعليقات
+                </div>
+                <div class="fw-bold text-green">
+                    @Model.OrderFromCommentsCount
+                </div>
+            </div>
+
+            <div class="col-lg col-6 col-md femalediv">
+                <div class="text-muted mb-2 text-green">
+                    أنثى
+                </div>
+                <div class="fw-bold text-green">
+                    @Model.OrderFromFemalesCount
+                </div>
+            </div>
+
+            <div class="col-lg col-6 col-md malediv">
+                <div class="text-muted mb-2 text-green">
+                    ذكر
+                </div>
+                <div class="fw-bold text-green">
+                    @Model.OrderFromMalesCount
+                </div>
+            </div>
+
+            <div class="col-12 col-md-auto text-md-start pe-3">
+                <div class="fw-bold">
+                    <span class="text-green b-r-8 px-2" style="background-color:f0fffc;">Management</span>
+                </div>
+                <div class="fw-bold">
+                    شركة LUXIRA HOLDING التركية
+                </div>
+            </div>
+        </div>
+    </div>
+
+<div class="width-99 my-2 me-0 mx-auto ">
+
+    <div class="row me-0 text-end mx-auto d-flex justify-content-between">
+
+
+
+        <div class="col-lg w-100  my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap custom-shadow-inpage">
+
+            <div>
+                <input id="custom-datepicker" class="form-control custom-datepicker" placeholder=" فلتر حسب التاريخ " readonly>
+                <script src="/js/datepicker.min.js"></script>
+            </div>
+
+        </div>
+
+
+
+        <div class="col-lg w-100 px-0 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="EmployeeId" name="Employee" class="form-control drop-down-design">
+            </select>
+        </div>
+
+        <div class="col-lg w-100 px-0 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="GenderId" name="Gender" class="form-control drop-down-design">
+            </select>
+        </div>
+
+
+
+        <div class="col-lg w-100 px-0 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="ProductId" name="Product" class="form-control drop-down-design">
+            </select>
+
+        </div>
+
+        <div class="col-lg w-100 px-0 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="ManufacturingCompanyId" name="ManufacturingCompany" class="form-control drop-down-design">
+            </select>
+        </div>
+
+
+        <div class="col-lg w-100 px-0 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="OrderSourceId" name="OrderSource" class="form-control drop-down-design">
+            </select>
+        </div>
+
+        <div class="col-lg w-100 px-0 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="CountryId" name="Country" class="form-control drop-down-design">
+            </select>
+        </div>
+
+        <div class="col-lg w-100 px-0 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="WorkShift" name="workshift" class="form-control drop-down-design">
+            </select>
+        </div>
+
+
+    </div>
+
+</div>
+
+<input type="hidden" id="startDate" />
+<input type="hidden" id="endDate" />
+<div id="result">
+    @foreach (var store in Model.ManufacturingCompanyOrders)
+    {
+        <div class="mt-4 border-bottom">
+
+
+            @if (User.IsInRole("Admin"))
+            {
+                // Calculate the overall totals for all countries
+                var totalTRY = store.CountriesOrderInfo.Sum(c => c.TotalPriceBySourceTRY.Sum(source => decimal.Parse(source.Value.Replace(" TRY", ""))));
+                var totalUSD = store.CountriesOrderInfo.Sum(c => c.TotalPriceBySourceUSD.Sum(source => decimal.Parse(source.Value.Replace(" USD", ""))));
+
+
+                <div class="main-hover mb-3">
+                    <div class="row align-items-center background-white custom-shadow-inpage py-0">
+
+                        <div class="col-md-auto text-md-end mb-3 mb-md-0">
+                            <div id="navigateButton" class="fw-bold text-white btn background-gold" onclick="navigateToPage()">
+                                يحصل الأن
+                            </div>
+                        </div>
+
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <div class="col-lg col-6 col-md">
+                                <div class="text-muted text-nowrap mb-2">
+                                    إجمالي المبلغ الذي تم انفاقه
+                                </div>
+                                <div class="d-flex text-green align-items-center">
+                                    <div class="fw-bold">
+                                        TRY
+                                    </div>
+                                    <div class="fw-bold ms-2">
+                                        @totalTRY
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg col-6 col-md">
+                                <div class="text-muted text-nowrap mb-2">
+                                    إجمالي المبلغ الذي تم انفاقه
+                                </div>
+                                <div class="d-flex text-green align-items-center">
+                                    <div class="fw-bold">
+                                        USD
+                                    </div>
+                                    <div class="fw-bold ms-2">
+                                        @totalUSD
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="col-lg col-6 col-md ordersDiv">
+                            <div class="text-muted mb-2">
+                                عدد الطلبات
+                            </div>
+                            <div class="fw-bold text-green">
+                                @store.CountriesOrderInfo.Sum(c => c.TotalOrders)
+                            </div>
+                        </div>
+
+                        <div class="col-lg col-6 col-md processedDiv">
+                            <div class="text-muted mb-2">
+                                تم المعالجة
+                            </div>
+                            <div class="fw-bold text-green">
+                                @store.CountriesOrderInfo.Sum(c => int.Parse(c.FixedOrdersCount))
+                            </div>
+                        </div>
+
+                        <div class="col-lg col-6 col-md offersDiv">
+                            <div class="text-muted mb-2">
+                                العروض
+                            </div>
+                            <div class="fw-bold text-green">
+                                @store.CountriesOrderInfo.Sum(c => int.Parse(c.OrderFromOffersCount))
+                            </div>
+                        </div>
+
+                        <div class="col-lg col-6 col-md discountdiv">
+                            <div class="text-muted mb-2">
+                                التخفضيفات
+                            </div>
+                            <div class="fw-bold text-green">
+                                @store.CountriesOrderInfo.Sum(c => int.Parse(c.OrderFromOfferDiscountsCount))
+                            </div>
+                        </div>
+
+                        <div class="col-lg col-6 col-md employeebonusdiv">
+                            <div class="text-muted mb-2">
+                                عمولة المبيعات
+                            </div>
+                            <div class="fw-bold text-green">
+                                @store.CountriesOrderInfo.Sum(c => c.NumberOfBonuses)
+                            </div>
+                        </div>
+
+                        <div class="col-lg col-6 col-md productcountdiv">
+                            <div class="text-muted mb-2">
+                                عدد القطع
+                            </div>
+                            <div class="fw-bold text-green">
+                                0
+                            </div>
+                        </div>
+
+                        <div class="col-lg col-6 col-md commentsdiv">
+                            <div class="text-muted mb-2">
+                                التعليقات
+                            </div>
+                            <div class="fw-bold text-green">
+                                @store.CountriesOrderInfo.Sum(c => int.Parse(c.OrderFromCommentsCount))
+                            </div>
+                        </div>
+
+                        <div class="col-lg col-6 col-md femalediv">
+                            <div class="text-muted mb-2">
+                                أنثى
+                            </div>
+                            <div class="fw-bold text-green">
+                                @store.CountriesOrderInfo.Sum(c => int.Parse(c.OrderFromFemalesCount))
+                            </div>
+                        </div>
+
+                        <div class="col-lg col-6 col-md malediv">
+                            <div class="text-muted mb-2">
+                                ذكر
+                            </div>
+                            <div class="fw-bold text-green">
+                                @store.CountriesOrderInfo.Sum(c => int.Parse(c.OrderFromMalesCount))
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-md-auto text-md-start pe-3">
+                            <div class="fw-bold">
+                                <span class="text-green b-r-8 px-2" style="background-color:f0fffc;">Management</span>
+                            </div>
+                            <div class="fw-bold">
+                                شركة LUXIRA HOLDING التركية
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+            }
+
+            <div>
+                <h3 class="text-center store-data" data-store-name="@store.StoreName" data-store-Id="@store.StoreId">
+                    <img src="/@store.StoreImage" width="27" height="27" />
+                    @store.StoreName
+                </h3>
+
+                <div class="row">
+                    @foreach (var countryInfo in store.CountriesOrderInfo)
+                    {
+                        <div data-country-name="@countryInfo.Country" data-country-Id="@countryInfo.CountryId" class="shadow-border col-lg-3   col-12  country-info custom-box-shadow my-lg-2 mx-lg-2 p-lg-3">
+                            <div class="pt-3">
+                                <p class="mb-0 fw-bold">@countryInfo.TotalOrders</p>
+                                <p class="text-nowrap font-size-14">
+                                    <img width="18" height="18" src="@Common.GetImageUrlByCountryName(countryInfo.Country.ToString())" /> @countryInfo.Country
+                                </p>
+                                @foreach (var platformName in firstFourPlatformNames)
+                                {
+                                    if (Enum.TryParse<OrderSourceEnum>(platformName, out OrderSourceEnum platformEnumValue))
+                                    {
+                                        var platformCount = countryInfo.OrdersBySource.ContainsKey(platformEnumValue) ? countryInfo.OrdersBySource[platformEnumValue] : 0;
+                                        var iqdPriceString = countryInfo.TotalPriceLocalCurrency.ContainsKey(platformEnumValue) ? countryInfo.TotalPriceLocalCurrency[platformEnumValue] : "0";
+                                        var tryPriceString = countryInfo.TotalPriceBySourceTRY.ContainsKey(platformEnumValue) ? countryInfo.TotalPriceBySourceTRY[platformEnumValue] : "0";
+                                        var usdPriceString = countryInfo.TotalPriceBySourceUSD.ContainsKey(platformEnumValue) ? countryInfo.TotalPriceBySourceUSD[platformEnumValue] : "0";
+
+                                        <div class="row source-info my-1" data-source-Id="@platformEnumValue">
+                                            <div class="col">
+                                                <div class="d-flex justify-content-start">
+                                                    <img src="@Common.GetSocialMediaIconUrl(platformEnumValue)" width="24" height="24" />
+                                                    <p class="mb-0 text-center mx-2 pt-1 pe-1">@platformName</p>
+                                                    <p class="mb-0 mx-2 pt-1 text-end text-nowrap pe-1"> طلب @platformCount</p>
+                                                    <p class="mb-0 text-center mx-2 pt-1 pe-1 text-nowrap text-decoration-underline">@Common.GetCurrencyByCountryName(countryInfo.Country.ToString()) @iqdPriceString</p>
+                                                    <p class="mb-0 text-center mx-2 pt-1 pe-1 text-nowrap text-decoration-underline">TRY @tryPriceString</p>
+                                                    <p class="mb-0 text-center mx-2 pt-1 pe-1 text-nowrap text-decoration-underline">USD @usdPriceString</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+
+                                @if (User.IsInRole("Admin"))
+                                {
+                                    var totalSumTRY = countryInfo.TotalPriceBySourceTRY.Sum(source => decimal.Parse(source.Value.Replace(" TRY", "")));
+                                    var totalSumUSD = countryInfo.TotalPriceBySourceUSD.Sum(source => decimal.Parse(source.Value.Replace(" USD", "")));
+                                    var totalSumIQD = countryInfo.TotalPriceLocalCurrency.Sum(source => decimal.Parse(source.Value));
+                                    <div class="d-flex text-green my-1 flex-row justify-content-center align-items-center">
+                                        <p class="mb-0 text-nowrap pt-1">TRY: @totalSumTRY</p>
+                                        <p class="mb-0 mx-2 text-nowrap pt-1">USD: @totalSumUSD</p>
+                                        <p class="mb-0 text-nowrap pt-1">@Common.GetCurrencyByCountryName(countryInfo.Country.ToString()): @totalSumIQD</p>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+
+
+<script>
+
+    $(document).ready(function () {
+
+        initializeLitepicker('.custom-datepicker', updateManufactureCompanyData);
+
+        // Event listener for dropdown changes
+        $('#EmployeeId, #CountryId, #OrderSourceId, #GenderId,#ManufacturingCompanyId,#WorkShift,#ProductId').on('change', function () {
+            updateManufactureCompanyData();
+        });
+
+
+    });
+
+    function updateManufactureCompanyData() {
+        // Get the selected start and end dates
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+
+        const selectedDateRange = $('#selectedDateRange').text();
+        const employeeId = $('#EmployeeId').val(); // Get selected employee Id
+        const selectedCountry = $('#CountryId').val(); // Get selected countryId
+        const currentSource = $('#OrderSourceId').val(); // Get selected order source
+        const selectedGender = $('#GenderId').val(); // Get selected genderId
+        const selectedStore = $('#ManufacturingCompanyId').val(); // Get selected genderId
+        const workshift = $('#WorkShift').val(); // Get selected genderId
+        const warehouseId = $('#ProductId').val(); // Get selected employee Id
+
+     
+        var countryId = $('#CountryId').val();
+
+
+        $.ajax({
+            url: '/Rating/ManufactureCompanyDetails',
+            type: 'GET',
+            traditional: true, // This will handle the list correctly
+
+            data: {
+                employeeId: employeeId,
+                countryId: selectedCountry,
+                orderSourceId: currentSource,
+                genderId: selectedGender,
+                storeId: selectedStore,
+                startDay: startDate,
+                endDay: endDate,
+                workshift: workshift,
+                mainwarehouseId: warehouseId  // Corrected syntax
+            },
+            success: function (result) {
+                // Update the table and rating section with the result
+                $('#result').html($(result).find('#result').html());
+                $('#total').html($(result).find('#total').html());
+
+            }
+        });
+    }
+
+    function navigateToPage(isFixed, isOffer, isDiscount, isEmployeebonus, isComments, isMale, isFemale, employeeId, employeeName, countryId, countryName, storeId, storeName, ordersourceId) {
+       // var startDate = rangePicker.startDate.format('YYYY-MM-DD');
+      //  var endDate = rangePicker.endDate.format('YYYY-MM-DD');
+        employeeId = $('#EmployeeId').val() || employeeId || "";
+        const genderId = $('#GenderId').val();
+        storeId = $('#ManufacturingCompanyId').val() || storeId || "";
+        const workshift = $('#WorkShift').val();
+        startDate = document.getElementById('startDate').value;
+        endDate = document.getElementById('endDate').value;
+        // Construct the query string
+        let queryString = `?startDate=${startDate}&endDate=${endDate}&employeeId=${employeeId}&ordersourceId=${ordersourceId}&genderId=${genderId}&storeId=${storeId}&workshift=${workshift}`;
+
+        // Add the isFixed parameter if it's true
+        if (isFixed) {
+            queryString += '&isFixed=true';
+        }
+        if (employeeName) {
+            queryString += `&employeeName=${employeeName}`;
+        }
+        if (storeName) {
+            queryString += `&storeName=${storeName}`;
+        }
+        if (countryName) {
+            queryString += `&countryName=${countryName}`;
+        }
+        // Add the isOffers parameter if it's true
+        if (isOffer) {
+            queryString += '&IsOffer=true';
+        }
+        if (isDiscount) {
+            queryString += '&isDiscount=true';
+        }
+        if (isEmployeebonus) {
+            queryString += '&isEmployeebonus=true';
+        }
+        if (isComments) {
+            queryString += '&isComments=true';
+        }
+        if (isMale) {
+            queryString += `&isMale=true`;
+        }
+        if (isFemale) {
+            queryString += `&isFemale=true`;
+        }
+        if (countryId) {
+            queryString += `&countryId=${countryId}`;
+        }
+        // Add the ordersourceId parameter
+        if (ordersourceId) {
+            queryString += `&ordersourceId=${ordersourceId}`;
+        }
+
+        // Redirect to the desired page with the query string
+        window.open('/Rating/EmployeOrdersDetails' + queryString, '_blank');
+    }
+
+    $(document).on('click', '.ordersDiv', function (event) {
+        // Prevent the click event from propagating to its parent elements
+        event.stopPropagation();
+
+        navigateToPage(false, false, false, false, false, false, false, null, null);
+    });
+
+
+    $(document).on('click', '.processedDiv', function (event) {
+        // Prevent the click event from propagating to the parent element
+        event.stopPropagation();
+
+
+
+        // Call navigateToPage function with the employeeId and isFixed parameter
+        navigateToPage(true, false, false, false, false, false, false, null, null);
+    });
+
+    $(document).on('click', '.offersDiv', function (event) {
+        // Prevent the click event from propagating to the parent element
+        event.stopPropagation();
+
+
+        // Call navigateToPage function with the employeeId and isOffer parameter
+        navigateToPage(false, true, false, false, false, false, false, null, null);
+    })
+
+    $(document).on('click', '.discountdiv', function (event) {
+        event.stopPropagation();
+
+
+
+        // Call navigateToPage function with the employeeId and isFixed parameter
+        navigateToPage(false, false, true, false, false, false, false, null, null);
+    });
+
+
+    $(document).on('click', '.employeebonusdiv', function (event) {
+        event.stopPropagation();
+
+
+        // Call navigateToPage function with the employeeId and isFixed parameter
+        navigateToPage(false, false, false, true, false, false, false, null, null);
+    });
+
+    $(document).on('click', '.productcountdiv', function (event) {
+        event.stopPropagation();
+
+        // Call navigateToPage function with the employeeId and isFixed parameter
+        navigateToPage(false, false, false, false, false, false, false, null, null);
+    });
+
+
+    $(document).on('click', '.commentsdiv', function (event) {
+        event.stopPropagation();
+
+
+
+        // Call navigateToPage function with the employeeId and isFixed parameter
+        navigateToPage(false, false, false, false, true, false, false, null, null);
+    });
+
+    $(document).on('click', '.malediv', function (event) {
+        event.stopPropagation();
+
+
+
+        // Call navigateToPage function with the employeeId and isFixed parameter
+        navigateToPage(false, false, false, false, false, true, false, null, null);
+    });
+
+    $(document).on('click', '.femalediv', function (event) {
+        event.stopPropagation();
+
+
+        // Call navigateToPage function with the employeeId and isFixed parameter
+        navigateToPage(false, false, false, false, false, false, true, null, null);
+    });
+
+    $(document).on('click', '.store-data', function (event) {
+        event.stopPropagation();
+
+        // Retrieve the storeId from the data attribute
+        var storeId = $(this).data('store-id');
+        var storeName = $(this).data('store-name');
+
+        // Call navigateToPage function with the storeId parameter
+        navigateToPage(false, false, false, false, false, false, false, null, null, null, null, storeId, storeName);
+    });
+
+    $(document).on('click', '.source-info', function (event) {
+        event.stopPropagation();
+
+        // Retrieve the parent element with country data
+        var parentDiv = $(this).closest('div[data-country-name][data-country-id][data-store-id]');
+        var countryName = parentDiv.data('country-name');
+        var countryId = parentDiv.data('country-id');
+        var storeId = parentDiv.closest('.mt-4').find('.store-data').data('store-id'); // Adjusted to find store-data
+        var ordersourceId = $(this).data('source-id');
+        console.log(storeId);
+
+        // Call navigateToPage function with the appropriate parameters
+        navigateToPage(false, false, false, false, false, false, false, null, null, countryId, countryName, storeId, null, ordersourceId);
+    });
+
+    $(document).on('click', '.country-info', function (event) {
+        // Check if the clicked element is not a .source-info element
+        if (!$(event.target).closest('.source-info').length) {
+            var countryName = $(this).data('country-name');
+            var countryId = $(this).data('country-id');
+            var storeId = $(this).closest('.mt-4').find('.store-data').data('store-id'); // Adjusted to find store-data
+            console.log(storeId);
+
+            // Call navigateToPage function with the country parameters
+            navigateToPage(false, false, false, false, false, false, false, null, null, countryId, countryName, storeId, null, null);
+        }
+    });
+
+
+
+</script>
+

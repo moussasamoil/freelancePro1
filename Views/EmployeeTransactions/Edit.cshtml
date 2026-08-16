@@ -1,0 +1,84 @@
+﻿@model lotus_blue.Models.ViewModel.EmployeeTransactionViewModel
+
+@{
+    ViewData["Title"] = "تعديل حركة معاملة حساب للموظفين";
+}
+
+<h2>تعديل حركة معاملة حساب للموظفين</h2>
+
+<form asp-action="Edit">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label asp-for="Amount" class="control-label">المبلغ</label>
+                <input asp-for="Amount" class="form-control" />
+                <span asp-validation-for="Amount" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="form-group">
+                <label asp-for="TransactionType" class="control-label">نوع العملية</label>
+                <select asp-for="TransactionType" class="form-control">
+                    <option value="0">خصم</option>
+                    <option value="1">مكافأة</option>
+                    <option value="2">سلفة</option>
+                </select>
+                <span asp-validation-for="TransactionType" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label asp-for="Reason" class="control-label">السبب</label>
+                <input asp-for="Reason" class="form-control" />
+                <span asp-validation-for="Reason" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="form-group">
+                <label asp-for="EmployeeId" class="control-label">اسم الموظف</label>
+                <select asp-for="EmployeeId" class="form-control" id="employeeDropdown">
+                    <option value="">-- اختر موظفاً --</option>
+                </select>
+                <span asp-validation-for="EmployeeId" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group mt-3">
+        <input type="submit" value="تعديل" class="btn btn-primary" />
+        <a asp-action="Index" class="btn btn-secondary">العودة إلى القائمة</a>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $.ajax({
+                url: '@Url.Action("GetAllEmployeesintId", "DataList")',
+                type: 'GET',
+                success: function (data) {
+                    var employeeDropdown = $('#employeeDropdown');
+                    employeeDropdown.empty();
+                    employeeDropdown.append('<option value="">-- اختر موظفاً --</option>');
+                    $.each(data, function (index, employee) {
+                        employeeDropdown.append('<option value="' + employee.id + '">' + employee.name + '</option>');
+                    });
+
+                    // Set the selected employee if it exists
+                    var selectedEmployeeId = '@Model.EmployeeId';
+                    if (selectedEmployeeId) {
+                        employeeDropdown.val(selectedEmployeeId);
+                    }
+                },
+                error: function () {
+                    alert('فشل في استرجاع الموظفين.');
+                }
+            });
+        });
+    </script>
+}

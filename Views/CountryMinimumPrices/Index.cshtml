@@ -1,0 +1,41 @@
+﻿@model IEnumerable<lotus_blue.ViewModels.CountryMinimumPriceViewModel>
+@using lotus_blue.Models
+
+@{
+    ViewData["Title"] = "الحد الأدنى للأسعار حسب البلد";
+}
+
+@if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+{
+    <p class="mb-3">
+        <a asp-action="Create" class="btn btn-primary">إنشاء جديد</a>
+    </p>
+}
+<table class="table">
+    <thead>
+        <tr>
+            <th>البلد</th>
+            <th>المتجر</th>
+            <th>الحد الأدنى للعروض</th>
+            <th>الحد الأقصى للعروض</th>
+            <th>الإجراءات</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    <img width="25" src="@Common.GetImageUrlByCountryName(item.Country.ToString())">
+                    @item.Country
+                </td>
+                <td>@(item.ManufacturingCompanyName ?? "-")</td>
+                <td>@item.MinimumPriceForOffers</td>
+                <td>@item.MaximumPriceForOffers</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn text-white btn-warning">تعديل</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

@@ -1,0 +1,128 @@
+﻿@using lotus_blue.Models.ViewModel
+@using lotus_blue.Models
+@model List<EmployeeFinancialSummary>
+@using lotus_blue.Services
+@inject GetCurrentTimeInIstanbul Currenttime
+
+@{
+    ViewData["Title"] = "إجمالي عمليات الموظفين";
+}
+
+@if (User.IsInRole("Admin"))
+{
+    <div class="row mx-3">
+        <div class="col-2">
+            <select id="EmployeeId" class="form-control drop-down-design">
+            </select>
+        </div>
+    </div>
+}
+
+<div id="filteredDataContainer">
+    @foreach (var employee in Model)
+    {
+        var currencyCode = (employee.Country.HasValue && Common.CurrencyByCountry.TryGetValue(employee.Country.Value, out var code)) ? code : "TRY";
+
+        <h4 class="text-end me-3 mt-1 text-green">@employee.EmployeeName</h4>
+               <form action="@Url.Action("PayEmployee", "Financial")" method="post">
+            <input type="hidden" name="employeeId" value="@employee.Id" />
+            <button type="submit" class="btn btn-success">دفع الحساب</button>
+        </form>
+        <div class="d-flex justify-content-center pb-0">
+            <div class="mx-3 w-50 text-end px-2 my-2 employee-box-shadow" onclick="redirectToEmployeeTransactions('@employee.Id')">
+                <h6 class="float-end text-grey mt-3">سلفة</h6>
+                <h4 class="float-start text-secondary h4 mt-2 ms-2">
+                    <label class="f-s-16">@currencyCode</label> @employee.TotalAdvances
+                </h4>
+            </div>
+            <div class="mx-3 w-50 text-end px-2 my-2 employee-box-shadow" onclick="redirectToEmployeeOrdersDetails('@employee.EmployeeUserId', true)">
+                <h6 class="float-end text-grey mt-3">عمولة المبيعات</h6>
+                <h4 class="float-start text-secondary h4 mt-2 ms-2">
+                    <label class="f-s-16">@currencyCode</label> @employee.TotalBonuses
+                </h4>
+            </div>
+            <div class="mx-3 w-50 text-end px-2 my-2 employee-box-shadow">
+                <h6 class="float-end text-grey mt-3">الحساب الجاري</h6>
+                <h4 class="float-start text-secondary h4 mt-2 ms-2">
+                    <label class="f-s-16">@currencyCode</label> @employee.TotalCurrentAccount
+                </h4>
+            </div>
+        </div>
+        <div class="d-flex justify-content-center pb-0">
+            <div class="mx-3 w-50 text-end px-2 my-2 employee-box-shadow">
+                <h6 class="float-end text-grey mt-3">الراتب</h6>
+                <h4 class="float-start text-secondary h4 mt-2 ms-2">
+                    <label class="f-s-16">@currencyCode</label> @employee.TotalSalary
+                </h4>
+            </div>
+            <div class="mx-3 w-50 text-end px-2 my-2 employee-box-shadow" onclick="redirectToEmployeeTransactions('@employee.Id')">
+                <h6 class="float-end text-grey mt-3">المكافئات</h6>
+                <h4 class="float-start text-secondary h4 mt-2 ms-2">
+                    <label class="f-s-16">@currencyCode</label> @employee.TotalRewards
+                </h4>
+            </div>
+            <div class="mx-3 w-50 text-end px-2 my-2 employee-box-shadow" onclick="redirectToEmployeeTransactions('@employee.Id')">
+                <h6 class="float-end text-grey mt-3">الخصومات</h6>
+                <h4 class="float-start text-secondary h4 mt-2 ms-2">
+                    <label class="f-s-16">@currencyCode</label> @employee.TotalDeductions
+                </h4>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .employee-border {
+        border-bottom: 1px solid #6868685e;
+    }
+
+    .employee-box-shadow {
+        box-shadow: 0px 0px 4px 4px rgba(0, 0, 0, 0.075);
+        border-radius: 8px;
+        background-color: white;
+    }
+</style>
+
+<script>
+    function redirectToEmployeeOrdersDetails(employeeId, isEmployeebonus) {
+        // Build the URL with the necessary parameters
+        var url = '@Url.Action("EmployeeBonusDetails", "Financial")' +
+            '?employeeId=' + employeeId +
+            '&isEmployeebonus=' + isEmployeebonus;
+
+        // Redirect to the EmployeOrdersDetails action
+        window.location.href = url;
+    }
+
+    function redirectToEmployeeTransactions(employeeId) {
+        var url = '@Url.Action("Index", "EmployeeTransactions")' +
+            '?employeeId=' + employeeId;
+
+        window.location.href = url;
+    }
+
+    $(document).ready(function () {
+        // Bind change event to DeliveryCompanyId select
+        $('#EmployeeId').change(fetchData);
+
+        function fetchData(startDate, endDate) {
+            var EmployeeId = $('#EmployeeId').val();
+
+            $.ajax({
+                url: '@Url.Action("Employees", "Financial")',
+                type: 'GET',
+                data: {
+                    userId: EmployeeId,
+                },
+                success: function (response) {
+                    console.log("Success: ", response);
+                    var newData = $(response).find('#filteredDataContainer').html(); // Find the specific part of the response
+                    $('#filteredDataContainer').html(newData); // Replace the content
+                },
+                error: function (xhr, status, error) {
+                    $('#filteredDataContainer').html(error); // Display error message
+                }
+            });
+        }
+    });
+</script>

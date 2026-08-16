@@ -1,0 +1,287 @@
+@model lotus_blue.Models.ViewModel.EmployeeBonusCreateViewModel
+@inject lotus_blue.Services.CurrencyExchangeService Fx
+@using lotus_blue.Models
+@{
+    ViewData["Title"] = "إضافة عمولة المبيعات";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .btn-teal { background-color: #1d273b; border-color: #1d273b; color: #fff; }
+    .btn-teal:hover { background-color: #1d273b; border-color: #1d273b; color: #fff; }
+    #applyBulk { background-color: #1d273b; border-color: #1d273b; color: #fff; }
+    #applyBulk:hover { background-color: #1d273b; border-color: #1d273b; }
+    button[type="submit"].btn-primary { background-color: #1d273b; border-color: #1d273b; }
+    button[type="submit"].btn-primary:hover { background-color: #1d273b; border-color: #1d273b; }
+    .row-input:read-only { background-color: #f8f9fa; border-color: transparent; cursor: default; }
+    .row-input:read-only:focus { outline: none; box-shadow: none; border-color: transparent; }
+</style>
+
+<div class="d-flex mb-3 mt-3 justify-content-between mx-auto align-items-center width-99">
+    <h1 class="m-0" style="font-size: 1.5rem;">@ViewData["Title"]</h1>
+    <a asp-action="Index" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> العودة للقائمة
+    </a>
+</div>
+
+<div class="width-99 mx-auto">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    @* ----- Bulk-edit panel — uses custom-shadow card style from home ----- *@
+    <div class="custom-shadow mb-3" style="background:#fff;">
+        <div class="fw-bold mb-2" style="color:#6c757d;">تعديل جماعي للصفوف المحددة</div>
+        <div class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label small">النسبة المؤوية %</label>
+                <input type="number" step="0.01" min="0" class="form-control form-control-sm bulk-input" data-target="BonusPercentage" placeholder="-" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">النسبة المؤوية لمعالجة الطلب %</label>
+                <input type="number" step="0.01" min="0" class="form-control form-control-sm bulk-input" data-target="BonusProcessingPercentage" placeholder="-" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">النسبة المؤوية البرو %</label>
+                <input type="number" step="0.01" min="0" class="form-control form-control-sm bulk-input" data-target="ProBonusPercentage" placeholder="-" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">النسبة المؤوية البرو لمعالجة الطلب %</label>
+                <input type="number" step="0.01" min="0" class="form-control form-control-sm bulk-input" data-target="ProBonusProcessingPercentage" placeholder="-" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">الحد الأدنى للبرو (<span id="bulkThresholdCurrency">$</span>)</label>
+                <input type="number" step="0.01" min="0" class="form-control form-control-sm bulk-input" data-target="ProThreshold" placeholder="-" />
+            </div>
+            <div class="col-md-2">
+                <button type="button" id="applyBulk" class="btn btn-sm w-100">
+                    <i class="fas fa-check"></i> تطبيق على المحدد
+                </button>
+            </div>
+        </div>
+        <small class="text-muted">القيم الفارغة لا تطبق. يجب اختيار صف واحد على الأقل.</small>
+    </div>
+
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+
+        @* ----- Rates table — same skeleton as Home/Index ordersTable ----- *@
+        <div class="table-responsive">
+            <table class="table mt-2 mb-0 mb-lg-2 mx-auto width-99" id="bonusCreateTable">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">
+                            <input type="checkbox" id="selectAllRows" />
+                        </th>
+                        <th>الموظف</th>
+                        <th>النسبة المؤوية %</th>
+                        <th>النسبة المؤوية لمعالجة الطلب %</th>
+                        <th>النسبة المؤوية البرو %</th>
+                        <th>النسبة المؤوية البرو لمعالجة الطلب %</th>
+                        <th>الحد الأدنى للبرو</th>
+                        <th style="width:130px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < Model.Rows.Count; i++)
+                    {
+                        var row = Model.Rows[i];
+                        string _tc = null;
+                        var hasCurrency = row.Country.HasValue && Common.CurrencyByCountry.TryGetValue(row.Country.Value, out _tc);
+                        var currencyCode = hasCurrency ? _tc : "USD";
+                        // ProThreshold is stored exactly as it was entered (in the employee's
+                        // local currency, USD if no country). No conversion at display time —
+                        // the buy/sell spread was drifting the value on every save.
+                        var displayValue = row.ProThreshold.ToString("0.##");
+                        // Still needed for the bulk-apply panel: when multiple rows are
+                        // selected, the bulk input is interpreted as USD and converted to
+                        // each row's local currency in JS before being written to the row.
+                        var usdToLocal = row.Country.HasValue
+                            ? Fx.ConvertFromUSD(1m, row.Country).ToString(System.Globalization.CultureInfo.InvariantCulture)
+                            : "1";
+                        <tr>
+                            <td class="text-center">
+                                <input type="checkbox" class="row-select" />
+                            </td>
+                            <td>
+                                @row.EmployeeName
+                                <input type="hidden" name="Rows[@i].EmployeeId" value="@row.EmployeeId" />
+                            </td>
+                            <td>
+                                <input type="number" step="0.01" min="0" name="Rows[@i].BonusPercentage"
+                                       value="@row.BonusPercentage"
+                                       class="form-control form-control-sm row-input text-center"
+                                       data-field="BonusPercentage"
+                                       readonly />
+                            </td>
+                            <td>
+                                <input type="number" step="0.01" min="0" name="Rows[@i].BonusProcessingPercentage"
+                                       value="@row.BonusProcessingPercentage"
+                                       class="form-control form-control-sm row-input text-center"
+                                       data-field="BonusProcessingPercentage"
+                                       readonly />
+                            </td>
+                            <td>
+                                <input type="number" step="0.01" min="0" name="Rows[@i].ProBonusPercentage"
+                                       value="@row.ProBonusPercentage"
+                                       class="form-control form-control-sm row-input text-center"
+                                       data-field="ProBonusPercentage"
+                                       readonly />
+                            </td>
+                            <td>
+                                <input type="number" step="0.01" min="0" name="Rows[@i].ProBonusProcessingPercentage"
+                                       value="@row.ProBonusProcessingPercentage"
+                                       class="form-control form-control-sm row-input text-center"
+                                       data-field="ProBonusProcessingPercentage"
+                                       readonly />
+                            </td>
+                            <td>
+                                <input type="hidden" name="Rows[@i].Country" value="@((int?)row.Country)" />
+                                <div class="d-flex justify-content-center">
+                                    <div class="input-group input-group-sm" style="width:auto;">
+                                        <input type="number" step="0.01" min="0" name="Rows[@i].ProThreshold"
+                                               value="@displayValue"
+                                               class="form-control form-control-sm row-input text-center"
+                                               data-field="ProThreshold"
+                                               data-currency="@currencyCode"
+                                               data-usd-to-local="@usdToLocal"
+                                               style="min-width:60px; max-width:90px;"
+                                               readonly />
+                                        <span class="input-group-text px-1" style="font-size:0.7rem;">@currencyCode</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center align-middle">
+                                <button type="button" class="btn btn-teal btn-sm btn-row-edit">
+                                    <i class="fas fa-edit"></i> تعديل
+                                </button>
+                                <button type="button" class="btn btn-sm btn-row-accept d-none" style="background-color:#1d273b;border-color:#1d273b;color:#fff;">
+                                    <i class="fas fa-check"></i> موافقة
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm btn-row-cancel d-none">
+                                    <i class="fas fa-times"></i> إلغاء
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Rows.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">لا يوجد موظفون لعرضهم.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="text-end mt-3">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> موافقة
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            // ── Row edit / accept / cancel ──────────────────────────────────
+            $(document).on('click', '.btn-row-edit', function () {
+                var $tr = $(this).closest('tr');
+                // save originals for cancel
+                $tr.find('.row-input').each(function () {
+                    $(this).data('original', $(this).val());
+                });
+                $tr.find('.row-input').prop('readonly', false).removeClass('border-0');
+                $(this).addClass('d-none');
+                $tr.find('.btn-row-accept, .btn-row-cancel').removeClass('d-none');
+            });
+
+            $(document).on('click', '.btn-row-accept', function () {
+                var $tr = $(this).closest('tr');
+                $tr.find('.row-input').prop('readonly', true);
+                $tr.find('.btn-row-edit').removeClass('d-none');
+                $(this).addClass('d-none');
+                $tr.find('.btn-row-cancel').addClass('d-none');
+            });
+
+            $(document).on('click', '.btn-row-cancel', function () {
+                var $tr = $(this).closest('tr');
+                $tr.find('.row-input').each(function () {
+                    $(this).val($(this).data('original'));
+                }).prop('readonly', true);
+                $tr.find('.btn-row-edit').removeClass('d-none');
+                $tr.find('.btn-row-accept').addClass('d-none');
+                $(this).addClass('d-none');
+            });
+
+            // ── Bulk panel applies to checked rows regardless of edit state ─
+            function updateBulkThresholdLabel() {
+                var $checked = $('.row-select:checked');
+                var label = '$';
+                if ($checked.length === 1) {
+                    var code = $checked.closest('tr').find('.row-input[data-field="ProThreshold"]').data('currency');
+                    if (code) label = code;
+                }
+                $('#bulkThresholdCurrency').text(label);
+            }
+
+            $('#selectAllRows').on('change', function () {
+                $('.row-select').prop('checked', $(this).is(':checked'));
+                updateBulkThresholdLabel();
+            });
+
+            $(document).on('change', '.row-select', function () {
+                var all = $('.row-select').length;
+                var checked = $('.row-select:checked').length;
+                $('#selectAllRows').prop('checked', all > 0 && all === checked);
+                updateBulkThresholdLabel();
+            });
+
+            $('#applyBulk').on('click', function () {
+                var $selectedRows = $('.row-select:checked').closest('tr');
+                if ($selectedRows.length === 0) {
+                    alert('يجب اختيار صف واحد على الأقل.');
+                    return;
+                }
+
+                var applied = false;
+                $('.bulk-input').each(function () {
+                    var value = $(this).val();
+                    if (value === '' || value === null) return;
+                    var target = $(this).data('target');
+
+                    if (target === 'ProThreshold') {
+                        var usdValue = parseFloat(value);
+                        if (isNaN(usdValue)) return;
+                        var isMulti = $selectedRows.length > 1;
+                        $selectedRows.each(function () {
+                            var $input = $(this).find('.row-input[data-field="ProThreshold"]');
+                            var localValue;
+                            if (isMulti) {
+                                var rate = parseFloat($input.data('usd-to-local')) || 1;
+                                localValue = (usdValue * rate).toFixed(2);
+                            } else {
+                                localValue = usdValue.toFixed(2);
+                            }
+                            $input.val(localValue);
+                        });
+                    } else {
+                        $selectedRows.find('.row-input[data-field="' + target + '"]').val(value);
+                    }
+                    applied = true;
+                });
+
+                if (!applied) {
+                    alert('أدخل قيمة واحدة على الأقل في حقول التعديل الجماعي.');
+                }
+            });
+        });
+    </script>
+}

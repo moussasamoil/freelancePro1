@@ -1,0 +1,723 @@
+@model lotus_blue.Models.ViewModel.PotentialOrderListViewModel;
+@using lotus_blue.Models;
+
+@{
+    Layout = "AllOrdersLayout";
+    ViewData["Title"] = "البيانات المدخلة";
+}
+
+
+<div class="w-sm-100 mt-3 mt-md-3 container">
+
+    <div class="row mb-2 justify-content-center">
+        <div class="col-lg px-2 ms-0 col-sm-12 text-nowrap open custom-inpage-dropdown d-flex justify-content-start align-items-center custom-width" id="openCreatePotential" style="cursor:pointer;">
+            <img src="/mainicons/file-circle-plus-regular.svg" width="25" height="25" />
+            <span class="pe-2 flex-grow-1">إدخال البيانات</span>
+            <i class="fa-duotone ps-0 fa-chevron-down"></i>
+        </div>
+
+        <div class="col-lg px-0 me-lg-1 mt-2 me-0 mt-lg-0 col-sm-12 text-nowrap custom-width">
+            <select id="StatusId" name="Status" class="form-control drop-down-design">
+            </select>
+        </div>
+
+        <div class="col-lg px-0 me-lg-1 mt-2 me-0 mt-lg-0 col-sm-12 text-nowrap custom-width">
+            <select id="CountryId" name="Country" class="form-control drop-down-design">
+            </select>
+        </div>
+
+    </div>
+
+    <div class="row mb-2 justify-content-center">
+        <div class="col-lg px-0 me-lg-1 mt-2 me-0 mt-lg-0 col-sm-12 text-nowrap custom-width">
+            <select id="StoreNameId" name="StoreName" class="form-control drop-down-design">
+            </select>
+        </div>
+
+        <div class="col-lg px-0 me-lg-1 mt-2 me-0 mt-lg-0 col-sm-12 text-nowrap custom-width">
+            <select id="OrderSourceId" name="OrderSource" class="form-control drop-down-design">
+            </select>
+        </div>
+
+        @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+        {
+            <div class="col-lg px-0 me-lg-1 mt-2 me-0 mt-lg-0 col-sm-12 text-nowrap custom-width">
+                <select id="EmployeeId" name="Employee" class="form-control drop-down-design">
+                </select>
+            </div>
+        }
+    </div>
+
+</div>
+
+
+<div class="d-flex mb-3 mt-3 justify-content-between mx-auto align-items-center width-99" style="position: relative;">
+
+    <div class="form-group d-flex align-items-center">
+        <label for="pageSize" class="me-2">أظهر:</label>
+        <select id="pageSize" name="pageSize" class="form-control me-2">
+            @foreach (var size in new int?[] { 10, 20, 35, 50, 100, 200, 300, 500, 1000, 2000 })
+            {
+                if (Model.PaginationViewModel.PageSize == size)
+                {
+                    <option value="@size" selected>@size</option>
+                }
+                else
+                {
+                    <option value="@size">@size</option>
+                }
+            }
+        </select>
+        <label for="pageSize">مدخلات</label>
+    </div>
+
+    <div class="custom-width-search-input pb-5 w-sm-100" style="position: absolute; left: 50%; transform: translateX(-50%);">
+        <div class="input-group flex-grow-1 input_with_icon">
+            <input type="text" id="searchInput" name="search" class="pe-5 w-100 text-dark custom-box-shadow
+            Search search-input" placeholder="ابحث عن البيانات المدخلة...">
+
+            <span class="icon search-icon">
+                <i class="fa-solid text-green fa-magnifying-glass fa-rotate-90"></i>
+            </span>
+            <span id="searchingshow" class="icon clear-search-icon cursor-pointer">
+                <i class="fa-solid text-green text-green fa-circle-xmark "></i>
+            </span>
+        </div>
+    </div>
+
+    <div class="d-none d-md-block">
+        <input id="po-datepicker" class="form-control custom-datepicker" placeholder="فلتر حسب التاريخ" readonly>
+        <script src="/js/datepicker.min.js"></script>
+    </div>
+
+</div>
+
+
+<div id="PotentialOrderStatus">
+    <div class="btn btn-outline-primary status-upgrade my-2 me-4 shadow" role="button" style="display: none;">
+        ترقية الحالة
+    </div>
+</div>
+
+
+@if (Model != null)
+{
+    <table class="table mt-2 mb-0 mb-lg-2 mx-auto width-99">
+        <thead>
+            <tr>
+                <th>
+                    <input type="checkbox" id="selectAll" />
+                </th>
+                <th>رقم الوصل</th>
+                @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+                {
+                    <th class="d-none d-xl-table-cell">اسم الموظف</th>
+                }
+                <th>اسم الزبون</th>
+                <th class="d-none d-md-table-cell">تاريخ الإنشاء</th>
+                <th class="d-none d-md-table-cell">الدولة</th>
+                <th class="d-none d-md-table-cell">المتجر</th>
+                <th class="d-none d-md-table-cell">نوع الصفحة</th>
+                <th class="d-none d-md-table-cell">حالة الطلب</th>
+                <th class="d-none d-md-table-cell">آخر تحديث</th>
+                <th class="d-none d-md-table-cell">مراسلة</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.PaginationViewModel.Items)
+            {
+                <tr class="background-white-green">
+                    <td>
+                        <input type="checkbox" name="selectedPotentialOrders" value="@item.Id" data-status="@((int)item.Status)" class="potential-order-checkbox" />
+                    </td>
+                    <td class="text-green text-nowrap">
+                        <i class="fa-solid f-s-14 text-green fa-cube me-1"></i> @item.Id
+                    </td>
+                    @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+                    {
+                        <td class="text-nowrap d-none d-xl-table-cell text-end">
+                            @if (!string.IsNullOrEmpty(item.EmployeeImage))
+                            {
+                                <img src="/@item.EmployeeImage" width="14" class="b-r-50">
+                            }
+                            @item.EmployeeName
+                        </td>
+                    }
+                    <td class="text-nowrap">@item.CustomerName</td>
+                    <td class="d-none d-md-table-cell">@item.CreatedDate.ToString("yyyy-MM-dd")</td>
+                    <td class="text-end d-none d-md-table-cell text-nowrap">
+                        <img loading="lazy" class="pb-1 icon-size-standard" src="@Model.CountryImageUrls[(item.Country.ToString())]" />
+                        @item.Country
+                    </td>
+                    <td class="text-end d-none d-md-table-cell text-nowrap">
+                        @if (!string.IsNullOrEmpty(item.StoreLogoUrl))
+                        {
+                            <img loading="lazy" class="pb-1 icon-size-standard" src="/@item.StoreLogoUrl" />
+                        }
+                        @item.StoreName
+                    </td>
+                    <td class="text-end d-none d-md-table-cell text-nowrap">
+                        <img loading="lazy" class="pb-1" style="width:16px; height:16px;" src="@Common.GetSocialMediaIconUrl(item.OrderSource)" />
+                        @item.OrderSource
+                    </td>
+                    @{
+                        var statusInt = (int)item.Status;
+                        string poCountry = item.Country.ToString();
+                        string poPhoneCode = Common.GetPhoneNumberCodeByCountryStatus(poCountry);
+                        string poPhoneNumber = item.PhoneNumber;
+                        string poWhatsAppUrl = $"https://wa.me/{poPhoneCode}{poPhoneNumber}";
+                    }
+                    <td class="d-none d-md-table-cell text-nowrap">
+                        <span class="po-status-badge po-status-@statusInt">
+                            @item.Status.ToString().Replace("_", " ")
+                        </span>
+                    </td>
+                    <td class="d-none d-md-table-cell text-nowrap">
+                        @(item.LastEditedDate.HasValue ? item.LastEditedDate.Value.ToString("yyyy-MM-dd") : "-")
+                    </td>
+                    <td class="d-none d-md-table-cell">
+                        <div class="d-flex justify-content-center">
+                            @if (!string.IsNullOrEmpty(item.ChatUrl) && item.OrderSource == OrderSourceEnum.انستغرام)
+                            {
+                                <a target="_blank" href="@item.ChatUrl" class="btn text-white me-2 text-nowrap instagram-btn">
+                                    <span><i class="fa-brands fa-instagram"></i></span>
+                                    انستغرام
+                                </a>
+                            }
+                            else if (!string.IsNullOrEmpty(item.ChatUrl))
+                            {
+                                <a target="_blank" href="@item.ChatUrl" class="btn text-white background-whiteblue me-2 text-nowrap">
+                                    <span><i class="fa-light fa-comment"></i></span>
+                                    فيسبوك
+                                </a>
+                            }
+                            @if (!string.IsNullOrEmpty(item.PhoneNumber))
+                            {
+                                <a target="_blank" href="@poWhatsAppUrl" class="btn text-white me-2 text-nowrap" style="background-color:#2ab149;">
+                                    <span><i class="fa-light fa-comment"></i></span>
+                                    واتساب
+                                </a>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<div id="pagination-link" class="mt-0 container-fluid">
+    <div class="d-flex justify-content-center align-items-center flex-wrap">
+
+        <p class="text-start pt-2 total-items-display">@Model.PaginationViewModel.TotalItems عدد البيانات المدخلة</p>
+
+        <nav aria-label="Page navigation" class="mx-auto nav-nav">
+            <div class="d-flex justify-content-start">
+                <ul class="pagination p-0">
+                    <li class="page-item @(Model.PaginationViewModel.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link pointer" data-page="1">
+                            <i class="fa-solid fa-chevron-double-right text-green"></i>
+                        </a>
+                    </li>
+                    <li class="page-item @(Model.PaginationViewModel.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.PaginationViewModel.CurrentPage - 1)">
+                            <i class="fa-solid fa-chevron-right text-green"></i>
+                        </a>
+                    </li>
+
+                    @{
+                        int startPage = Model.PaginationViewModel.CurrentPage;
+                        int endPage = startPage + 2;
+                        if (endPage > Model.PaginationViewModel.TotalPages)
+                        {
+                            endPage = Model.PaginationViewModel.TotalPages;
+                        }
+                    }
+
+                    @for (int i = startPage; i <= endPage; i++)
+                    {
+                        <li class="numbers d-none d-md-block page-item @(Model.PaginationViewModel.CurrentPage == i ? "active" : "")">
+                            <a class="page-link" data-page="@i">@i</a>
+                        </li>
+                    }
+
+                    @if (Model.PaginationViewModel.TotalPages > endPage)
+                    {
+                        <li class="page-item d-none d-md-block disabled">
+                            <span class="page-link">...</span>
+                        </li>
+
+                        @for (int i = Model.PaginationViewModel.TotalPages - 2; i <= Model.PaginationViewModel.TotalPages; i++)
+                        {
+                            <li class="numbers d-none d-md-block page-item @(Model.PaginationViewModel.CurrentPage == i ? "active" : "")">
+                                <a class="page-link" data-page="@i">@i</a>
+                            </li>
+                        }
+                    }
+
+                    <li class="numbers d-block d-md-none page-item active">
+                        <a class="page-link" data-page="@Model.PaginationViewModel.CurrentPage">@Model.PaginationViewModel.CurrentPage</a>
+                    </li>
+
+                    <li class="page-item @(Model.PaginationViewModel.CurrentPage == Model.PaginationViewModel.TotalPages ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.PaginationViewModel.CurrentPage + 1)">
+                            <i class="fa-solid fa-chevron-left text-green f-s-18"></i>
+                        </a>
+                    </li>
+                    <li class="page-item @(Model.PaginationViewModel.CurrentPage == Model.PaginationViewModel.TotalPages ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.PaginationViewModel.TotalPages)">
+                            <i class="fa-solid fa-chevron-double-left text-green"></i>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+    </div>
+</div>
+
+
+@await Html.PartialAsync("_Notification")
+
+
+<form id="postLoginAntiForgeryForm" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@await Html.PartialAsync("_PostLoginFaceCapture")
+
+
+<div id="modal-container"></div>
+
+
+<style>
+    .custom-shadow {
+        color: black;
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2);
+        border-radius: 8px !important;
+        padding-right: 1rem;
+        padding-left: 1rem;
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    .input-group {
+        position: relative;
+    }
+
+    .search-input {
+        height: 2rem !important;
+    }
+
+    .icon {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .search {
+        font-size: 18px;
+        font-weight: bold;
+    }
+
+    .clear-search-icon {
+        left: 10px;
+        cursor: pointer;
+    }
+
+    .search-icon {
+        right: 15px;
+        z-index: 1;
+    }
+
+    .icon.search-icon {
+        z-index: 10 !important;
+    }
+
+    #searchingshow {
+        visibility: hidden;
+        z-index: 9;
+    }
+
+    .instagram-btn {
+        background: linear-gradient( 45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100% );
+    }
+
+    /* Status badge — pill shape matching the messaging buttons */
+    .po-status-badge {
+        display: inline-block;
+        padding: 0.375rem 0.75rem;
+        border-radius: 29px;
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .po-status-0 {
+        background: rgba(164, 119, 255, 0.41);
+        color: #5400FF;
+    }
+
+    .po-status-1 {
+        background: rgba(250, 170, 117, 0.34);
+        color: #F4731D;
+    }
+
+    .po-status-2 {
+        background: rgba(69, 180, 173, 0.34);
+        color: #445068;
+    }
+
+    .po-status-3 {
+        background: rgba(242, 193, 90, 0.34);
+        color: #F2C15A;
+    }
+
+    .po-status-4 {
+        background: rgba(150, 80, 80, 0.34);
+        color: #965050;
+    }
+
+    .po-status-5 {
+        background: rgba(145, 169, 207, 0.34);
+        color: #91A9CF;
+    }
+
+    .po-status-6 {
+        background: rgba(201, 67, 118, 0.34);
+        color: #C94376;
+    }
+
+    .po-status-7 {
+        background: #DEE7D6;
+        color: #3d5a2e;
+    }
+
+    .custom-inpage-dropdown {
+        background-color: #ffffff;
+        box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+        border-radius: 8px !important;
+        padding: 6px;
+        font-size: 18px;
+        font-weight: bold;
+    }
+
+    .custom-width {
+        max-width: 327px;
+        width: 327px;
+    }
+</style>
+
+
+<input type="hidden" id="startDate" />
+<input type="hidden" id="endDate" />
+
+<script>
+    $(document).ready(function () {
+
+        initializeLitepicker('#po-datepicker', function () { loadData(1); });
+
+        // Open PO creation form
+        $('#openCreatePotential').click(function () {
+            $.ajax({
+                url: '/Home/CreatePotentialClient',
+                type: 'GET',
+                success: function (data) {
+                    $('#modal-container').html(data);
+                    $('#CreatePotential').modal('show');
+                },
+                error: function (xhr, status, error) {
+                    console.error('AJAX Error: ' + status + ' - ' + error);
+                }
+            });
+        });
+
+        localStorage.removeItem('selectedPotentialOrderIds');
+
+        function getSelectedIds() {
+            return JSON.parse(localStorage.getItem('selectedPotentialOrderIds')) || [];
+        }
+
+        function setSelectedIds(ids) {
+            localStorage.setItem('selectedPotentialOrderIds', JSON.stringify(ids));
+        }
+
+        // Show/hide upgrade button based on selection
+        function toggleUpgradeButton() {
+            var selected = getSelectedIds();
+            if (selected.length > 0) {
+                var hasUpgradeableRows = false;
+                $('input[name="selectedPotentialOrders"]:checked').each(function () {
+                    if ($(this).data('status') < 7) {
+                        hasUpgradeableRows = true;
+                        return false;
+                    }
+                });
+                if (hasUpgradeableRows) {
+                    $('.status-upgrade').show();
+                } else {
+                    $('.status-upgrade').hide();
+                }
+            } else {
+                $('.status-upgrade').hide();
+            }
+        }
+
+        // Handle individual checkbox clicks
+        $(document).on('change', 'input[type="checkbox"][name="selectedPotentialOrders"]', function () {
+            var storedIds = getSelectedIds();
+            var id = $(this).val();
+
+            if ($(this).is(':checked')) {
+                if (!storedIds.includes(id)) {
+                    storedIds.push(id);
+                }
+            } else {
+                var index = storedIds.indexOf(id);
+                if (index > -1) {
+                    storedIds.splice(index, 1);
+                }
+            }
+
+            setSelectedIds(storedIds);
+            $('#selectAll').prop('checked', $('input[type="checkbox"][name="selectedPotentialOrders"]').length === $('input[type="checkbox"][name="selectedPotentialOrders"]:checked').length);
+            toggleUpgradeButton();
+        });
+
+        // Handle "Select All"
+        $(document).on('change', '#selectAll', function () {
+            var isChecked = $(this).is(':checked');
+            var storedIds = getSelectedIds();
+
+            $('input[type="checkbox"][name="selectedPotentialOrders"]').each(function () {
+                var id = $(this).val();
+                $(this).prop('checked', isChecked);
+
+                if (isChecked) {
+                    if (!storedIds.includes(id)) {
+                        storedIds.push(id);
+                    }
+                } else {
+                    var index = storedIds.indexOf(id);
+                    if (index > -1) {
+                        storedIds.splice(index, 1);
+                    }
+                }
+            });
+
+            setSelectedIds(storedIds);
+            toggleUpgradeButton();
+        });
+
+        // Restore selected checkboxes
+        function restoreSelectedIds() {
+            var storedIds = getSelectedIds();
+            $('input[type="checkbox"][name="selectedPotentialOrders"]').each(function () {
+                if (storedIds.includes($(this).val())) {
+                    $(this).prop('checked', true);
+                }
+            });
+            $('#selectAll').prop('checked', $('input[type="checkbox"][name="selectedPotentialOrders"]').length === $('input[type="checkbox"][name="selectedPotentialOrders"]:checked').length);
+            toggleUpgradeButton();
+        }
+
+        restoreSelectedIds();
+
+        // Handle upgrade button click
+        $('.status-upgrade').click(function () {
+            var $btn = $(this);
+            var selectedIds = getSelectedIds();
+
+            if (selectedIds.length === 0) {
+                showNotification(
+                    "الرجاء تحديد طلب واحد على الأقل",
+                    null,
+                    '/static/info-icon.svg'
+                );
+                return;
+            }
+
+            $btn.prop('disabled', true).addClass('disabled');
+
+            showNotification(
+                "هل تريد ترقية حالة الطلبات المحددة؟",
+                function () {
+                    $('#loadingIndicator').show();
+
+                    $.ajax({
+                        url: '@Url.Action("UpdateStatusForMultiple", "PotentialOrder")',
+                        type: 'POST',
+                        data: { ids: selectedIds },
+                        success: function (result) {
+                            if (result.success) {
+                                localStorage.removeItem('selectedPotentialOrderIds');
+                                showNotification(
+                                    "تم تحديث حالة الطلبات بنجاح",
+                                    function () {
+                                        location.reload();
+                                    },
+                                    '/static/trash-can-regular.svg'
+                                );
+                            } else {
+                                $btn.prop('disabled', false).removeClass('disabled');
+                                showNotification(
+                                    "خطأ: " + (result.message || "فشل في تعديل حالة الطلبات"),
+                                    null,
+                                    '/static/trash-can-regular.svg'
+                                );
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            $btn.prop('disabled', false).removeClass('disabled');
+                            showNotification(
+                                "خطأ في الاتصال: " + error,
+                                null,
+                                '/static/trash-can-regular.svg'
+                            );
+                        },
+                        complete: function () {
+                            $('#loadingIndicator').hide();
+                        }
+                    });
+                },
+                '/static/trash-can-regular.svg'
+            );
+        });
+
+        // Search
+        const searchInput = $("#searchInput");
+        const clearSearchIcon = $("#searchingshow");
+
+        function toggleClearIconVisibility() {
+            clearSearchIcon.css('visibility', searchInput.val().length > 0 ? 'visible' : 'hidden');
+        }
+
+        searchInput.on("input", function () {
+            toggleClearIconVisibility();
+            loadData(1);
+        });
+
+        clearSearchIcon.on("click", function () {
+            searchInput.val("");
+            toggleClearIconVisibility();
+            loadData(1);
+        });
+
+        toggleClearIconVisibility();
+
+        // Filters
+        $('#StatusId, #CountryId, #StoreNameId, #OrderSourceId, #EmployeeId, #pageSize').change(function () {
+            loadData(1);
+        });
+
+        function loadData(page) {
+            var data = {
+                page: page,
+                pageSize: $('#pageSize').val(),
+                search: $('#searchInput').val(),
+                countryId: $('#CountryId').val(),
+                statusId: $('#StatusId').val(),
+                storeId: $('#StoreNameId').val(),
+                orderSourceId: $('#OrderSourceId').val(),
+                employeeId: $('#EmployeeId').val(),
+                startDate: $('#startDate').val(),
+                endDate: $('#endDate').val()
+            };
+
+            $.ajax({
+                url: '/PotentialOrder/Index',
+                type: 'GET',
+                data: data,
+                success: function (result) {
+                    var $result = $('<div>').html(result);
+                    $('.table').replaceWith($result.find('.table'));
+                    $('.pagination').replaceWith($result.find('.pagination'));
+                    $('.total-items-display').text($result.find('.total-items-display').text());
+                    restoreSelectedIds();
+                },
+                error: function (xhr, status, error) {
+                    console.error("AJAX error:", status, error);
+                }
+            });
+        }
+
+        $(document).on('click', '.pagination a.page-link', function (event) {
+            event.preventDefault();
+            const page = $(this).data('page');
+            loadData(page);
+        });
+
+    });
+
+    // Mirror of isAdmin check in the Razor @@if blocks above — needed so the JS row builder
+    // can conditionally include/exclude the employee column, matching the server-rendered rows.
+    var isAdminOrExecutiveDirector = @Html.Raw(Json.Serialize(User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector")));
+
+    // Builds and prepends a table row from a SignalR NotifyPotentialOrderAdded payload.
+    // This mirrors what the Razor foreach does on page load, so new POs appear instantly
+    // without a reload — same pattern as addOrderToTable() on the Home page.
+    function addPotentialOrderToTable(potentialOrderJson) {
+        const obj = JSON.parse(potentialOrderJson);
+        const po = obj.PotentialOrder;
+        const employeeName = obj.EmployeeName || '';
+        const employeeImage = obj.EmployeeImage || '';
+
+        // Build WhatsApp link — same logic as the Razor poWhatsAppUrl block above.
+        // Phone code prefix is handled server-side by GetPhoneNumberCodeByCountryStatus;
+        // the payload already stores the raw phone number, so we just link to wa.me/.
+        const whatsAppUrl = po.PhoneNumber ? 'https://wa.me/' + po.PhoneNumber : '';
+
+        // Messaging buttons: match the <td class="مراسلة"> column logic exactly
+        let messagingButtons = '';
+        if (po.ChatUrl && po.OrderSource === 'انستغرام') {
+            messagingButtons += `<a target="_blank" href="${po.ChatUrl}" class="btn text-white me-2 text-nowrap instagram-btn"><span><i class="fa-brands fa-instagram"></i></span> انستغرام</a>`;
+        } else if (po.ChatUrl) {
+            messagingButtons += `<a target="_blank" href="${po.ChatUrl}" class="btn text-white background-whiteblue me-2 text-nowrap"><span><i class="fa-light fa-comment"></i></span> فيسبوك</a>`;
+        }
+        if (po.PhoneNumber) {
+            messagingButtons += `<a target="_blank" href="${whatsAppUrl}" class="btn text-white me-2 text-nowrap" style="background-color:#2ab149;"><span><i class="fa-light fa-comment"></i></span> واتساب</a>`;
+        }
+
+        // Employee column is only shown for Admin / ExecutiveDirector — matches the @@if above the th
+        const employeeCell = isAdminOrExecutiveDirector
+            ? `<td class="text-nowrap d-none d-xl-table-cell text-end">${employeeImage ? `<img src="/${employeeImage}" width="14" class="b-r-50">` : ''} ${employeeName}</td>`
+            : '';
+
+        const storeLogoImg = po.StoreLogoUrl ? `<img loading="lazy" class="pb-1 icon-size-standard" src="/${po.StoreLogoUrl}" />` : '';
+
+        // data-status="6" = عميل_محتمل (int value of the enum) — needed by toggleUpgradeButton()
+        const newRow = `
+                <tr class="background-white-green">
+                    <td><input type="checkbox" name="selectedPotentialOrders" value="${po.Id}" data-status="6" class="potential-order-checkbox" /></td>
+                    <td class="text-green text-nowrap"><i class="fa-solid f-s-14 text-green fa-cube me-1"></i> ${po.Id}</td>
+                    ${employeeCell}
+                    <td class="text-nowrap">${po.CustomerName}</td>
+                    <td class="d-none d-md-table-cell">${po.CreatedDate}</td>
+                    <td class="text-end d-none d-md-table-cell text-nowrap">
+                        <img loading="lazy" class="pb-1 icon-size-standard" src="${po.CountryImageUrl}" /> ${po.Country}
+                    </td>
+                    <td class="text-end d-none d-md-table-cell text-nowrap">
+                        ${storeLogoImg} ${po.StoreName}
+                    </td>
+                    <td class="text-end d-none d-md-table-cell text-nowrap">
+                        <img loading="lazy" class="pb-1" style="width:16px; height:16px;" src="${po.OrderSourceIconUrl}" /> ${po.OrderSource}
+                    </td>
+                    <td class="d-none d-md-table-cell text-nowrap"><span class="po-status-badge po-status-${po.StatusInt}">${po.Status}</span></td>
+                    <td class="d-none d-md-table-cell text-nowrap">${po.LastEditedDate}</td>
+                    <td class="d-none d-md-table-cell"><div class="d-flex justify-content-center">${messagingButtons}</div></td>
+                </tr>`;
+
+        document.querySelector('table tbody').insertAdjacentHTML('afterbegin', newRow);
+    }
+
+    // SignalRRealTime.js already listens for NotifyPotentialOrderAdded (plays audio + browser notification).
+    // This second handler adds the DOM injection — only fires on the PO index page so it doesn't
+    // try to call addPotentialOrderToTable on pages that don't have the table.
+    if (typeof connection !== 'undefined') {
+        connection.on("NotifyPotentialOrderAdded", function (potentialOrderJson) {
+            if (window.location.pathname.toLowerCase().includes('/potentialorder')) {
+                addPotentialOrderToTable(potentialOrderJson);
+            }
+        });
+    }
+</script>

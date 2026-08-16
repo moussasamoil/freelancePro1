@@ -1,0 +1,40 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    @Html.Partial("_Head")
+    @RenderSection("Styles", required: false)
+</head>
+
+<body>
+  
+    <div class="background-white-green">
+        <main role="main" class="" style="direction:rtl;">
+            @RenderBody()
+        </main>
+    </div>
+
+    <audio id="notificationSound" src="/NotificationSound/Alert.mp3" type="audio/mp3"> </audio>
+    <!-- Section for additional scripts, if any -->
+    @RenderSection("scripts", required: false)
+</body>
+</html>
+
+
+
+<style>
+
+    @@font-face {
+        font-family: 'NotoNaskhArabic-Regular';
+        src: url('/Fonts/NotoNaskhArabic-Regular.ttf') format('truetype');
+        font-display: swap; /* This ensures text is displayed with a system font until the web font is available */
+        font-style: normal;
+    }
+
+  
+    body {
+        font-family: 'NotoNaskhArabic-Regular', sans-serif !important;
+        padding-top: 37px;
+    }
+  
+</style>
+

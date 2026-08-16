@@ -1,0 +1,387 @@
+@using lotus_blue.Models
+
+<div class="modal rtl modal-dialog-centered" id="CreateLead" data-bs-keyboard="false" data-bs-backdrop="static" tabindex="-1" aria-labelledby="CreateLead" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content background-white-green" style="position: relative;">
+
+            @* Error notification overlay (mirrors _CreatePotentialClient) *@
+            <div id="leadOverlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(33, 37, 41, 0.1); z-index: 10;"></div>
+            <div id="leadFailedMessage" class="container centered" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 20; width: 80%;">
+                <div style="background-color: white;" class="flex-column b-r-8 d-flex justify-content-center">
+                    <div>
+                        <div class="text-center pt-3">
+                            <img src="/static/x-shadow-red.svg" width="50" />
+                        </div>
+                        <p class="text-center pb-3 text-black fw-bolder">خطأ</p>
+                        <p class="text-center text-black pb-3 lead-message text-nowrap"></p>
+                    </div>
+                    <div class="border-top grey-hover">
+                        <div class="row">
+                            <div id="closeLeadFailed" class="py-2 text-center grey-hover text-green-v2 text-decoration-underline" style="cursor: pointer;">
+                                موافق
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-header">
+                <button type="button" class="btn head-16 text-green" data-bs-dismiss="modal" aria-label="Close">تراجع</button>
+                <h5 class="modal-title head text-center">طلب محتمل</h5>
+                <button type="button" class="btn head-16 text-green" data-bs-dismiss="modal" aria-label="Close">انتهى</button>
+            </div>
+
+            <div class="modal-body">
+                <form id="leadForm">
+                    <div class="row d-flex justify-content-center">
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="form-group">
+                                    <select class="form-control" id="leadOrderSource" name="orderSource" required>
+                                        <option data-image="/static/hashtag-regular.svg" value="" disabled selected>نوع الصفحة</option>
+                                        @foreach (OrderSourceEnum source in Enum.GetValues(typeof(OrderSourceEnum)))
+                                        {
+                                            <option value="@((int)source)" data-image="@Common.GetSocialMediaIconUrl(source)">
+                                                @source
+                                            </option>
+                                        }
+                                    </select>
+                                    <span class="text-danger" id="leadOrderSourceError"></span>
+                                </div>
+                            </div>
+                            <div class="col-6" id="leadSourceNameCol">
+                                <div class="form-group w-sm-100 input-wrapper">
+                                    <input type="text" class="form-control with-bg-image-pagename" id="leadSourceName" name="sourceName" required placeholder="اسم الصفحة" />
+                                    <i class="fa-duotone fa-spinner-third fa-spin spinner-icon"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        @* For non-WhatsApp sources: page URL (chatUrl) *@
+                        <div class="row mt-3" id="leadChatUrlWrapper">
+                            <div class="col-12">
+                                <div class="form-group w-100 input-wrapper">
+                                    <input type="text" class="form-control with-bg-image-address" id="leadChatUrl" name="chatUrl" required placeholder="رابط الصفحة" />
+                                    <i class="fa-duotone fa-spinner-third fa-spin spinner-icon"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        @* For WhatsApp: phone number *@
+                        <div class="row mt-3" id="leadPhoneRowWrapper" style="display:none;">
+                            <div class="col-12">
+                                <div class="form-group w-100 input-wrapper" id="leadPhoneWrapper">
+                                    <input type="tel" class="form-control with-bg-image-phonenumber" id="leadPhoneNumber" name="phoneNumber" placeholder="رقم الهاتف" />
+                                    <i class="fa-duotone fa-spinner-third fa-spin spinner-icon" style="display:none;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex mb-3 justify-content-center">
+                        <button style="font-size:1.3rem;" type="submit" id="submitLead" class="btn py-1 background-gold text-white mb-3 w-65 mt-3" disabled>
+                            تأكيد إنشاء طلب محتمل
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Success message *@
+<div id="leadSuccessMessage" class="hidden" style="width:35%;">
+    <div class="container pb-5 custom-box-shadow b-r-8 background-white">
+        <div class="row pt-5">
+            <div class="col text-center">
+                <img width="70" class="mx-auto d-block" src="/static/turesign.svg">
+            </div>
+        </div>
+        <div class="row">
+            <div class="col text-center">
+                <p><span id="leadIDPlaceholder"></span></p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col text-center">
+                <p>تمت العملية بنجاح</p>
+            </div>
+        </div>
+
+        <div class="row mt-3" style="margin-top: 130px;">
+            <div class="col text-center">
+                <a id="closeAndOpenLeadBtn" style="padding-left:132px; padding-right:132px;" class="text-gold-v2 b-r-8 custom-box-shadow">قم بإنشاء طلب محتمل جديد</a>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div id="closeLeadSuccess" class="col text-center" style="cursor:pointer;">
+                <img src="/static/77-01.svg" width="50" />
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .with-bg-image-pagename {
+        background-image: url('/static/hashtag-regular.svg');
+        background-position: right 10px center;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 14px 14px;
+    }
+
+    #leadSuccessMessage {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1000;
+    }
+
+    #CreateLead .modal-content {
+        overscroll-behavior: contain;
+    }
+</style>
+
+<script>
+    $(document).ready(function () {
+        // Prevent scroll-leak from Select2 dropdown
+        $(document).on('wheel', '#CreateLead .select2-results', function (e) {
+            var el = this;
+            if ((el.scrollTop === 0 && e.originalEvent.deltaY < 0) ||
+                (el.scrollTop + el.clientHeight >= el.scrollHeight && e.originalEvent.deltaY > 0)) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+
+        function formatLeadOption(option) {
+            var imageUrl = $(option.element).data('image');
+            var imageTag = imageUrl ? '<img src="' + imageUrl + '" class="img-flag" style="margin-right: 5px; width: 14px; height: 14px;" />' : '';
+            return $('<span>' + imageTag + option.text + '</span>');
+        }
+
+        $('#leadOrderSource').select2({
+            templateResult: formatLeadOption,
+            templateSelection: formatLeadOption,
+            dropdownParent: $('#CreateLead'),
+            dir: "rtl",
+            minimumResultsForSearch: 1,
+            width: '100%',
+        });
+
+        $('#leadOrderSource').on('select2:close', function () {
+            var $dropdown = $(this);
+            if (!$dropdown.val()) {
+                leadAddErrorClassAndMessage($dropdown, 'يرجى إختيار نوع صفحة صحيح.');
+            } else {
+                leadRemoveErrorClassAndMessage($dropdown);
+            }
+        });
+
+        function leadAddErrorClassAndMessage($dropdown, message) {
+            const $container = $dropdown.next('.select2-container');
+            $container.find('.select2-selection__rendered').addClass('error');
+            $container.next('.required-message').remove();
+            $container.after('<div class="required-message">' + message + '</div>');
+        }
+
+        function leadRemoveErrorClassAndMessage($dropdown) {
+            const $container = $dropdown.next('.select2-container');
+            $container.find('.select2-selection__rendered').removeClass('error').addClass('success');
+            $container.next('.required-message').remove();
+        }
+
+        function leadUpdateFieldStatus(selector, errorMessage) {
+            var $input = $(selector);
+            var value = $input.val().trim();
+            var $container = $input.closest('.form-group');
+            var $spinner = $container.find('.spinner-icon');
+
+            if (!$input.hasClass('success')) {
+                $spinner.show();
+            }
+
+            setTimeout(function () {
+                $spinner.hide();
+                if (value !== "") {
+                    $input.addClass('success').removeClass('error');
+                    $container.next('.required-message').remove();
+                } else {
+                    $input.removeClass('success').addClass('error');
+                    if ($container.next('.required-message').length === 0) {
+                        $container.after('<div class="required-message">' + errorMessage + '</div>');
+                    }
+                }
+            }, 2000);
+        }
+
+        let leadPhoneErrorShown = false;
+        let leadPhoneSpinnerTimeout;
+
+        $('#leadPhoneNumber').on('input blur', function (event) {
+            const inputElement = $(this);
+            const phoneNumber = inputElement.val();
+            const $container = inputElement.closest('.form-group');
+            const $spinner = $container.find('.spinner-icon');
+
+            if (!phoneNumber) {
+                inputElement.removeClass('error success');
+                $spinner.hide();
+                clearTimeout(leadPhoneSpinnerTimeout);
+                $container.next('.required-message').remove();
+                leadPhoneErrorShown = false;
+                return;
+            }
+
+            // Loose validation only — no country picker on this form.
+            // Accept optional +/00 prefix followed by digits.
+            const isValid = /^(\+|00)?\d{6,15}$/.test(phoneNumber);
+
+            inputElement.removeClass('error success');
+
+            if (event.type === 'input') {
+                $spinner.show();
+
+                if (leadPhoneErrorShown) {
+                    $container.next('.required-message').hide();
+                }
+
+                clearTimeout(leadPhoneSpinnerTimeout);
+                leadPhoneSpinnerTimeout = setTimeout(function () {
+                    $spinner.hide();
+
+                    if (!isValid) {
+                        inputElement.addClass('error');
+                        if (!leadPhoneErrorShown) {
+                            $container.after('<div class="required-message">يرجى إدخال رقم هاتف صحيح</div>');
+                            leadPhoneErrorShown = true;
+                        } else {
+                            $container.next('.required-message').show();
+                        }
+                    }
+                }, 1500);
+            }
+
+            if (isValid) {
+                clearTimeout(leadPhoneSpinnerTimeout);
+                $spinner.show();
+                leadPhoneSpinnerTimeout = setTimeout(function () {
+                    $spinner.hide();
+                    inputElement.addClass('success');
+                    if (leadPhoneErrorShown) {
+                        $container.next('.required-message').remove();
+                        leadPhoneErrorShown = false;
+                    }
+                }, 1000);
+            }
+        });
+
+        function isLeadPhoneValid() {
+            var isWhatsApp = $('#leadOrderSource').val() === '4';
+            var phone = $('#leadPhoneNumber').val();
+            if (isWhatsApp && !phone) return false;
+            if (!phone) return true;
+            return /^(\+|00)?\d{6,15}$/.test(phone);
+        }
+
+        function toggleLeadWhatsAppMode() {
+            var isWhatsApp = $('#leadOrderSource').val() === '4';
+            if (isWhatsApp) {
+                $('#leadChatUrlWrapper').hide();
+                $('#leadChatUrl').removeAttr('required').val('').removeClass('error success');
+                $('#leadChatUrl').closest('.form-group').next('.required-message').remove();
+                $('#leadPhoneRowWrapper').show();
+                $('#leadPhoneNumber').attr('required', true);
+            } else {
+                $('#leadChatUrlWrapper').show();
+                $('#leadChatUrl').attr('required', true);
+                $('#leadPhoneRowWrapper').hide();
+                $('#leadPhoneNumber').removeAttr('required').val('').removeClass('error success');
+                $('#leadPhoneNumber').closest('.form-group').next('.required-message').remove();
+            }
+            toggleLeadSubmitButton();
+        }
+
+        function toggleLeadSubmitButton() {
+            var isWhatsApp = $('#leadOrderSource').val() === '4';
+            var sourceName = $('#leadSourceName').val();
+            var chatUrl = $('#leadChatUrl').val();
+            var orderSource = $('#leadOrderSource').val();
+            var isValid = sourceName && orderSource && isLeadPhoneValid()
+                && (isWhatsApp || chatUrl);
+            $('#submitLead').prop('disabled', !isValid);
+        }
+
+        $(document).on('click', '#closeLeadFailed', function () {
+            $('#leadFailedMessage').hide();
+            $('#leadOverlay').hide();
+        });
+
+        $('#closeLeadSuccess').click(function (event) {
+            $('#leadSuccessMessage').addClass('hidden');
+            event.stopPropagation();
+        });
+
+        $(document).click(function (event) {
+            if (!$(event.target).closest('#leadSuccessMessage').length && !$(event.target).closest('#CreateLead').length) {
+                $('#leadSuccessMessage').addClass('hidden');
+            }
+        });
+
+        $('#closeAndOpenLeadBtn').click(function (event) {
+            $('#leadSuccessMessage').addClass('hidden');
+            $('#leadSourceName, #leadChatUrl, #leadPhoneNumber').val('');
+            $('#leadOrderSource').val(null).trigger('change');
+            $('#submitLead').prop('disabled', true);
+            $('#CreateLead').modal('show');
+            event.stopPropagation();
+        });
+
+        $('#leadSourceName, #leadChatUrl, #leadPhoneNumber').on('input', toggleLeadSubmitButton);
+
+        $('#leadSourceName').on('input blur', function () {
+            leadUpdateFieldStatus(this, 'يرجى إدخال اسم صفحة صحيح.');
+        });
+
+        $('#leadChatUrl').on('input blur', function () {
+            if ($('#leadChatUrlWrapper').is(':visible')) {
+                leadUpdateFieldStatus(this, 'يرجى إدخال رابط صحيح.');
+            }
+        });
+        $('#leadOrderSource').on('change select2:select', toggleLeadWhatsAppMode);
+
+        $('#leadForm').on('submit', function (e) {
+            e.preventDefault();
+
+            $('#submitLead').prop('disabled', true);
+            setTimeout(function () {
+                $('#submitLead').prop('disabled', false);
+            }, 40000);
+
+            $.ajax({
+                url: '/Home/CreateLead',
+                type: 'POST',
+                data: {
+                    sourceName: $('#leadSourceName').val(),
+                    chatUrl: $('#leadChatUrl').val(),
+                    phoneNumber: $('#leadPhoneNumber').val(),
+                    orderSource: $('#leadOrderSource').val()
+                },
+                success: function (response) {
+                    var leadId = response.id;
+                    $('#CreateLead').modal('hide');
+                    $('#leadSuccessMessage').removeClass('hidden').css('display', 'block');
+                    $('#leadIDPlaceholder').text(leadId);
+                },
+                error: function (xhr) {
+                    var message = xhr.responseJSON ? xhr.responseJSON.message : 'حدث خطأ غير متوقع';
+                    $('.lead-message').text(message);
+                    $('#leadOverlay').show();
+                    $('#leadFailedMessage').show();
+                }
+            });
+        });
+    });
+</script>

@@ -1,0 +1,2878 @@
+@model lotus_blue.Models.ViewModel.PrepareForDeliveryViewModel
+@using lotus_blue.Models
+@using lotus_blue.OrderStatus
+@using static lotus_blue.Models.Common
+@{
+    Layout = "AllOrdersLayout";
+    ViewData["Title"] = "تنزيل الطلبات";
+    ViewData["MainClass"] = "no-overflow";
+    ViewData["HeaderLeft"] = "<span class=\"hidden\">تعديل</span><span  class=\"hidden\" id=\"execute-op-btn\">نفذ العملية</span>";
+
+    var initialRemainingDownloadCount = Model.RemainingDownloadCount > 0
+        ? Model.RemainingDownloadCount
+        : (Model.OrderQueue != null ? Model.OrderQueue.Count : 0);
+}
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;700&family=Open+Sans:wght@400;700&family=Inter:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+    .hidden {
+        opacity: 0;
+    }
+    /* Header */
+    .header {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px;
+        border-bottom: 1px solid #dee2e6;
+        box-shadow: 0 0 4px rgba(0,0,0,.25);
+        font-weight: 700;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    .header-actions {
+        display: flex;
+        flex-direction: row-reverse;
+        gap: 32px;
+        color: #1d273b;
+    }
+
+    .header-title, .header-back {
+        color: #333;
+    }
+
+    /* Page */
+    .page {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+        padding: 12px 0px !important;
+        margin: 0 !important;
+    }
+
+    /* Banner */
+    .banner {
+        background: #f4ebdc;
+        border-radius: 99px;
+        padding: 8px 62px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        text-align: center;
+        font-weight: 700;
+        font-size: 16px;
+        color: #ee9817;
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* Hide-order */
+    .hide-order-container {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .toggle-order-hide {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 0 12px rgba(0,0,0,.15);
+        padding: 6px 12px;
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        gap: 12px;
+    }
+
+    .toggle-btn {
+        width: 48px;
+        height: 29px;
+        background: #e9e9e9;
+        border-radius: 99px;
+        position: relative;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: background .2s;
+    }
+
+        .toggle-btn::after {
+            content: '';
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            background: #fff;
+            border-radius: 50%;
+            top: 2px;
+            right: 2px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.3);
+            transition: right .2s;
+        }
+
+        .toggle-btn.active {
+            background: #34C85A;
+        }
+
+            .toggle-btn.active::after {
+                right: 21px;
+            }
+
+    .toggle-text {
+        font-weight: 700;
+        font-size: 16px;
+        color: #72777b;
+        line-height: 1.6;
+        text-align: right;
+    }
+
+    .hide-order-note {
+        font-size: 16px;
+        color: #72777b;
+        line-height: 1.6;
+        text-align: right;
+        font-weight: 400;
+    }
+
+    /* Filters */
+    .filters {
+        display: flex;
+        align-items: center;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        width: 100%;
+    }
+
+        .filter-row .select2-container {
+            width: 0 !important;
+            flex: 1 1 0;
+            min-width: 0;
+        }
+
+    .filter-btn {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        height: 42px;
+        flex: 1 1 0;
+        min-width: 0;
+        width: 0 !important;
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        padding: 0 15px;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 13px;
+        color: #333;
+        white-space: nowrap;
+        font-family: inherit;
+    }
+
+    .filter-icon {
+        background: #1d273b;
+        border-radius: 11px;
+        width: 22px;
+        height: 22px;
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+        .filter-icon img {
+            width: 12px;
+            height: 12px;
+        }
+
+    .search-container {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: unset;
+    }
+
+    .search-cancel {
+        font-weight: 700;
+        font-size: 13px;
+        color: #1d273b;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+
+    .search-input-wrap {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        height: 42px;
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 12px;
+        width: 609px;
+        gap: 8px;
+    }
+
+        .search-input-wrap input {
+            border: none;
+            outline: none;
+            font-size: 13px;
+            color: #000;
+            font-family: inherit;
+            text-align: right;
+            direction: rtl;
+            flex: 1;
+            background: transparent;
+        }
+
+    .cancel-search-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        width: 12px;
+        height: 12px;
+        background: #1d273b;
+        border-radius: 50%;
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        left: 12px;
+        z-index: 10;
+    }
+
+    .search-icon-btn {
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    /* Remaining orders */
+    .remaining-orders {
+        background: #f6f6f6;
+        border-radius: 8px;
+        box-shadow: 0 0 4px rgba(0,0,0,.25);
+        width: 100%;
+        padding-bottom: 8px;
+    }
+
+    .remaining-orders-title {
+        padding: 4px 23px;
+        gap: 8px;
+        height: 21px;
+        font-weight: 700;
+        font-size: 11px;
+        line-height: 13px;
+        color: #1d273b;
+    }
+
+    .order-cards-row, .order-cards-skeleton-row {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        padding: 0 12px;
+        overflow-x: hidden;
+        cursor: pointer;
+    }
+
+    .order-card {
+        border-radius: 8px;
+        flex-shrink: 0;
+        cursor: pointer;
+    }
+
+        .order-card img {
+            width: 100px;
+            height: 60px;
+            display: block;
+            border-radius: 8px;
+        }
+
+    .skeleton-card {
+        width: 100px;
+        height: 60px;
+        border-radius: 8px;
+        flex-shrink: 0;
+        background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.4s ease-in-out infinite;
+    }
+
+    .filler-space {
+        flex: 1;
+        background: #fff;
+        border-radius: 8px;
+        height: 60px;
+        min-width: 40px;
+    }
+
+    /* Main 3-col */
+    .main-content {
+        display: flex;
+        flex-direction: row-reverse;
+        gap: 12px;
+        align-items: flex-start;
+        width: 100%;
+    }
+
+    .panel {
+        background: #fff;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        box-shadow: 0 0 4px rgba(0,0,0,.25);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: border-color .15s;
+    }
+
+        .panel:hover {
+            border-color: #1d273b;
+        }
+
+    .panel-header {
+        background: #f9f9f9;
+        padding: 7px 23px;
+        text-align: right;
+        font-weight: 700;
+        font-size: 16px;
+        color: #1d273b;
+        flex-shrink: 0;
+    }
+
+    /* Order Details */
+    .order-details {
+        flex: 1;
+        min-width: 0;
+        align-self: stretch;
+        position: relative;
+    }
+
+    .nd-employee-block {
+        position: absolute;
+        top: 56px;
+        right: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        z-index: 5;
+    }
+
+    .nd-employee-photo {
+        width: 42px;
+        height: 42px;
+        object-fit: cover;
+    }
+
+    .nd-employee-name {
+        position: absolute;
+        top: 56px;
+        right: 94px;
+        display: flex;
+        align-items: center;
+        height: 42px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #1d273b;
+        white-space: nowrap;
+        z-index: 5;
+    }
+
+    .nd-created-date {
+        font-size: 13px;
+        color: #555;
+        white-space: nowrap;
+        text-align: center;
+    }
+
+    .downloaded-label {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-weight: 700;
+        font-size: 44px;
+        color: #000;
+        z-index: 10;
+    }
+
+    .details-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 16px 0 8px;
+        min-height: 160px;
+    }
+
+        .details-header .detail-value {
+            padding: 0;
+        }
+
+        .details-header h2 {
+            font-weight: 700;
+            font-size: 16px;
+            color: #000;
+            margin-bottom: 0;
+        }
+
+    .details-table {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0 48px;
+        padding: 7px 23px;
+        width: 100%;
+    }
+
+    .detail-header {
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: flex-start;
+        justify-content: flex-end;
+        padding: 4px 20px 4px 0;
+        font-weight: 700;
+        font-size: 16px;
+        color: #000;
+        white-space: nowrap;
+    }
+
+    .detail-value {
+        background: #fff;
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 4px 20px;
+        font-size: 16px;
+        color: #000;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+        .detail-value:hover {
+            color: #1d273b;
+        }
+
+    .badge-payment-status.paid {
+        background: #28a745;
+    }
+
+    .badge-payment-status.unpaid {
+        background: red;
+    }
+
+    .detail-value:hover .badge-code,
+    .detail-value:hover .badge-payment-status {
+        background: #1d273b !important;
+    }
+
+    .detail-value:hover .product-mini-table {
+        background: rgba(24,160,136,.1);
+    }
+
+    .detail-value.teal {
+        color: #2ab149;
+    }
+
+    .detail-value img.flag {
+        width: 15px;
+        height: 12px;
+        object-fit: cover;
+    }
+
+    .badge-code {
+        background: #192744;
+        color: #fff;
+        font-weight: 700;
+        font-size: 20px;
+        line-height: 24px;
+        border-radius: 800px;
+        padding: 3px 47px;
+        white-space: nowrap;
+        font-family: 'Open Sans', sans-serif;
+    }
+
+    .badge-payment-status {
+        background: red;
+        color: #fff;
+        font-weight: 700;
+        font-size: 20px;
+        line-height: 24px;
+        border-radius: 800px;
+        padding: 4px 53px;
+        white-space: nowrap;
+        width: 148px;
+        text-align: center;
+        font-family: 'Open Sans', sans-serif;
+    }
+
+    .badge-code, .badge-payment-status {
+        display: flex;
+        width: 148px;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .product-mini-table {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 0 4px rgba(0,0,0,.2);
+        width: 197px;
+        overflow: hidden;
+    }
+
+    .mini-row {
+        display: flex;
+        flex-direction: row-reverse;
+        border-bottom: 1px solid #dee2e6;
+        border-top: 1px solid #dee2e6;
+        height: 25px;
+        font-family: 'Open Sans', 'Noto Sans Arabic', sans-serif;
+        font-size: 13px;
+        color: #6c757d;
+    }
+
+        .mini-row.tall {
+            height: 49px;
+        }
+
+    .mini-qty {
+        width: 26px;
+        border-left: 1px solid #dee2e6;
+        border-right: 1px solid #dee2e6;
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .mini-name {
+        flex: 1;
+        border-left: 1px solid #dee2e6;
+        border-right: 1px solid #dee2e6;
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        justify-content: center;
+        padding: 0 4px;
+        text-align: center;
+        overflow: hidden;
+    }
+
+    .mini-img {
+        width: 42px;
+        border-left: 1px solid #dee2e6;
+        border-right: 1px solid #dee2e6;
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+        .mini-img img {
+            width: 25px;
+            height: 20px;
+            object-fit: cover;
+        }
+
+    .total-value {
+        color: #1d273b;
+        font-size: 16px;
+        flex-direction: row;
+    }
+
+    .cancel-x-btn {
+        position: absolute;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: none;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        left: 15px;
+        box-shadow: 0 0 4px rgba(255,0,0,.5);
+    }
+
+        .cancel-x-btn .cancel-hover {
+            display: none;
+        }
+
+        .cancel-x-btn:hover {
+            background: #ff0000;
+            box-shadow: 0 0 4px rgba(255,0,0,.5);
+        }
+
+            .cancel-x-btn:hover .cancel-default {
+                display: none;
+            }
+
+            .cancel-x-btn:hover .cancel-hover {
+                display: block;
+            }
+
+    .premium-logo {
+        position: absolute;
+        top: 50px;
+        right: 15px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .premium-label {
+        font-weight: 700;
+        font-size: 14px;
+        color: #ffcd38;
+    }
+
+    /* Products panel */
+    .products-panel {
+        width: 328px;
+        flex-shrink: 0;
+        align-self: stretch;
+    }
+
+    .products-gallery {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        padding: 16px 16px 8px;
+        flex: 1;
+    }
+
+    .product-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .product-img-wrap {
+        background: #f6f6f6;
+        border-radius: 16px;
+        width: 100%;
+        aspect-ratio: 1;
+        overflow: hidden;
+        box-shadow: 0 0 4px rgba(0,0,0,.39);
+        margin-bottom: 4px;
+    }
+
+        .product-img-wrap:hover {
+            background: #c6cbd6;
+        }
+
+        .product-img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            transition: transform .2s;
+        }
+
+        .product-img-wrap:hover img {
+            transform: scale(1.15);
+        }
+
+    .product-name {
+        font-weight: 700;
+        font-size: 8px;
+        color: #000;
+        text-align: center;
+        width: 100%;
+    }
+
+    .product-qty {
+        font-weight: 700;
+        font-size: 8px;
+        color: #787878;
+        text-align: center;
+        width: 100%;
+    }
+
+    .order-status-section {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 4px;
+        align-items: flex-start;
+        padding: 8px 16px;
+        flex: 1;
+        margin-bottom: 32px;
+    }
+
+    .order-status-label {
+        font-weight: 700;
+        font-size: 16px;
+        color: #1d273b;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .status-badge {
+        background: rgba(0,123,255,.1);
+        color: #007bff;
+        font-weight: 700;
+        font-size: 18px;
+        border-radius: 8px;
+        padding: 8px 44px;
+        white-space: nowrap;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .submit-section {
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 0 7px 6px;
+    }
+
+    .btn-confirm {
+        background: #2ab149;
+        color: #fff;
+        font-weight: 700;
+        font-size: 16px;
+        border: none;
+        border-radius: 8px;
+        height: 45px;
+        width: 314px;
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+        font-family: inherit;
+    }
+
+        .btn-confirm img {
+            width: 16px;
+            height: 16px;
+        }
+
+    /* Warehouse tag (Libya only) */
+    .warehouse-tag {
+        font-weight: bold;
+        background-color: #fef0e7;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #fc9008;
+        border-radius: 99px;
+        padding: 2px 40px 2px;
+        color: #fc9008;
+        font-size: 18px;
+        font-weight: 400;
+        white-space: nowrap;
+        line-height: normal;
+        width: unset;
+        cursor: pointer;
+        transition: background .15s;
+    }
+
+        .warehouse-tag:hover {
+            background: rgba(0,150,136,.1);
+        }
+    /* Route string tag (Libya odd-case: غير متوفر توصيل) */
+    .route-string {
+        background-color: #fdf9ed;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2px 20px;
+        color: #d5a46e;
+        font-size: 18px;
+        font-weight: 400;
+        white-space: nowrap;
+        line-height: normal;
+        width: unset;
+        cursor: pointer;
+        transition: background .15s;
+        border-color: #d5a46e;
+    }
+
+        .route-string:hover {
+            background: rgba(0,150,136,.1);
+        }
+
+    /* Shipments panel */
+    .shipments-panel {
+        width: 164px;
+        flex-shrink: 0;
+        align-self: stretch;
+        position: relative;
+        width: 200px;
+    }
+
+    .col3-inner {
+        position: absolute;
+        inset: 0;
+        overflow-y: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .delivery-codes-container {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .delivery-section {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 0 4px;
+        padding-top: 0;
+        padding-bottom: 8px
+    }
+
+        .delivery-section:hover {
+            background: rgba(204,230,225,.5);
+        }
+
+    .delivery-row {
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: flex-end;
+        gap: 8px;
+        height: 32px;
+        padding: 5px 8px 5px 4px;
+        border-bottom: 0.5px solid #e0e0e0;
+        width: 100%;
+    }
+
+    .delivery-time {
+        font-size: 12px;
+        color: #787878;
+        width: 31px;
+        text-align: center;
+        flex-shrink: 0;
+        height: 9px;
+    }
+
+    .delivery-time-wrap {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+    }
+
+    .delivery-info {
+        flex: 1;
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 4px;
+    }
+
+    .delivery-code-num {
+        font-size: 14px;
+        color: #000;
+        white-space: nowrap;
+        height: 22px;
+    }
+
+    .delivery-flag {
+        width: 20px;
+        height: 16px;
+        object-fit: cover;
+        flex-shrink: 0;
+        margin-bottom: 6px;
+    }
+
+    .copy-icon-btn {
+        cursor: pointer;
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+    }
+
+        .copy-icon-btn img {
+            width: 17px;
+            height: 17px;
+        }
+
+    .return-btn-wrap {
+        padding: 0 7px 6px;
+        flex-shrink: 0;
+    }
+
+    .btn-return {
+        background: #ffcd38;
+        color: #fff;
+        font-weight: 700;
+        font-size: 16px;
+        border: none;
+        border-radius: 8px;
+        height: 45px;
+        width: 100%;
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: opacity .2s;
+    }
+
+        .btn-return:disabled {
+            background: #c8c8c8;
+            cursor: default;
+            opacity: .6;
+        }
+
+        .btn-return img {
+            width: 24px;
+            height: 24px;
+            filter: brightness(0) invert(1);
+        }
+
+    /* Skeleton shimmer */
+    @@keyframes shimmer {
+        0% {
+            background-position: -200% 0;
+        }
+
+        100% {
+            background-position: 200% 0;
+        }
+    }
+
+    .delivery-skeleton-row {
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        gap: 8px;
+        height: 32px;
+        padding: 5px 8px 5px 4px;
+        border-bottom: 0.5px solid #e0e0e0;
+        width: 100%;
+    }
+
+        .delivery-skeleton-row > div {
+            border-radius: 6px;
+            background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s ease-in-out infinite;
+        }
+
+    .sk-flag {
+        width: 20px;
+        height: 14px;
+        flex-shrink: 0;
+    }
+
+    .sk-code {
+        flex: 1;
+        height: 14px;
+    }
+
+    .sk-time {
+        width: 31px;
+        height: 10px;
+        flex-shrink: 0;
+    }
+
+    /* Skeleton shared base */
+    .sk-block {
+        border-radius: 6px;
+        background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.4s ease-in-out infinite;
+    }
+
+    /* Col1 skeletons */
+    .sk-details-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 16px 0 8px;
+    }
+
+    .sk-h2 {
+        width: 100px;
+        height: 18px;
+    }
+
+    .sk-subline {
+        width: 180px;
+        height: 14px;
+    }
+
+    .sk-badge-lg {
+        width: 148px;
+        height: 32px;
+        border-radius: 800px;
+    }
+
+    .sk-detail-row {
+        display: contents;
+    }
+
+    .sk-label {
+        height: 16px;
+        width: 80px;
+        align-self: center;
+        justify-self: end;
+        margin: 4px 20px 4px 0;
+    }
+
+    .sk-value {
+        height: 16px;
+        border-radius: 6px;
+        margin: 4px 20px;
+    }
+
+        .sk-value.wide {
+            width: 140px;
+        }
+
+        .sk-value.med {
+            width: 100px;
+        }
+
+        .sk-value.full {
+            width: 100%;
+        }
+
+    .sk-mini-table {
+        width: 197px;
+        height: 130px;
+        border-radius: 8px;
+        margin: 4px 20px;
+    }
+
+    /* Col2 skeletons */
+    .sk-product-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .sk-product-img {
+        width: 100%;
+        aspect-ratio: 1;
+        border-radius: 16px;
+    }
+
+    .sk-product-name {
+        width: 70%;
+        height: 8px;
+    }
+
+    .sk-product-qty {
+        width: 50%;
+        height: 8px;
+    }
+
+    .sk-status-label {
+        width: 80px;
+        height: 16px;
+        margin-bottom: 4px;
+    }
+
+    .sk-status-badge {
+        width: 140px;
+        height: 40px;
+        border-radius: 8px;
+    }
+
+    /* Fade-in when skeleton swaps to real content */
+    #nd-col1-header, #nd-col1-table,
+    #nd-col2-gallery, #nd-col2-status,
+    #nd-col3-list {
+        animation: ndFadeIn 0.3s ease-out;
+    }
+
+    /* Preview mode: dim col1 and col2 */
+    .order-details,
+    .products-panel {
+        transition: opacity 0.2s;
+    }
+
+    .pfd-preview-mode .order-details,
+    .pfd-preview-mode .products-panel {
+        opacity: 0.4;
+        pointer-events: none;
+    }
+
+    .pfd-preview-mode .cancel-x-btn {
+        pointer-events: auto;
+    }
+
+    .pfd-preview-mode .submit-section,
+    .pfd-preview-mode #nd-col3-return-wrap {
+        display: none !important;
+    }
+
+    @@keyframes ndFadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+</style>
+
+
+
+<style id="pfd-employee-filter-select2-style">
+    /* نفس شكل باقي فلاتر تنزيل الطلبات: نفس الخط والحجم والـ Select2، مع تغيير النص فقط */
+    #EmployeeId + .select2-container:not(.pfd-employee-has-value) .select2-selection__clear {
+        display: none !important;
+    }
+
+    .pfd-employee-filter-rendered {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 6px !important;
+        width: 100% !important;
+        direction: rtl !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        font: inherit !important;
+        color: inherit !important;
+        line-height: inherit !important;
+    }
+
+        .pfd-employee-filter-rendered .filter-icon {
+            width: 22px !important;
+            height: 22px !important;
+            min-width: 22px !important;
+            border-radius: 11px !important;
+            background: #18a088 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            flex-shrink: 0 !important;
+        }
+
+            .pfd-employee-filter-rendered .filter-icon svg {
+                width: 12px !important;
+                height: 12px !important;
+                display: block !important;
+            }
+
+    .pfd-employee-filter-text {
+        font: inherit !important;
+        color: inherit !important;
+        line-height: inherit !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .pfd-employee-filter-avatar {
+        width: 22px !important;
+        height: 22px !important;
+        min-width: 22px !important;
+        border-radius: 50% !important;
+        object-fit: cover !important;
+        flex-shrink: 0 !important;
+    }
+</style>
+
+<link rel="stylesheet" href="/css/toastify.css" />
+@* Main page wrapper: full-width on small screens, fluid container with top padding and "page" class *@
+<div class="w-sm-100 mt-3 mt-md-3 container-fluid px-3 pt-3 page">
+    <!-- Orange banner -->
+    <div class="banner">تنفيذ من العمليات المحفوظة</div>
+
+    <!-- Hide-order section -->
+    <div id="hideOrderContainer" class="hide-order-container mt-2" style="display:none;">
+        <div class="toggle-order-hide">
+            <div id="hideOrderToggle" class="toggle-btn"></div>
+            <p class="toggle-text">
+                أريد إخفاء معلومات الطلب<br>
+                التابع لكود شحنة رقم <span id="hideOrderCode">-</span> التابع لدولة <span id="hideOrderCountry">-</span>
+            </p>
+        </div>
+        <p class="hide-order-note">
+            عند إخفاء الطلب سيتم إخفاؤه من الواجهة وإعادة الطلب عند الإنتهاء من جميع باقي الطلبات.
+        </p>
+    </div>
+
+    <!-- ═══════════ ROW 1: Filters ═══════════
+         Dropdowns for Country, Store, Delivery Company + a search input.
+         All changes trigger loadFilteredQueue() via JS to refresh the order queue below. -->
+    <div class="filters mt-2">
+        <div class="filter-row">
+            <div id="pfd-add-order-btn" class="text-nowrap open custom-inpage-dropdown d-flex justify-content-start align-items-center" style="cursor:pointer;flex: 1;">
+                <img src="/mainicons/file-circle-plus-regular.svg" width="25" height="25" />
+                <span class="pe-2 flex-grow-1">إضافة طلب جديد</span>
+                <i class="fa-duotone ps-0 fa-chevron-down"></i>
+            </div>
+            <select id="CountryId" name="Country" class="form-control drop-down-design filter-btn">
+            </select>
+            <select id="StoreNameId" name="StoreName" class="form-control drop-down-design filter-btn">
+            </select>
+            <select id="DeliveryCompanyId" name="DeliveryCompany" class="form-control drop-down-design filter-btn">
+            </select>
+            @if (User.IsInRole("Admin") || User.IsInRole("FollowUpDepartment") || User.IsInRole("ExecutiveDirector"))
+            {
+                <select id="EmployeeId" name="Employee" class="form-control drop-down-design filter-btn">
+                </select>
+            }
+        </div>
+        <div class="d-flex align-items-center gap-2 search-container">
+            <div class="input-group custom-width-search-input input_with_icon">
+                <input type="text" id="searchInput" name="search" class="pe-5 text-dark custom-box-shadow Search search-input" placeholder="ابحث عن الشحنات...">
+                <span class="icon search-icon">
+                    <img src="/mainicons/search.svg" alt="search" width="20" height="20" />
+                </span>
+                <span class="cancel-search-btn round hidden">
+                    <img src="/mainicons/cancel search.svg" alt="cancel" width="6" height="6" style="display:block;" />
+                </span>
+            </div>
+            <span class="search-cancel">إلغاء</span>
+        </div>
+    </div>
+
+    <!-- ═══════════ ROW 2: Order Queue ═══════════
+     Horizontal strip of SVG order cards. First card = active.
+     Clicking the row calls onQueueRowClick() to load the top order. -->
+    <div class="remaining-orders">
+        <div class="remaining-orders-title" id="remainingOrdersTitle">
+            باقي الطلبات @initialRemainingDownloadCount
+        </div>
+        <div id="orderQueueRow" class="order-cards-row" onclick="onQueueRowClick()">
+            @if (Model.OrderQueue != null && Model.OrderQueue.Any())
+            {
+                @for (int i = 0; i < Model.OrderQueue.Count; i++)
+                {
+                    var isActive = i == 0;
+                    <div class="order-card@(Model.OrderQueue[i].IsDelayed ? " is-delayed" : "")" data-order-id="@Model.OrderQueue[i].Id" data-is-delayed="@(Model.OrderQueue[i].IsDelayed ? "true" : "false")">
+                        <img src="/mainicons/@(isActive ? "active order card" : "order card").svg" alt="@(isActive ? "active order" : "order")" />
+                    </div>
+                }
+            }
+        </div>
+        <div class="order-cards-skeleton-row">
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+        </div>
+    </div>
+
+
+
+    <!-- ═══════════ NEW DESIGN: Main 3-column content ═══════════ -->
+    <div id="pfd-new-design" class="main-content">
+
+        <!-- Column 1: Order Details -->
+        <div class="panel order-details">
+            <div class="panel-header">معلومات الطلب</div>
+
+            <!-- Employee photo + order creation date (absolutely positioned in panel body) -->
+            <div id="nd-employee-block" class="nd-employee-block" style="display:none;">
+                <img id="nd-employee-photo" class="nd-employee-photo b-r-50" src="" alt="" />
+                <div id="nd-created-date" class="nd-created-date"></div>
+            </div>
+            <div id="nd-employee-name" class="nd-employee-name" style="display:none;"></div>
+
+            <!-- "تم التنزيل" overlay (shown in preview mode) -->
+            <div id="nd-downloaded-label" class="downloaded-label" style="display:none;">تم التنزيل</div>
+
+            <!-- Cancel X button -->
+            <button class="cancel-x-btn" style="top:60px;" aria-label="إلغاء">
+                <img class="cancel-default" src="/mainicons/hide order.svg" alt="close" width="13" height="13" />
+                <img class="cancel-hover" src="/mainicons/hide order hover.svg" alt="close" width="13" height="13" />
+            </button>
+
+            <!-- Premium badge (hidden until data loads) -->
+            <div id="nd-premium-badge" class="premium-logo hidden" style="display:none;">
+                <img src="/mainicons/Premium Order Logo.svg" alt="premium" width="46" height="41" />
+            </div>
+
+            <!-- Skeleton for header -->
+            <div id="nd-col1-skeleton-header" class="sk-details-header">
+                <div class="sk-block sk-h2"></div>
+                <div class="sk-block sk-subline"></div>
+                <div class="sk-block sk-badge-lg"></div>
+            </div>
+            <!-- Real header (hidden until loaded) -->
+            <div id="nd-col1-header" class="details-header" style="display:none;"></div>
+
+            <!-- Skeleton for detail rows -->
+            <div id="nd-col1-skeleton-table" class="details-table">
+                <div class="sk-block sk-label"></div><div class="sk-block sk-value wide"></div>
+                <div class="sk-block sk-label"></div><div class="sk-block sk-value med"></div>
+                <div class="sk-block sk-label"></div><div class="sk-block sk-value med"></div>
+                <div class="sk-block sk-label"></div><div class="sk-block sk-value med"></div>
+                <div class="sk-block sk-label"></div><div class="sk-block sk-value med"></div>
+                <div class="sk-block sk-label"></div><div class="sk-block sk-value full"></div>
+                <div class="sk-block sk-label"></div><div class="sk-block sk-value wide"></div>
+                <div class="sk-block sk-label"></div><div class="sk-block sk-badge-lg" style="border-radius:800px;margin:4px 20px;"></div>
+                <div class="sk-block sk-label"></div><div class="sk-block sk-badge-lg" style="border-radius:800px;margin:4px 20px;"></div>
+                <div class="sk-block sk-label"></div><div class="sk-block sk-mini-table"></div>
+                <div class="sk-block sk-label"></div><div class="sk-block sk-value med"></div>
+            </div>
+            <!-- Real detail rows (hidden until loaded) -->
+            <div id="nd-col1-table" class="details-table" style="display:none;"></div>
+        </div>
+
+        <!-- Column 2: Products -->
+        <div class="panel products-panel">
+            <div class="panel-header">المنتجات</div>
+
+            <!-- Skeleton gallery -->
+            <div id="nd-col2-skeleton" class="products-gallery">
+                <div class="sk-product-card"><div class="sk-block sk-product-img"></div><div class="sk-block sk-product-name"></div><div class="sk-block sk-product-qty"></div></div>
+                <div class="sk-product-card"><div class="sk-block sk-product-img"></div><div class="sk-block sk-product-name"></div><div class="sk-block sk-product-qty"></div></div>
+                <div class="sk-product-card"><div class="sk-block sk-product-img"></div><div class="sk-block sk-product-name"></div><div class="sk-block sk-product-qty"></div></div>
+                <div class="sk-product-card"><div class="sk-block sk-product-img"></div><div class="sk-block sk-product-name"></div><div class="sk-block sk-product-qty"></div></div>
+                <div class="sk-product-card"><div class="sk-block sk-product-img"></div><div class="sk-block sk-product-name"></div><div class="sk-block sk-product-qty"></div></div>
+                <div class="sk-product-card"><div class="sk-block sk-product-img"></div><div class="sk-block sk-product-name"></div><div class="sk-block sk-product-qty"></div></div>
+            </div>
+            <!-- Real gallery (hidden until loaded) -->
+            <div id="nd-col2-gallery" class="products-gallery" style="display:none;"></div>
+
+            <!-- Skeleton status -->
+            <div id="nd-col2-skeleton-status" class="order-status-section">
+                <div class="sk-block sk-status-label"></div>
+                <div class="sk-block sk-status-badge"></div>
+            </div>
+            <!-- Real status (hidden until loaded) -->
+            <div id="nd-col2-status" class="order-status-section" style="display:none;"></div>
+
+            <div class="submit-section">
+                <button id="nd-submit-btn" class="btn-confirm" disabled>
+                    تأكيد إدخال الطلب
+                    <img src="/mainicons/submit.svg" alt="confirm" />
+                </button>
+            </div>
+        </div>
+
+        <!-- Column 3: Shipments -->
+        <div class="panel shipments-panel">
+            <div class="col3-inner">
+                <div class="panel-header">الشحنات</div>
+
+                <div id="nd-col3-list" class="delivery-codes-container">
+                    @if (Model.RecentlySubmittedOrders != null && Model.RecentlySubmittedOrders.Any())
+                    {
+                        @foreach (var submitted in Model.RecentlySubmittedOrders)
+                        {
+                            <div class="delivery-section" data-order-id="@submitted.Id" style="cursor:pointer;">
+                                <div class="delivery-row">
+                                    <div class="delivery-time-wrap"><div class="delivery-time">@submitted.LastEditedDate?.ToString("HH:mm")</div></div>
+                                    <div class="delivery-info">
+                                        <div class="copy-icon-btn" onclick="event.stopPropagation(); copyToClipboard('@submitted.Id', 'كود الشحنة')"><img src="/mainicons/copy icon.svg" alt="copy" /></div>
+                                        <span class="delivery-code-num">@submitted.Id</span>
+                                        <img class="delivery-flag" src="@Common.GetImageUrlByCountryName(submitted.Country.ToString())" alt="flag" />
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="empty-state-body" style="padding:16px 0;">
+                            <img class="empty-exclamation" src="/mainicons/exclamation mark.svg" alt="" />
+                            <p class="empty-state-text">لا توجد شحنات مدخلة خلال الـ24 ساعة الماضية..</p>
+                        </div>
+                    }
+                </div>
+
+                <div id="nd-col3-return-wrap" class="return-btn-wrap" style="display:none;">
+                    <button id="nd-col3-return-btn" class="btn-return" disabled>
+                        الطلب السابق
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M19 7v4H5.83l3.58-3.59L8 6l-6 6 6 6 1.41-1.41L5.83 13H21V7h-2z" /></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /main-content -->
+
+</div>
+<!-- ═══════════ STYLES ═══════════
+     Scoped CSS for this page: queue cards, product grid, submitted list,
+     search input, copy-hover effect, and responsive helpers. -->
+<style>
+    .pfd-queue-card {
+        background: #fff;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 8px 18px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 14px;
+        transition: all 0.2s;
+        box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.1);
+    }
+
+        .pfd-queue-card:hover {
+            border-color: #30cb52;
+            background: #f0fff4;
+        }
+
+    .pfd-queue-active {
+        border-color: #30cb52;
+        background: #e6ffe6;
+        box-shadow: 0px 0px 8px rgba(48, 203, 82, 0.3);
+    }
+
+    .pfd-copyable {
+        cursor: pointer;
+        border-radius: 6px;
+        padding: 4px;
+        transition: background 0.15s;
+    }
+
+        .pfd-copyable:hover {
+            background: #f0f0f0;
+        }
+
+    .pfd-submitted-row:hover {
+        background: #e8e8e8 !important;
+    }
+
+    .pfd-products-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+
+    .pfd-product-cell {
+        background: #f8f9fa;
+        border-radius: 23px;
+        padding: 12px 12px;
+        padding-bottom: 4px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+        .pfd-product-cell img {
+            margin-bottom: 8px;
+        }
+
+    .pfd-order-status-badge {
+        display: inline-block;
+        padding: 0.375rem 0.75rem;
+        border-radius: 29px;
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+        background: rgb(226, 238, 250);
+        color: rgb(10, 70, 180);
+    }
+
+    .custom-shadow {
+        color: black;
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2);
+        border-radius: 8px !important;
+        padding-right: 1rem;
+        padding-left: 1rem;
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    .input-group {
+        position: relative;
+    }
+
+    .search-input {
+        height: 2rem;
+        flex: 1;
+    }
+
+    .round {
+        border-radius: 99px !important
+    }
+
+    .icon {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .search {
+        font-size: 18px;
+        font-weight: bold;
+    }
+
+    .clear-search-icon {
+        left: 10px;
+        cursor: pointer;
+    }
+
+    .search-icon {
+        right: 15px;
+        z-index: 1;
+    }
+
+    .icon.search-icon {
+        z-index: 10 !important;
+    }
+
+    #searchingshow {
+        visibility: hidden;
+        z-index: 9;
+    }
+
+    .custom-inpage-dropdown {
+        background-color: #ffffff;
+        box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+        border-radius: 8px !important;
+        padding: 6px;
+        font-size: 18px;
+        font-weight: bold;
+    }
+
+    .custom-width {
+        flex: 1;
+    }
+
+    .custom-width-search-input {
+        width: 38%;
+        align-items: center;
+        flex-wrap: nowrap;
+        height: unset;
+    }
+    /* Full-width toast notifications */
+    .toastify {
+        width: calc(100% - 32px) !important;
+        max-width: none !important;
+        left: 16px !important;
+        right: 16px !important;
+        transform: none !important;
+        text-align: center;
+    }
+
+    .pfd-submitted-list-center {
+        text-align: center !important;
+    }
+    /* ── Empty state ── */
+    .empty-state-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 0;
+    }
+
+    .empty-exclamation {
+        width: 11px;
+        height: 53px;
+        flex-shrink: 0;
+    }
+
+    .empty-no-products {
+        width: 48px;
+        height: 75px;
+        flex-shrink: 0;
+    }
+
+    .empty-state-text {
+        font-weight: 700;
+        font-size: 16px;
+        color: #707070;
+        text-align: center;
+        width: 300px;
+        max-width: 100%;
+        line-height: 19px;
+    }
+
+        .empty-state-text p {
+            margin: 0;
+        }
+
+    .empty-order-details {
+        position: relative;
+        overflow: hidden;
+        min-height: 520px;
+    }
+
+        .empty-order-details #nd-col1-header {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+        }
+
+        .empty-order-details .empty-state-body {
+            flex: none;
+            width: 100%;
+        }
+
+    .empty-products-panel {
+        min-height: 520px;
+    }
+
+    .empty-create-btn-row {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 69px;
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        padding: 12px 16px;
+        box-sizing: border-box;
+    }
+
+    .btn-create-order {
+        background: #1d273b;
+        color: #fff;
+        font-weight: 700;
+        font-size: 16px;
+        border: none;
+        border-radius: 99px;
+        width: 180px;
+        height: 45px;
+        padding: 19px 62px;
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        cursor: pointer;
+        font-family: inherit;
+        white-space: nowrap;
+        box-sizing: border-box;
+    }
+
+        .btn-create-order img {
+            flex-shrink: 0;
+        }
+</style>
+<!-- ═══════════ SCRIPTS ═══════════
+     All client-side logic for this page. Sections inside:
+     - copyToClipboard()       Toast + clipboard helper
+     - onQueueRowClick()       Loads the top queue order on row click
+     - loadOrderData()         AJAX fetch of a single order's details/products
+     - renderOrderDetail()     Rebuilds the Col1 HTML from fetched order data
+     - renderProducts()        Rebuilds the Col2 products grid
+     - updateSubmitButton()    Enables/disables confirm button based on order status
+     - Filter handlers         Country/Store/DeliveryCompany dropdowns + search debounce
+     - Submitted row click     Col3 click → preview mode (loads order without enabling submit)
+     - Submit button click     POSTs to /PrepareForDelivery/SubmitOrder, updates queue + Col3
+     - loadDefaultQueue()      Fetches unfiltered طلب_جديد queue from server
+     - loadFilteredQueue()     Fetches queue filtered by current dropdown/search values
+     - renderQueueCards()      Rebuilds Row 2 queue strip from fetched order list
+     - addToRecentlySubmitted() Prepends a new row to Col3 after a successful submit
+     - countryImageMap         Razor-generated JS map of country name → flag image URL
+     - escapeHtml/escapeQuotes Sanitization helpers for dynamic HTML injection -->
+<script src="/js/toastify-js.js"></script>
+<script>
+    var pfdCountriesUrl = '/DataList/GetPfdCountries';
+
+    @if (User.IsInRole("CallCenter"))
+    {
+        <text>
+            // Hide delivery company id 77 (Amyal) from the PFD filter dropdown for CallCenter users —
+            // backend also filters its orders out for this role.
+            $(document).ajaxComplete(function (event, xhr, settings) {
+            if (settings && settings.url && settings.url.indexOf('/DataList/GetAllDeliveryCompanies') !== -1) {
+            $('#DeliveryCompanyId option[value="@lotus_blue.Controllers.PrepareForDeliveryController.CallCenterHiddenDeliveryCompanyId"]').remove();
+            }
+            });
+        </text>
+    }
+
+    var currentOrderId = @(Model.CurrentOrder?.Id ?? 0);
+    var currentCountryId = 0;
+    var isPreviewMode = false;
+    var pfdRemainingDownloadsCount = @initialRemainingDownloadCount;
+
+    function updatePfdDownloadBadge(count) {
+    var safeCount = parseInt(count, 10);
+    if (isNaN(safeCount) || safeCount < 0) {
+    safeCount = 0;
+    }
+
+    pfdRemainingDownloadsCount = safeCount;
+
+    var $badges = $('#pfdRemainingDownloadsBadge, .pfd-remaining-download-count, [data-pfd-remaining-download-count]');
+    if (!$badges.length) return;
+
+    $badges
+    .text(safeCount)
+    .attr('data-count', safeCount)
+    .css('display', 'inline-flex');
+    }
+
+    $(function () {
+    updatePfdDownloadBadge(pfdRemainingDownloadsCount);
+    });
+
+    // Country IDs whose phone numbers are shown and copied without country code or leading 0.
+    var stripCountryCodeCountryIds = [
+    @((int)Countries.البحرين),
+    @((int)Countries.الكويت),
+    @((int)Countries.سلطنة_عمان),
+    @((int)Countries.قطر)
+    ];
+    var phoneCodesByCountryId = @Html.Raw(Json.Serialize(Common.PhoneNumberCodesByCountry.ToDictionary(kv => ((int)kv.Key).ToString(), kv => kv.Value)));
+
+    function stripCountryCodeAndLeadingZero(raw, countryId) {
+    if (!raw) return '';
+    var cleaned = String(raw).replace(/[-\s]/g, '');
+    if (!cleaned) return '';
+    var code = phoneCodesByCountryId[countryId];
+    var digits = code ? code.replace(/^\+/, '') : '';
+    if (digits) {
+    if (cleaned.indexOf('00' + digits) === 0) cleaned = cleaned.substring(2 + digits.length);
+    else if (cleaned.indexOf('+' + digits) === 0) cleaned = cleaned.substring(1 + digits.length);
+    }
+    if (cleaned.charAt(0) === '0') cleaned = cleaned.substring(1);
+    return cleaned;
+    }
+
+    function phoneForPfdDisplay(raw, countryId) {
+    return stripCountryCodeCountryIds.indexOf(countryId) >= 0
+    ? stripCountryCodeAndLeadingZero(raw, countryId)
+    : (raw || '');
+    }
+    // ── Toast notification ──
+    function copyToClipboard(text, fieldName) {
+    if (!text || text === 'null' || text === '') return;
+    // Libya: strip leading 0 from phone numbers
+    if (currentCountryId === @((int)Countries.ليبيا) && fieldName === 'رقم الهاتف' && text.charAt(0) === '0') {
+    text = text.substring(1);
+    }
+    // Bahrain / Kuwait / Oman / Qatar: phones are already rendered without code+leading-0,
+    // but copy strings come from the raw telephoneNumber, so strip here too.
+    if (fieldName === 'رقم الهاتف' && stripCountryCodeCountryIds.indexOf(currentCountryId) >= 0) {
+    text = stripCountryCodeAndLeadingZero(text, currentCountryId);
+    }
+    // Wrap phone numbers with LTR directional marks so they paste left-to-right in RTL contexts
+    if (fieldName === 'رقم الهاتف') {
+    text = '‪' + text + '‬';
+    }
+    var showSuccess = function () {
+    Toastify({
+    text: "تم نسخ " + fieldName,
+    duration: 2000,
+    gravity: "bottom",
+    position: "center",
+    style: { background: "#2ab149", borderRadius: "8px", fontWeight: "bold" }
+    }).showToast();
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(showSuccess);
+    } else {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showSuccess();
+    }
+    }
+    // ── Row 2 click: load the top order from the already-rendered queue ──
+    function onQueueRowClick() {
+    isPreviewMode = false;
+    $('#pfd-new-design').removeClass('pfd-preview-mode');
+    $('#nd-downloaded-label').hide();
+    var topOrderId = $('#orderQueueRow .order-card:first').data('order-id');
+    if (topOrderId) {
+    loadOrderData(topOrderId);
+    }
+    }
+    function updateHideOrderSection(orderId, country, isDelayed) {
+    if (orderId === 0) {
+    $('#hideOrderContainer').hide();
+    } else {
+    $('#hideOrderCode').text(orderId);
+    $('#hideOrderCountry').text(country);
+    $('#hideOrderToggle').toggleClass('active', !!isDelayed);
+    $('#hideOrderContainer').show();
+    }
+    }
+    // Toggle the current order's delayed flag, then jump to next undelayed order.
+    $(document).on('click', '#hideOrderToggle', function () {
+    if (!currentOrderId) return;
+    var $toggle = $(this);
+    var newDelayed = !$toggle.hasClass('active');
+    // Reflect the toggle animation immediately, then wait so the user sees it before the request fires.
+    $toggle.toggleClass('active', newDelayed);
+    var targetOrderId = currentOrderId;
+    setTimeout(function () {
+    $.post('/PrepareForDelivery/SetDelayed', { orderId: targetOrderId, isDelayed: newDelayed }, function (result) {
+    if (!result.success) return;
+    var $cards = $('#orderQueueRow .order-card');
+    $cards.filter('[data-order-id="' + targetOrderId + '"]')
+    .attr('data-is-delayed', newDelayed ? 'true' : 'false')
+    .toggleClass('is-delayed', newDelayed);
+    // Find next undelayed card (excluding the just-toggled one); fallback to first delayed; else stay.
+    var $next = $cards.filter('[data-is-delayed="false"]').filter(function () {
+    return String($(this).data('order-id')) !== String(targetOrderId);
+    }).first();
+    if (!$next.length) {
+    $next = $cards.filter(function () {
+    return String($(this).data('order-id')) !== String(targetOrderId);
+    }).first();
+    }
+    if ($next.length) {
+    loadOrderData($next.data('order-id'));
+    } else {
+    $toggle.toggleClass('active', newDelayed);
+    }
+    });
+    }, 800);
+    });
+    // ── Load order detail via AJAX ──
+    function loadOrderData(orderId) {
+    ndShowSkeletons();
+    $.get('/PrepareForDelivery/GetOrderData', { orderId: orderId }, function (result) {
+    if (result.success) {
+    currentOrderId = result.order.id;
+    currentCountryId = result.order.countryId;
+    renderOrderDetail(result.order);
+    renderProducts(result.products);
+    updateSubmitButton(result.order);
+    ndRenderOrder(result.order, result.products);
+    ndHideRow2Skeleton();
+    updateHideOrderSection(result.order.id, result.order.country, result.order.isDelayed);
+    }
+    });
+    }
+    function renderOrderDetail(order) {
+    var countryImgUrl = getCountryImageUrl(order.countryId);
+    var storeLogoHtml = order.manufacturingCompanyLogo
+    ? '<img class="pb-1" src="/' + order.manufacturingCompanyLogo + '" width="17" height="17" style="margin-inline-end:4px" /> '
+    : '';
+    var isPaidStyle = order.isPaid
+    ? 'padding: 8px 55px; background-color: #28a745;'
+    : 'padding: 8px 39px; background-color: red;';
+    var isPaidLabel = order.isPaid ? 'تم التحويل حوالة بنكية' : 'غير مدفوع';
+    var html =
+    '<div class="d-flex align-items-center mt-2 pfd-copyable" onclick="copyToClipboard(\'' + escapeQuotes(order.country) + '\', \'الدولة\')">' +
+    '<dt class="mb-1 col-3">الدولة</dt>' +
+    '<dd class="me-5 col-8" id="detail_country">' +
+    (countryImgUrl ? '<img class="pb-1" src="' + countryImgUrl + '" width="17" height="17" style="margin-inline-end:4px" /> ' : '') +
+    escapeHtml(order.country) +
+    '</dd>' +
+    '</div>' +
+    '<div class="d-flex align-items-center mt-2 pfd-copyable" onclick="copyToClipboard(\'' + escapeQuotes(order.manufacturingCompanyName || '') + '\', \'اسم المتجر\')">' +
+    '<dt class="mb-1 col-3">اسم المتجر</dt>' +
+    '<dd class="me-5 col-8" id="detail_store">' + storeLogoHtml + escapeHtml(order.manufacturingCompanyName || '') + '</dd>' +
+    '</div>' +
+    '<div class="d-flex align-items-center mt-2 pfd-copyable" onclick="copyToClipboard(\'' + escapeQuotes(order.state || '') + '\', \'اسم المدينة\')">' +
+    '<dt class="mb-1 col-3">اسم المدينة</dt>' +
+    '<dd class="me-5 col-8" id="detail_state">' + escapeHtml(order.state || '') + '</dd>' +
+    '</div>' +
+    '<div class="d-flex align-items-center mt-2 pfd-copyable" onclick="copyToClipboard(\'' + escapeQuotes(order.address || '') + '\', \'العنوان\')">' +
+    '<dt class="mb-1 col-3">العنوان</dt>' +
+    '<dd class="me-5 col-8" id="detail_address">' + escapeHtml(order.address || '') + '</dd>' +
+    '</div>' +
+    (function() {
+    var phoneShown = phoneForPfdDisplay(order.telephoneNumber || '', order.countryId);
+    return '<div class="d-flex align-items-center mt-2 pfd-copyable" onclick="copyToClipboard(\'' + escapeQuotes(order.telephoneNumber || '') + '\', \'رقم الهاتف\')">' +
+    '<dt class="mb-1 col-3">رقم الهاتف</dt>' +
+    '<dd class="me-5 col-8" id="detail_phone">' + escapeHtml(phoneShown) + '</dd>' +
+    '</div>';
+    })() +
+    '<div class="d-flex align-items-center mt-2 pfd-copyable" onclick="copyToClipboard(\'' + (order.fixedOrderTimes > 0 ? order.id + 'LLL' : order.id) + '\', \'كود الشحنة\')">' +
+    '<dt class="mb-1 col-3">كود الشحنة</dt>' +
+    '<dd class="me-5 col-8"><span id="detail_shipmentCode" class="background-whiteblue rounded-pill h5 fw-bold text-center px-5 py-1 text-white">' + (order.fixedOrderTimes > 0 ? order.id + 'LLL' : order.id) + '</span></dd>' +
+    '</div>' +
+    '<div class="d-flex align-items-center mt-2">' +
+    '<dt class="mb-1 col-3">طريقة الدفع</dt>' +
+    '<div id="detail_isPaid" class="me-5 rounded-pill h5 fw-bold text-center py-1 text-white" style="' + isPaidStyle + '">' + isPaidLabel + '</div>' +
+    '</div>';
+    $('#orderDetailContent').html(html);
+    $('#detail_orderStatus').text(order.orderStatus ? order.orderStatus.replace(/_/g, ' ') : '');
+    }
+    function renderProducts(products) {
+    if (!products || products.length === 0) {
+    $('#productsGrid').html('<div style="grid-column:1/-1;" class="empty-state-body"><img class="empty-no-products" src="/mainicons/no products.svg" alt="" /><p class="empty-state-text">لإظهار المنتجات عليك اختيار الطلب</p></div>');
+    return;
+    }
+    var html = '';
+    products.forEach(function (p) {
+    html += '<div class="pfd-product-cell pfd-copyable"' +
+    ' onclick="copyToClipboard(\'' + escapeQuotes(p.name) + ' - ' + p.amount + '\', \'المنتج\')">' +
+    '<img loading="lazy" src="/' + (p.image || 'mainicons/DefaultImage.svg') + '" height="60" width="60" class="b-r-8" onerror="this.onerror=null; this.src=\'/mainicons/fallback_product.svg\';" />' +
+    '<div class="fw-bold mt-1" style="font-size:0.78em;">' + escapeHtml(p.name) + '</div>' +
+    '<small class="text-muted">الكمية: ' + p.amount + '</small>' +
+    '</div>';
+    });
+    $('#productsGrid').html(html);
+    }
+    function updateSubmitButton(order) {
+    var $btn = $('#nd-submit-btn');
+    if (isPreviewMode || order.orderStatusInt !== @((int)OrderStatusEnum.طلب_جديد)) {
+    $btn.prop('disabled', true);
+    } else {
+    $btn.prop('disabled', false);
+    }
+    }
+    // ── Filter change handlers (cloned from PotentialOrder pattern) ──
+    $(document).ready(function () {
+    // Search clear icon (cloned from PotentialOrder)
+    const searchInput = $("#searchInput");
+    const clearSearchIcon = $("#searchingshow");
+    function toggleClearIconVisibility() {
+    const hasText = searchInput.val().length > 0;
+    clearSearchIcon.css('visibility', hasText ? 'visible' : 'hidden');
+    $(".cancel-search-btn").toggleClass("hidden", !hasText);
+    }
+    function clearSearch() {
+    searchInput.val("");
+    toggleClearIconVisibility();
+    searchCol3('');
+    }
+    clearSearchIcon.on("click", clearSearch);
+    $(".cancel-search-btn, .search-cancel").on("click", clearSearch);
+    toggleClearIconVisibility();
+
+    function forcePfdEmployeeFilterPlaceholder() {
+    var $employeeDropdown = $('#EmployeeId');
+    if (!$employeeDropdown.length) return;
+
+    var placeholderText = 'تصفية حسب الموظف';
+    var selectedValue = $employeeDropdown.val() || '';
+
+    var $emptyOption = $employeeDropdown.find('option[value=""]');
+    if ($emptyOption.length) {
+    $emptyOption.text(placeholderText).removeAttr('data-image');
+    }
+
+    var $container = $employeeDropdown.next('.select2-container');
+    $container.toggleClass('pfd-employee-has-value', !!selectedValue);
+
+    var $rendered = $container.find('.select2-selection__rendered');
+    if (!$rendered.length) return;
+
+    if (!selectedValue) {
+    $rendered.attr('title', placeholderText);
+    $rendered.empty();
+
+    var userIconSvg = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5Z" fill="#ffffff"/><path d="M4 22c0-4.418 3.582-8 8-8s8 3.582 8 8" fill="#ffffff"/></svg>';
+    var $wrap = $('<span class="pfd-employee-filter-rendered"></span>');
+    $wrap.append('<span class="filter-icon">' + userIconSvg + '</span>');
+    $wrap.append($('<span class="pfd-employee-filter-text"></span>').text(placeholderText));
+    $rendered.append($wrap);
+    return;
+    }
+
+    // عند اختيار موظف نترك شكل Select2 الأساسي كما هو، فقط نمنع ظهور صورة مكسورة لو الصورة غير موجودة.
+    var $selectedOption = $employeeDropdown.find('option:selected');
+    var selectedText = ($selectedOption.text() || '').trim();
+    var selectedImage = $selectedOption.attr('data-image') || '';
+
+    $rendered.attr('title', selectedText);
+    $rendered.empty();
+
+    var $selectedWrap = $('<span class="pfd-employee-filter-rendered"></span>');
+    if (selectedImage) {
+    $selectedWrap.append($('<img class="pfd-employee-filter-avatar" alt="" />').attr('src', selectedImage));
+    } else {
+    var selectedIconSvg = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5Z" fill="#ffffff"/><path d="M4 22c0-4.418 3.582-8 8-8s8 3.582 8 8" fill="#ffffff"/></svg>';
+    $selectedWrap.append('<span class="filter-icon">' + selectedIconSvg + '</span>');
+    }
+    $selectedWrap.append($('<span class="pfd-employee-filter-text"></span>').text(selectedText));
+    $rendered.append($selectedWrap);
+    }
+
+    function loadPfdEmployeesWithOrdersDropdown() {
+    var $employeeDropdown = $('#EmployeeId');
+
+    if (!$employeeDropdown.length) {
+    return;
+    }
+
+    var selectedValue = $employeeDropdown.val() || '';
+
+    $.ajax({
+    url: '/PrepareForDelivery/GetEmployeesWithOrdersForDropdown',
+    type: 'GET',
+    data: {
+    countryId: $('#CountryId').val() || '',
+    storeId: $('#StoreNameId').val() || '',
+    deliveryCompanyId: $('#DeliveryCompanyId').val() || ''
+    },
+    success: function (response) {
+    var employees = Array.isArray(response)
+    ? response
+    : (response && Array.isArray(response.employees) ? response.employees : []);
+
+    $employeeDropdown.empty();
+    $employeeDropdown.append($('<option></option>')
+    .val('')
+    .text('تصفية حسب الموظف'));
+
+    $.each(employees, function (_, employee) {
+    var employeeName = employee.name || employee.text || employee.email || employee.id || 'موظف';
+    var ordersCount = employee.ordersCount || employee.count || 0;
+    var isActive = employee.isActive === true || employee.isActive === 'true';
+
+    var optionText = employeeName;
+
+    if (!isActive) {
+    optionText += ' - غير نشط';
+    }
+
+    if (ordersCount > 0) {
+    optionText += ' (' + ordersCount + ')';
+    }
+
+    $employeeDropdown.append($('<option></option>')
+    .val(employee.id)
+    .text(optionText)
+    .attr('data-image', employee.imageUrl || '')
+    .attr('data-orders-count', ordersCount)
+    .attr('data-is-active', isActive ? 'true' : 'false'));
+    });
+
+    if (selectedValue && $employeeDropdown.find('option[value="' + selectedValue.replace(/"/g, '\\"') + '"]').length) {
+    $employeeDropdown.val(selectedValue);
+    } else {
+    $employeeDropdown.val('');
+    }
+
+    /*
+    change.select2 يحدث شكل Select2 فقط بدون تشغيل فلتر جديد.
+    كده القائمة تتحدث من غير ما تعمل Reload للطلبات.
+    */
+    $employeeDropdown.trigger('change.select2');
+    forcePfdEmployeeFilterPlaceholder();
+    setTimeout(forcePfdEmployeeFilterPlaceholder, 50);
+    }
+    });
+    }
+
+    /*
+    بعض ملفات الـ common scripts كانت بتملأ EmployeeId من /DataList/GetAllEmployees
+    وغالبًا endpoint ده بيرجع الموظفين النشطين فقط.
+    لذلك نعيد تحميل القائمة هنا من endpoint خاص بصفحة تنزيل الطلبات
+    يعرض كل من له طلبات حتى لو IsActive = 0.
+    */
+    loadPfdEmployeesWithOrdersDropdown();
+    setTimeout(loadPfdEmployeesWithOrdersDropdown, 700);
+    setTimeout(forcePfdEmployeeFilterPlaceholder, 900);
+
+    $('#EmployeeId').on('change change.select2 select2:select select2:clear select2:close', function () {
+    setTimeout(forcePfdEmployeeFilterPlaceholder, 0);
+    setTimeout(forcePfdEmployeeFilterPlaceholder, 60);
+    });
+
+    $('#CountryId, #StoreNameId, #DeliveryCompanyId').change(function () {
+    setTimeout(loadPfdEmployeesWithOrdersDropdown, 200);
+    });
+
+    $('#CountryId, #StoreNameId, #DeliveryCompanyId, #EmployeeId').change(function () {
+    isPreviewMode = false;
+    $('#pfd-new-design').removeClass('pfd-preview-mode');
+    $('#nd-downloaded-label').hide();
+    ndShowSkeletons();
+    loadFilteredQueue();
+    });
+    var searchTimer;
+    $('#searchInput').on('input', function () {
+    toggleClearIconVisibility();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(function () {
+    ndShowCol3Loading();
+    searchCol3($('#searchInput').val());
+    }, 300);
+    });
+    // Col3 click → preview mode
+    $(document).on('click', '.pfd-submitted-row', function () {
+    var orderId = $(this).data('order-id');
+    // Load the clicked order's detail
+    loadOrderData(orderId);
+    });
+    // Col1 copy via data attributes
+    $(document).on('click', '#nd-col1-table .copiable, #nd-col1-header .copiable', function () {
+    var text = $(this).data('copy-text');
+    var label = $(this).data('copy-label');
+    if (text) copyToClipboard(String(text), label);
+    });
+
+    // New design col3 row click → preview mode
+    $(document).on('click', '#nd-col3-list .delivery-section', function () {
+    var orderId = $(this).data('order-id');
+    if (!orderId) return;
+    isPreviewMode = true;
+    $('#pfd-new-design').addClass('pfd-preview-mode');
+    loadOrderData(orderId);
+    });
+    // Submit button
+    $('#nd-submit-btn').click(function () {
+    var $btn = $(this);
+    var orderId = currentOrderId;
+    if (!orderId || $btn.prop('disabled')) return;
+    $btn.prop('disabled', true);
+    $.post('/PrepareForDelivery/SubmitOrder', { orderId: orderId }, function (result) {
+    if (result.success) {
+    Toastify({
+    text: "تم تأكيد إدخال الطلب #" + orderId + " بنجاح",
+    duration: 3000,
+    gravity: "bottom",
+    position: "center",
+    style: { background: "#2ab149", borderRadius: "8px", fontWeight: "bold" }
+    }).showToast();
+    if (typeof result.remainingDownloadsCount !== 'undefined') {
+    updatePfdDownloadBadge(result.remainingDownloadsCount);
+    }
+    // Add to col3 (both old and new design)
+    addToRecentlySubmitted(result.submittedOrder);
+    ndAddToCol3(result.submittedOrder);
+    // Show and enable the "previous order" button
+    $('#nd-col3-return-wrap').show();
+    $('#nd-col3-return-btn').prop('disabled', false);
+    // Reload queue and pick next — the submitted order is no longer طلب_جديد so it must be removed from the queue, and the next order should be auto-selected
+    var hasFilters = $('#CountryId').val() || $('#StoreNameId').val() || $('#DeliveryCompanyId').val() || $('#EmployeeId').val();
+    if (hasFilters) {
+    loadFilteredQueue();
+    } else {
+    loadDefaultQueue();
+    }
+    } else {
+    $btn.prop('disabled', false);
+    Toastify({
+    text: result.message || "حدث خطأ",
+    duration: 3000,
+    gravity: "bottom",
+    position: "center",
+    style: { background: "#FF0000", borderRadius: "8px", fontWeight: "bold" }
+    }).showToast();
+    }
+    }).fail(function () {
+    $btn.prop('disabled', false);
+    Toastify({
+    text: "خطأ في الاتصال",
+    duration: 3000,
+    gravity: "bottom",
+    position: "center",
+    style: { background: "#FF0000", borderRadius: "8px", fontWeight: "bold" }
+    }).showToast();
+    });
+    });
+    // Col3 return button → query server for latest submitted order
+    $('#nd-col3-return-btn').click(function () {
+    var $btn = $(this);
+    if ($btn.prop('disabled')) return;
+    $btn.prop('disabled', true);
+    $.get('/PrepareForDelivery/GetLastSubmittedOrder', function (result) {
+    if (result.success && result.orderId) {
+    isPreviewMode = true;
+    $('#pfd-new-design').addClass('pfd-preview-mode');
+    loadOrderData(result.orderId);
+    }
+    $btn.prop('disabled', false);
+    }).fail(function () {
+    $btn.prop('disabled', false);
+    });
+    });
+    // Load first order into new design on page load
+    // Show return button if col3 already has submitted orders; enable via server check
+    if ($('#nd-col3-list .delivery-section:first').data('order-id')) {
+    $('#nd-col3-return-wrap').show();
+    $.get('/PrepareForDelivery/GetLastSubmittedOrder', function (result) {
+    if (result.success && result.orderId) {
+    $('#nd-col3-return-btn').prop('disabled', false);
+    }
+    });
+    }
+    var initialOrderId = $('#orderQueueRow .order-card:first').data('order-id');
+    if (initialOrderId) {
+    loadOrderData(initialOrderId);
+    } else {
+    ndShowEmpty();
+    }
+    });
+    // ── Load default queue (no filters) ──
+    function loadDefaultQueue() {
+    ndShowSkeletons();
+    // Toastify({
+    //     text: "جارٍ تحميل البيانات من الخادم...",
+    //     duration: 1500,
+    //     gravity: "bottom",
+    //     position: "center",
+    //     style: { background: "#1a73e8", borderRadius: "8px", fontWeight: "bold" }
+    // }).showToast();
+    $.get('/PrepareForDelivery/GetFilteredQueue', {}, function (result) {
+    if (result.success) {
+    renderQueueCards(result.orders, result.remainingDownloadsCount);
+    if (result.orders.length > 0 && !isPreviewMode) {
+    loadOrderData(result.orders[0].id);
+    } else if (result.orders.length === 0 && !isPreviewMode) {
+    currentOrderId = 0;
+    updateHideOrderSection(0, '-');
+    $('#nd-submit-btn').prop('disabled', true);
+    ndShowEmpty();
+    }
+    // Toastify({
+    //     text: "تم تحميل البيانات بنجاح",
+    //     duration: 2000,
+    //     gravity: "bottom",
+    //     position: "center",
+    //     style: { background: "#2ab149", borderRadius: "8px", fontWeight: "bold" }
+    // }).showToast();
+    }
+    });
+    }
+    // ── Load filtered queue ──
+    function loadFilteredQueue() {
+    ndShowSkeletons();
+    var data = {
+    countryId: $('#CountryId').val(),
+    storeId: $('#StoreNameId').val(),
+    deliveryCompanyId: $('#DeliveryCompanyId').val(),
+    employeeId: $('#EmployeeId').val() || '',
+    };
+    // Toastify({
+    //     text: "جارٍ تحميل البيانات من الخادم...",
+    //     duration: 1500,
+    //     gravity: "bottom",
+    //     position: "center",
+    //     style: { background: "#1a73e8", borderRadius: "8px", fontWeight: "bold" }
+    // }).showToast();
+    $.get('/PrepareForDelivery/GetFilteredQueue', data, function (result) {
+    if (result.success) {
+    renderQueueCards(result.orders, result.remainingDownloadsCount);
+    if (result.orders.length > 0) {
+    loadOrderData(result.orders[0].id);
+    } else {
+    currentOrderId = 0;
+    updateHideOrderSection(0, '-');
+    $('#nd-submit-btn').prop('disabled', true);
+    ndShowEmpty();
+    }
+    // Toastify({
+    //     text: "تم تحميل البيانات بنجاح",
+    //     duration: 2000,
+    //     gravity: "bottom",
+    //     position: "center",
+    //     style: { background: "#2ab149", borderRadius: "8px", fontWeight: "bold" }
+    // }).showToast();
+    }
+    });
+    }
+    // ── Search col3 (recently submitted: قيد_التوصيل / تم_المعالجة, last 24h) ──
+    function searchCol3(term) {
+    ndShowCol3Loading();
+    $.get('/PrepareForDelivery/SearchRecentlySubmitted', { search: term }, function (result) {
+    if (!result.success) return;
+    renderCol3(result.orders);
+    });
+    }
+    // ── Render col3 in both old and new designs ──
+    function renderCol3(orders) {
+    // Old design
+    var copySvg = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2ab149" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+    var oldHtml = '';
+    if (!orders || orders.length === 0) {
+    oldHtml = '<div class="text-center text-muted py-3" style="color:#999;">لا توجد شحنات مطابقة</div>';
+    } else {
+    orders.forEach(function (o) {
+    var flagUrl = getCountryImageUrl(o.countryId);
+    var flagHtml = flagUrl
+    ? '<img class="flex-shrink-0" src="' + flagUrl + '" width="34" height="34" />'
+    : '<span style="display:inline-block;width:34px;height:34px;"></span>';
+    oldHtml += '<div class="d-flex align-items-center justify-content-between mt-2 p-2 b-r-8 pfd-submitted-row"' +
+    ' data-order-id="' + o.id + '" style="background:#f8f9fa;cursor:pointer;">' +
+    flagHtml +
+    '<span class="fw-bold flex-grow-1 mx-2 d-flex align-items-center">#' + o.id +
+    '<span onclick="event.stopPropagation();copyToClipboard(\'' + o.id + '\',\'كود الشحنة\')" style="cursor:pointer;padding-inline-start:3px;line-height:1;display:inline-flex;align-items:center;">' + copySvg + '</span>' +
+    '</span>' +
+    '<span class="text-muted flex-shrink-0" style="font-size:0.8em;">' + (o.time || '') + '</span>' +
+    '</div>';
+    });
+    }
+    $('#recentlySubmittedList').html(oldHtml);
+
+    // New design
+    var newHtml = '';
+    if (!orders || orders.length === 0) {
+    newHtml = '<div class="empty-state-body" style="padding:16px 0;"><img class="empty-exclamation" src="/mainicons/exclamation mark.svg" alt="" /><p class="empty-state-text">لا توجد شحنات مطابقة</p></div>';
+    } else {
+    orders.forEach(function (o) {
+    var flagUrl = getCountryImageUrl(o.countryId);
+    newHtml += '<div class="delivery-section" data-order-id="' + o.id + '" style="cursor:pointer;">' +
+    '<div class="delivery-row">' +
+    '<div class="delivery-time-wrap"><div class="delivery-time">' + (o.time || '') + '</div></div>' +
+    '<div class="delivery-info">' +
+    '<div class="copy-icon-btn" onclick="event.stopPropagation();copyToClipboard(\'' + o.id + '\',\'كود الشحنة\')"><img src="/mainicons/copy icon.svg" alt="copy" /></div>' +
+    '<span class="delivery-code-num">' + o.id + '</span>' +
+    (flagUrl ? '<img class="delivery-flag" src="' + flagUrl + '" alt="flag" />' : '') +
+    '</div>' +
+    '</div>' +
+    '</div>';
+    });
+    }
+    $('#nd-col3-list').html(newHtml);
+    }
+    // ── Render queue cards ──
+    function renderQueueCards(orders, remainingDownloadsCount) {
+    var $row = $('#orderQueueRow');
+    var count = (typeof remainingDownloadsCount !== 'undefined' && remainingDownloadsCount !== null)
+    ? remainingDownloadsCount
+    : (orders ? orders.length : 0);
+    $('#remainingOrdersTitle').text('باقي الطلبات ' + count);
+    updatePfdDownloadBadge(count);
+    if (!orders || orders.length === 0) {
+    $row.empty();
+    ndHideRow2Skeleton();
+    return;
+    }
+    var html = '';
+    orders.forEach(function (o, i) {
+    var svg = i === 0 ? 'active order card' : 'order card';
+    var alt = i === 0 ? 'active order' : 'order';
+    var delayedClass = o.isDelayed ? ' is-delayed' : '';
+    html += '<div class="order-card' + delayedClass + '" data-order-id="' + o.id + '" data-is-delayed="' + (o.isDelayed ? 'true' : 'false') + '">' +
+    '<img src="/mainicons/' + svg + '.svg" alt="' + alt + '" /></div>';
+    });
+    $row.html(html);
+    ndHideRow2Skeleton();
+    }
+    // ── Add submitted order to col3 ──
+    function addToRecentlySubmitted(submittedOrder) {
+    var timeStr = submittedOrder.time;
+    if (!timeStr) {
+    var d = new Date();
+    timeStr = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    }
+    var flagUrl = getCountryImageUrl(submittedOrder.countryId);
+    var row =
+    '<div class="delivery-section" data-order-id="' + submittedOrder.id + '" style="cursor:pointer;">' +
+    '<div class="delivery-row">' +
+    '<div class="delivery-time-wrap"><div class="delivery-time">' + timeStr + '</div></div>' +
+    '<div class="delivery-info">' +
+    '<div class="copy-icon-btn" onclick="event.stopPropagation(); copyToClipboard(\'' + submittedOrder.id + '\', \'كود الشحنة\')"><img src="/mainicons/copy icon.svg" alt="copy" /></div>' +
+    '<span class="delivery-code-num">' + submittedOrder.id + '</span>' +
+    (flagUrl ? '<img class="delivery-flag" src="' + flagUrl + '" alt="flag" />' : '') +
+    '</div>' +
+    '</div>' +
+    '</div>';
+    var $list = $('#nd-col3-list');
+    // Remove "no shipments" placeholder if present
+    $list.children('.empty-state-body').remove();
+    $list.prepend(row);
+    }
+    // ── Country image URL lookup ──
+    var countryImageMap = {
+    @foreach (Countries c in Enum.GetValues(typeof(Countries)))
+    {
+        @:@((int)c): '@Common.GetImageUrlByCountryName(c.ToString())',
+    }
+    };
+    function getCountryImageUrl(countryId) {
+    var url = countryImageMap[countryId] || '';
+    if (!url || url === 'Country not found' || url === 'Invalid country name') return '';
+    return url;
+    }
+    // ── Escape utilities ──
+    function escapeHtml(str) {
+    if (!str) return '';
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+    }
+    function escapeQuotes(str) {
+    if (!str) return '';
+    return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+    }
+    function escapeAttr(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    }
+
+    // ── Libya warehouse lookup (sourced from camex_warehouses.csv) ──
+    var libyaCityMap = {
+    'الرويسات':       { warehouse: 'مخزن بنغازي',       route: 'مسار بنغازي المنطقة رويسات' },
+    'القوارشة':       { warehouse: 'مخزن بنغازي',       route: 'مسار بنغازي المنطقة القوارشة' },
+    'شبنة':           { warehouse: 'مخزن بنغازي',       route: 'مسار بنغازي المنطقة شبنة' },
+    'فينيسيا':        { warehouse: 'مخزن بنغازي',       route: 'مسار بنغازي المنطقة فينيسيا' },
+    'حي السلام':      { warehouse: 'مخزن بنغازي',       route: 'مسار بنغازي المنطقة حي السلام' },
+    'بوعطني':         { warehouse: 'مخزن بنغازي',       route: 'مسار بنغازي المنطقة بوعطني' },
+    'بنغازي':         { warehouse: 'مخزن بنغازي',       route: 'مسار بنغازي المنطقة بنغازي' },
+    'رقدالين':        { warehouse: 'مخزن بنغازي',       route: 'مسار رقدالين المنطقة رقدالين' },
+    'بن جواد':        { warehouse: 'مخزن بنغازي',       route: 'مسار بن جواد المنطقة بن جواد' },
+    'البيضاء':        { warehouse: 'مخزن بنغازي',       route: 'مسار البيضاء المنطقة البيضاء' },
+    'المرج':          { warehouse: 'مخزن بنغازي',       route: 'مسار المرج المنطقة المرج' },
+    'درنه':           { warehouse: 'مخزن بنغازي',       route: 'مسار درنه المنطقة درنه' },
+    'طبرق':           { warehouse: 'مخزن بنغازي',       route: 'مسار طبرق المنطقة طبرق' },
+    'بني وليد':       { warehouse: 'مخزن بنغازي',       route: 'مسار بني وليد المنطقة بني وليد' },
+    'قمينس':          { warehouse: 'مخزن بنغازي',       route: 'مسار قمينس المنطقة قمينس' },
+    'مصراته':         { warehouse: 'مخزن سوق الجمعه',   route: 'مسار مصراته المنطقة مصراته' },
+    'مصراتة الكبري':  { warehouse: 'مخزن سوق الجمعه',   route: 'مسار مصراته المنطقة مصراته' },
+    'تازربو':         { warehouse: 'مخزن سوق الجمعه',   route: 'مسار تازربو المنطقة تازربو' },
+    'مساعد/امساعد':   { warehouse: 'مخزن سوق الجمعه',   route: 'مسار امساعد المنطقة امساعد' },
+    'زلتين':          { warehouse: 'مخزن سوق الجمعه',   route: 'مسار زلتين المنطقة زلتين' },
+    'طرابلس':         { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة وسط طرابلس' },
+    'زناتة':          { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة وسط طرابلس' },
+    'زناتة الجديدة':  { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة وسط طرابلس' },
+    'الزاوية':        { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الزاوية المنطقة الزاوية' },
+    'صبراته':         { warehouse: 'مخزن سوق الجمعه',   route: 'مسار صبراته المنطقة صبراته' },
+    'صرمان':          { warehouse: 'مخزن سوق الجمعه',   route: 'مسار صرمان المنطقة صرمان' },
+    'العجيلات':       { warehouse: 'مخزن سوق الجمعه',   route: 'مسار العجيلات المنطقة العجيلات' },
+    'الجميل':         { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجميل المنطقة الجميل' },
+    'زوارة':          { warehouse: 'مخزن سوق الجمعه',   route: 'مسار زوارة المنطقة زوارة' },
+    'القريولي':       { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة القريولي' },
+    'قصر الاخيار':    { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة قصر الاخيار' },
+    'الخمس':          { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الخمس المنطقة الخمس' },
+    'سرت':            { warehouse: 'مخزن سوق الجمعه',   route: 'مسار سرت المنطقة سرت' },
+    'راس لانوف':      { warehouse: 'مخزن سوق الجمعه',   route: 'مسار راس لانوف المنطقة راس لانوف' },
+    'البريقة':        { warehouse: 'مخزن سوق الجمعه',   route: 'مسار البريقة المنطقة البريقة' },
+    'جالو':           { warehouse: 'مخزن سوق الجمعه',   route: 'مسار جالو المنطقة جالو' },
+    'اوجلة':          { warehouse: 'مخزن سوق الجمعه',   route: 'مسار اوجلة المنطقة اوجلة' },
+    'الابيار':        { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الابيار المنطقة الابيار' },
+    'القبة/القبلة':   { warehouse: 'مخزن سوق الجمعه',   route: 'مسار القبلة المنطقة القبلة' },
+    'سبها':           { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجنوب المنطقة سبها' },
+    'الجفره':         { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجفره المنطقة الجفره' },
+    'الشويرف':        { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الشوريف المنطقة الشوريف' },
+    'براك الشاطئ':    { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجنوب المنطقة براك الشاطئ' },
+    'هون':            { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجفرة المنطقة هون' },
+    'زلة':            { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجفرة المنطقة زلة' },
+    'سوكنة':          { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجفرة المنطقة سوكنة' },
+    'ودان':           { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجفرة المنطقة ودان' },
+    'اوباري':         { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجنوب المنطقة اوباري' },
+    'مرزق':           { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجنوب المنطقة مرزق' },
+    'اجدابيا':        { warehouse: 'مخزن سوق الجمعه',   route: 'مسار اجدابيا المنطقة اجدابيا' },
+    'غريان':          { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة غريان' },
+    'يفرن':           { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة يفرن' },
+    'نالوت':          { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة نالوت' },
+    'القلعة':         { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة القلعة' },
+    'الزنتان':        { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة الزنتان' },
+    'الرحبيات':       { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة الرحبيات' },
+    'ترهونه':         { warehouse: 'مخزن سوق الجمعه',   route: 'مسار ترهونه المنطقة ترهونه' },
+    'مسلاته':         { warehouse: 'مخزن سوق الجمعه',   route: 'مسار مسلاته المنطقة مسلاته' },
+    'عين زاره':       { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة عين زاره' },
+    'تاجوراء':        { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة تاجوراء' },
+    'وادي الربيع':    { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة وادي الربيع' },
+    'الكريميه':       { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة الكريميه' },
+    'جنزور':          { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة جنزور' },
+    'النجيلة':        { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة النجيلة' },
+    'زلطن':           { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة زلاطن' },
+    'شحات':           { warehouse: 'مخزن سوق الجمعه',   route: 'مسار شحات المنطقة شحات' },
+    'الاصابعه':       { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة الاصابعه' },
+    'الابرق':         { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الابرق المنطقة الابرق' },
+    'ورشفانه':        { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة ورشفانه' },
+    'قصر بن غشير':    { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة قصر بن غشير' },
+    'السواني':        { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة السواني' },
+    'ككلة':           { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة ككلة' },
+    'تيجي':           { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة تيجي' },
+    'كاباو':          { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة كاباو' },
+    'الرياينة':       { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة الرياينة' },
+    'الرجبان':        { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة الرجبان' },
+    'القواليش':       { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة القواليش' },
+    'الحوامد':        { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة الحوامد' },
+    'الرابطه':        { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة الرابطه' },
+    'العزيزيه':       { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة العزيزيه' },
+    'الجوش':          { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة الجوش' },
+    'طمزين':          { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة طمزين' },
+    'بدر':            { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة بدر' },
+    'ام الارانب':     { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجنوب المنطقة ام الارانب' },
+    'تراغن':          { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجنوب المنطقة تراغن' },
+    'وادي عبته':      { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجنوب المنطقة مرزق' },
+    'غات':            { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجنوب المنطقة غات' },
+    'اجخرة':          { warehouse: 'مخزن سوق الجمعه',   route: 'مسار اجخرة المنطقة اجخرة' },
+    'خلة الفرجان':    { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة خلة الفرجان' },
+    'سوسة':           { warehouse: 'مخزن سوق الجمعه',   route: 'مسار سوسة المنطقة سوسة' },
+    'اسبيعه':         { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة اسبيعه' },
+    'القطرون':        { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجنوب المنطقة القطرون' },
+    'توكره':          { warehouse: 'مخزن سوق الجمعه',   route: 'مسار توكره المنطقة توكره' },
+    'سلوق':           { warehouse: 'مخزن سوق الجمعه',   route: 'مسار سلوق المنطقة سلوق' },
+    'القريات':        { warehouse: 'مخزن سوق الجمعه',   route: 'مسار القريات المنطقة القريات' },
+    'جادو':           { warehouse: 'مخزن سوق الجمعه',   route: 'مسار الجبل الغربي المنطقة جادو' },
+    'العلوص':         { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة قصر الاخيار' },
+    'الساعدية':       { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة العزيزية' },
+    'الهيرة':         { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة العزيزيه' },
+    'سوق الخميس-امسيحل': { warehouse: 'مخزن سوق الجمعه', route: 'مسار طرابلس المنطقة قصر بن غشير' },
+    'مزدة':           { warehouse: 'مخزن سوق الجمعه',   route: 'مسار مزدة المنطقة مزدة' },
+    'تاورغاء':        { warehouse: 'مخزن سوق الجمعه',   route: 'مسار تاورغاء المنطقة تاورغاء' },
+    'الشقيقة':        { warehouse: 'مخزن سوق الجمعه',   route: 'مسار مزدة المنطقة مزدة' },
+    'طريق المطار':    { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة طريق المطار' },
+    'بن عاشور':       { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة وسط طرابلس' },
+    'سراج':           { warehouse: 'مخزن سوق الجمعه',   route: 'مسار طرابلس المنطقة وسط طرابلس' },
+    'درج':            { warehouse: 'غير متوفر توصيل',    route: null },
+    'غدامس':          { warehouse: 'غير متوفر توصيل',    route: null },
+    };
+    // Returns { warehouse, route }
+    function getLibyaCityInfo(city) {
+    if (!city) return { warehouse: 'مخزن سوق الجمعه', route: null };
+    var entry = libyaCityMap[city.trim()];
+    if (!entry) return { warehouse: 'مخزن سوق الجمعه', route: null };
+    return {
+    warehouse: entry.warehouse,
+    route: entry.route
+    };
+    }
+    // Legacy helper kept for any remaining callers
+    function getLibyaWarehouse(city) {
+    return getLibyaCityInfo(city).warehouse;
+    }
+
+    // ═══════════ NEW DESIGN: skeleton ↔ data swap ═══════════
+
+    // Show col3 loading skeleton
+    function ndShowCol3Loading() {
+    var skHtml = '';
+    for (var i = 0; i < 5; i++) {
+    skHtml += '<div class="delivery-section" style="pointer-events:none;opacity:0.5;">' +
+    '<div class="delivery-row">' +
+    '<div class="delivery-time-wrap"><span class="delivery-time"><span class="sk-block" style="width:36px;height:14px;display:inline-block;background:#e0e0e0;border-radius:4px;"></span></span></div>' +
+    '<div class="delivery-info">' +
+    '<span class="sk-block" style="width:50px;height:14px;display:inline-block;background:#e0e0e0;border-radius:4px;"></span>' +
+    '<span class="sk-block" style="width:34px;height:34px;display:inline-block;background:#e0e0e0;border-radius:50%;"></span>' +
+    '</div>' +
+    '</div>' +
+    '</div>';
+    }
+    $('#nd-col3-list').html(skHtml);
+    $('#recentlySubmittedList').html('<div class="text-center text-muted py-3">جارٍ البحث...</div>');
+    }
+
+    // Show all skeletons, hide all real containers
+    function ndShowSkeletons() {
+    $('#nd-col1-skeleton-header, #nd-col1-skeleton-table').show();
+    $('#nd-col1-header, #nd-col1-table').hide();
+    $('#nd-premium-badge').hide();
+    $('#nd-employee-block').hide();
+    $('#nd-col2-skeleton, #nd-col2-skeleton-status').show();
+    $('#nd-col2-gallery, #nd-col2-status').hide();
+    $('#nd-submit-btn').prop('disabled', true);
+    // Row2: show skeleton, hide real queue
+    $('.order-cards-skeleton-row').show();
+    $('#orderQueueRow').hide();
+    // Col3 is Razor-rendered, no skeleton swap needed
+    }
+    // Hide row2 skeleton, show real queue
+    function ndHideRow2Skeleton() {
+    $('.order-cards-skeleton-row').hide();
+    $('#orderQueueRow').show();
+    }
+
+    // Render col1 and col2 with real data, hiding skeletons (col3 is Razor-rendered)
+    function ndRenderOrder(order, products) {
+    ndRenderCol1(order, products);
+    ndRenderCol2(order, products);
+    }
+
+    // ── Col 1: Order Details ──
+    function ndRenderCol1(order, products) {
+    var countryImgUrl = getCountryImageUrl(order.countryId);
+
+    // Header
+    var headerHtml =
+    '<h2>تفاصيل الطلب</h2>' +
+    '<div class="detail-value copiable" data-copy-text="' + escapeAttr(order.manufacturingCompanyName || '') + '" data-copy-label="اسم المتجر">' +
+    '<span>' + escapeHtml(order.manufacturingCompanyName || '') + '</span>' +
+    (order.manufacturingCompanyLogo ? '<img class="flag" src="/' + order.manufacturingCompanyLogo + '" alt="" />' : '') +
+    '</div>' +
+    (order.countryId === @((int)Countries.ليبيا) ? (function() {
+    var info = getLibyaCityInfo(order.state);
+    var row1 = '<div style="display:flex;column-gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">' +
+    '<span class="warehouse-tag copiable" data-copy-text="' + escapeAttr(info.warehouse) + '" data-copy-label="المخزن">' + escapeHtml(info.warehouse) + '</span>' +
+    '</div>';
+    var row2 = '';
+    if (info.route) {
+    var parts = info.route.split(' المنطقة ');
+    var laneDisplay = parts[0];
+    var locationRest = parts.length > 1 ? parts.slice(1).join(' المنطقة ') : '';
+    var locationDisplay = locationRest ? 'المنطقة ' + locationRest : '';
+    var laneCopy = laneDisplay.replace(/^مسار\s+/, '');
+    var locationCopy = locationRest;
+    row2 = '<div style="display:flex;column-gap:8px;align-items:center;flex-wrap:wrap;">' +
+    '<span class="warehouse-tag route-string copiable" data-copy-text="' + escapeAttr(laneCopy) + '" data-copy-label="المسار">' + escapeHtml(laneDisplay) + '</span>' +
+    (locationDisplay ? '<span class="warehouse-tag route-string copiable" data-copy-text="' + escapeAttr(locationCopy) + '" data-copy-label="المنطقة">' + escapeHtml(locationDisplay) + '</span>' : '') +
+    '</div>';
+    }
+    return row1 + row2;
+    })() : '') +
+    (order.fixedOrderTimes > 0 ?
+    '<div class="d-flex align-items-center gap-1">' +
+    '<div style="padding-left:42px;padding-right:42px;background-color:#45bbea;" class="me-1 rounded-pill h5 fw-bold text-center py-1 border-0 text-white mb-0">تم المعالجة</div>' +
+    '<div style="padding-left:12px;padding-right:12px;background-color:#45bbea;" class="me-1 rounded-pill h5 fw-bold text-center py-1 border-0 text-white mb-0">' + order.fixedOrderTimes + '</div>' +
+    '</div>'
+    : '');
+    $('#nd-col1-header').html(headerHtml);
+    $('#nd-downloaded-label').toggle(isPreviewMode);
+
+    // Detail table
+    var isPaidLabel = order.isPaid ? 'تم التحويل حوالة بنكية' : 'غير مدفوع';
+    var tableHtml =
+    '<div class="detail-header">اسم الدولة</div>' +
+    '<div class="detail-value copiable" data-copy-text="' + escapeAttr(order.country) + '" data-copy-label="الدولة">' +
+    '<span>' + escapeHtml(order.country) + '</span>' +
+    (countryImgUrl ? '<img class="flag" src="' + countryImgUrl + '" alt="flag" />' : '') +
+    '</div>' +
+
+    '<div class="detail-header">شركة التوصيل</div>' +
+    '<div class="detail-value copiable" data-copy-text="' + escapeAttr(order.deliveryCompanyName || '') + '" data-copy-label="شركة التوصيل">' +
+    '<span>' + escapeHtml(order.deliveryCompanyName || '') + '</span>' +
+    '<img class="flag" src="/' + (order.deliveryCompanyLogo || 'static/DefaultImage.svg') + '" alt="" />' +
+    '</div>' +
+
+    '<div class="detail-header">اسم العميل</div>' +
+    '<div class="detail-value copiable" data-copy-text="' + escapeAttr(order.customerName || '') + '" data-copy-label="اسم العميل"><span>' + escapeHtml(order.customerName || '') + '</span></div>' +
+
+    '<div class="detail-header">المدينة</div>' +
+    '<div class="detail-value copiable" data-copy-text="' + escapeAttr(order.state || '') + '" data-copy-label="المدينة"><span>' + escapeHtml(order.state || '') + '</span></div>' +
+
+    '<div class="detail-header">العنوان</div>' +
+    '<div class="detail-value copiable" data-copy-text="' + escapeAttr(order.address || '') + '" data-copy-label="العنوان" style="font-size:18px;"><span style="text-align:right;">' + escapeHtml(order.address || '') + '</span></div>' +
+
+    '<div class="detail-header">رقم الهاتف</div>' +
+    '<div class="detail-value teal copiable" data-copy-text="' + escapeAttr(order.telephoneNumber || '') + '" data-copy-label="رقم الهاتف"><span>' + escapeHtml(phoneForPfdDisplay(order.telephoneNumber || '', order.countryId)) + '</span></div>' +
+
+    (order.notes ? '<div class="detail-header">الملاحظات</div>' +
+    '<div class="detail-value copiable" data-copy-text="' + escapeAttr(order.notes) + '" data-copy-label="الملاحظات"><span>' + escapeHtml(order.notes) + '</span></div>' : '') +
+
+    '<div class="detail-header">عبارة النسخ</div>' +
+    '<div class="detail-value copiable" data-copy-text="ممنوع فتح الطلب نهائيا" data-copy-label="عبارة النسخ"><span>ممنوع فتح الطلب نهائيا</span></div>' +
+
+    '<div class="detail-header">كود الشحنة</div>' +
+    '<div class="detail-value copiable" data-copy-text="' + (order.fixedOrderTimes > 0 ? order.id + 'LLL' : order.id) + '" data-copy-label="كود الشحنة"><span class="badge-code">' + (order.fixedOrderTimes > 0 ? order.id + 'LLL' : order.id) + '</span></div>' +
+
+    '<div class="detail-header">حالة الدفع</div>' +
+    '<div class="detail-value copiable" data-copy-text="' + isPaidLabel + '" data-copy-label="حالة الدفع"><span class="badge-payment-status ' + (order.isPaid ? 'paid' : 'unpaid') + '">' + isPaidLabel + '</span></div>';
+
+    // Mini product table
+    if (products && products.length > 0) {
+    tableHtml += '<div class="detail-header">تفاصيل الطلب</div>' +
+    '<div class="detail-value" style="justify-content:flex-end;"><div class="product-mini-table">';
+    products.forEach(function (p) {
+    tableHtml += '<div class="mini-row copiable" data-copy-text="' + escapeAttr(p.name) + '" data-copy-label="المنتج">' +
+    '<div class="mini-img"><img src="/' + (p.image || 'mainicons/DefaultImage.svg') + '" alt="" onerror="this.onerror=null; this.src=\'/mainicons/fallback_product.svg\';" /></div>' +
+    '<div class="mini-name">' + escapeHtml(p.name) + '</div>' +
+    '<div class="mini-qty">' + p.amount + '</div>' +
+    '</div>';
+    });
+    tableHtml += '</div></div>';
+    }
+
+    // Total or Remaining (for Iraq). Paid orders show 0 — driver doesn't collect anything.
+    var displayPrice = order.isPaid
+    ? 0
+    : (order.countryId === @((int)Countries.العراق)
+    ? (order.totalPrice - order.deliveryPrice)
+    : order.totalPrice);
+    var priceLabel = order.countryId === @((int)Countries.العراق) ? 'المبلغ المتبقي' : 'المبلغ الإجمالي';
+    tableHtml += '<div class="detail-header">' + priceLabel + '</div>' +
+    (order.currency ? '<div class="detail-value total-value copiable" data-copy-text="' + (displayPrice || '') + '" data-copy-label="المبلغ"><span>' + (displayPrice != null ? displayPrice.toFixed(2) : '0.00') + ' ' + order.currency + '</span></div>' : '');
+
+    $('#nd-col1-table').html(tableHtml);
+
+    // Employee photo + creation date (absolutely positioned in col1 body)
+    if (order.employeeLogoUrl) {
+    $('#nd-employee-photo').attr('src', '/' + order.employeeLogoUrl).attr('alt', order.employeeName || '');
+    $('#nd-employee-name').text(order.employeeName || '').toggle(!!order.employeeName);
+    $('#nd-created-date').text(order.createdDate || '');
+    $('#nd-employee-block').show();
+    } else {
+    $('#nd-employee-block').hide();
+    $('#nd-employee-name').hide();
+    }
+
+    // Swap: hide skeletons, show real
+    $('#nd-col1-skeleton-header, #nd-col1-skeleton-table').hide();
+    $('#nd-col1-header, #nd-col1-table').show();
+    // Clean up empty state
+    $('.order-details').removeClass('empty-order-details');
+    $('.products-panel').removeClass('empty-products-panel');
+    $('#nd-empty-create-btn').hide();
+    $('.cancel-x-btn').show();
+    }
+
+    // ── Col 2: Products ──
+    function ndRenderCol2(order, products) {
+    // Products gallery
+    var galleryHtml = '';
+    if (products && products.length > 0) {
+    products.forEach(function (p) {
+    galleryHtml += '<div class="product-card">' +
+    '<div class="product-img-wrap"><img src="/' + (p.image || 'mainicons/DefaultImage.svg') + '" alt="product" onerror="this.onerror=null; this.src=\'/mainicons/fallback_product.svg\';" /></div>' +
+    '<p class="product-name">' + escapeHtml(p.name) + '</p>' +
+    '<p class="product-qty">الكمية: ' + p.amount + '</p>' +
+    '</div>';
+    });
+    } else {
+    galleryHtml = '<div style="grid-column:1/-1;" class="empty-state-body"><img class="empty-no-products" src="/mainicons/no products.svg" alt="" /><p class="empty-state-text">لإظهار المنتجات عليك اختيار الطلب</p></div>';
+    }
+    $('#nd-col2-gallery').html(galleryHtml);
+
+    // Status
+    var isInDelivery = order.orderStatus && order.orderStatus.indexOf('قيد') !== -1 && order.orderStatus.indexOf('التوصيل') !== -1;
+    var badgeStyle = isInDelivery ? 'background:rgba(255,205,56,0.1);color:rgba(255,205,56,1);font-weight:700;' : '';
+    var deferredTag = order.wasDeferred ? '<span class="status-badge" style="display:block;margin-top:6px;background:rgba(220,53,69,.1);color:#dc3545;font-size:18px;padding:4px 22px;">مؤجل مسبقا</span>' : '';
+    var statusHtml = '<span class="order-status-label">حالة الطلب</span>' +
+    '<span class="status-badge" style="' + badgeStyle + '">' + escapeHtml(order.orderStatus ? order.orderStatus.replace(/_/g, ' ') : '') + '</span>' + deferredTag;
+    $('#nd-col2-status').html(statusHtml);
+
+    // Submit button
+    var $btn = $('#nd-submit-btn');
+    if (isPreviewMode || order.orderStatusInt !== @((int)OrderStatusEnum.طلب_جديد)) {
+    $btn.prop('disabled', true);
+    } else {
+    $btn.prop('disabled', false);
+    }
+
+    // Swap: hide skeletons, show real
+    $('#nd-col2-skeleton, #nd-col2-skeleton-status').hide();
+    $('#nd-col2-gallery, #nd-col2-status').show();
+    }
+
+    // Add to new design col3 when an order is submitted
+    function ndAddToCol3(submittedOrder) {
+    var flagUrl = getCountryImageUrl(submittedOrder.countryId);
+    var timeStr = submittedOrder.time || '';
+    var row = '<div class="delivery-section" data-order-id="' + submittedOrder.id + '" style="cursor:pointer;">' +
+    '<div class="delivery-row">' +
+    '<div class="delivery-time-wrap"><div class="delivery-time">' + timeStr + '</div></div>' +
+    '<div class="delivery-info">' +
+    '<div class="copy-icon-btn" onclick="event.stopPropagation(); copyToClipboard(\'' + submittedOrder.id + '\', \'كود الشحنة\')"><img src="/mainicons/copy icon.svg" alt="copy" /></div>' +
+    '<span class="delivery-code-num">' + submittedOrder.id + '</span>' +
+    (flagUrl ? '<img class="delivery-flag" src="' + flagUrl + '" alt="flag" />' : '') +
+    '</div>' +
+    '</div>' +
+    '</div>';
+    var $list = $('#nd-col3-list');
+    // Remove "no shipments" placeholder if present
+    $list.children('.empty-state-body').remove();
+    $list.prepend(row);
+    }
+
+    // Show empty state (no orders) in the new design
+    function ndShowEmpty() {
+    $('#nd-col1-skeleton-header, #nd-col1-skeleton-table').hide();
+    $('#nd-col1-header').html(
+    '<div class="empty-state-body">' +
+    '<img class="empty-exclamation" src="/mainicons/exclamation mark.svg" alt="" />' +
+    '<div class="empty-state-text"><p>لا يوجد طلب محدد..</p><p>يرجى الإضافة أو الإختيار من الأعلى</p></div>' +
+    '</div>'
+    ).show();
+    $('.order-details').addClass('empty-order-details');
+    // Show create-order button inside col1
+    if (!$('#nd-empty-create-btn').length) {
+    $('.order-details').append(
+    '<div id="nd-empty-create-btn" class="empty-create-btn-row">' +
+    '<button class="btn-create-order" onclick="$(\'#pfd-add-order-btn\').click();">' +
+    'إضافة طلب جديد' +
+    '<img src="/mainicons/plus.svg" alt="plus" width="18" height="18" />' +
+    '</button>' +
+    '</div>'
+    );
+    } else {
+    $('#nd-empty-create-btn').show();
+    }
+    $('#nd-col1-table').hide();
+    $('#nd-col2-skeleton, #nd-col2-skeleton-status').hide();
+    $('#nd-col2-gallery').html(
+    '<div style="grid-column:1/-1;" class="empty-state-body">' +
+    '<img class="empty-no-products" src="/mainicons/no products.svg" alt="" />' +
+    '<p class="empty-state-text">لإظهار المنتجات عليك اختيار الطلب</p>' +
+    '</div>'
+    ).show();
+    $('.products-panel').addClass('empty-products-panel');
+    $('#nd-col2-status').hide();
+    $('#nd-submit-btn').prop('disabled', true);
+    ndHideRow2Skeleton();
+    }
+
+    // Show empty state for col1 + col2 only (no row2 impact)
+    function ndShowEmptyCol1Col2() {
+    $('#nd-col1-skeleton-header, #nd-col1-skeleton-table').hide();
+    $('#nd-col1-header').html(
+    '<div class="empty-state-body">' +
+    '<img class="empty-exclamation" src="/mainicons/exclamation mark.svg" alt="" />' +
+    '<div class="empty-state-text"><p>لا يوجد طلب محدد..</p><p>يرجى الإضافة أو الإختيار من الأعلى</p></div>' +
+    '</div>'
+    ).show();
+    $('.order-details').addClass('empty-order-details');
+    if (!$('#nd-empty-create-btn').length) {
+    $('.order-details').append(
+    '<div id="nd-empty-create-btn" class="empty-create-btn-row">' +
+    '<button class="btn-create-order" onclick="$(\'#pfd-add-order-btn\').click();">' +
+    'إضافة طلب جديد' +
+    '<img src="/mainicons/plus.svg" alt="plus" width="18" height="18" />' +
+    '</button>' +
+    '</div>'
+    );
+    } else {
+    $('#nd-empty-create-btn').show();
+    }
+    $('#nd-col1-table').hide();
+    $('.cancel-x-btn').hide();
+    $('#nd-premium-badge').hide();
+    $('#nd-col2-skeleton, #nd-col2-skeleton-status').hide();
+    $('#nd-col2-gallery').html(
+    '<div style="grid-column:1/-1;" class="empty-state-body">' +
+    '<img class="empty-no-products" src="/mainicons/no products.svg" alt="" />' +
+    '<p class="empty-state-text">لإظهار المنتجات عليك اختيار الطلب</p>' +
+    '</div>'
+    ).show();
+    $('.products-panel').addClass('empty-products-panel');
+    $('#nd-col2-status').hide();
+    $('#nd-submit-btn').prop('disabled', true);
+    currentOrderId = 0;
+    updateHideOrderSection(0, '-');
+    }
+
+    // Cancel X button — dismiss current order, show empty col1+col2
+    $('.cancel-x-btn').on('click', function () {
+    isPreviewMode = false;
+    $('#pfd-new-design').removeClass('pfd-preview-mode');
+    $('#nd-downloaded-label').hide();
+    ndShowEmptyCol1Col2();
+    });
+
+    $('#pfd-add-order-btn').on('click', function () {
+    $.ajax({
+    url: '/Home/CreateOrder',
+    type: 'GET',
+    success: function (data) {
+    $('#modal-container').html(data);
+    $('#Create').modal('show');
+    }
+    });
+    });
+</script>
+<div id="modal-container"></div>

@@ -1,0 +1,76 @@
+﻿@model lotus_blue.Models.Employee
+
+@{
+    ViewData["Title"] = "تفاصيل الموظف";
+}
+<div class="text-center">
+    <h2>تفاصيل الموظف</h2>
+    <img src="/@Model.ImageUrl " class="rounded img-fluid" alt="صورة الموظف" style="max-width: 200px; max-height: 200px;" />
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <dl class="dl-horizontal">
+            <dt>الاسم:</dt>
+            <dd>@Model.Name</dd>
+
+            <dt>المسمى الوظيفي:</dt>
+            <dd>@Model.JobTitle</dd>
+
+            <dt>الجنسية:</dt>
+            <dd>@Model.Nationality</dd>
+
+            <dt>الهاتف:</dt>
+            <dd>@Model.PhoneNumber</dd>
+
+           
+        </dl>
+    </div>
+    <div class="col-md-4">
+        <dl class="dl-horizontal">
+            <dt>الراتب:</dt>
+            <dd>@Model.Salary</dd>
+
+            <dt>المستوى الأكاديمي:</dt>
+            <dd>@Model.AcademicLevel</dd>
+
+            <dt>تاريخ الميلاد:</dt>
+            <dd>@Model.DateOfBirth.ToShortDateString()</dd>
+
+            <dt>الجنس:</dt>
+            <dd>@(Model.Gender ? "ذكر" : "أنثى")</dd>
+
+            <dt> الأيميل:</dt>
+            <dd>@Model.ApplicationUser.Email</dd>
+        </dl>
+    </div>
+    <div class="col-md-4">
+        <dl class="dl-horizontal">
+     
+
+            
+
+            <dt>السيرة الذاتية:</dt>
+            <dd>
+                @if (!string.IsNullOrEmpty(Model.Cv))
+                {
+                    <a asp-action="DownloadCv" asp-route-id="@Model.Id">تحميل السيرة الذاتية</a>
+                }
+                else
+                {
+                    <span>لا توجد سيرة ذاتية</span>
+                }
+            </dd>
+
+            <dt>تاريخ الإضافة:</dt>
+            <dd>@Model.DateAdded.ToShortDateString()</dd>
+            <dt>العنوان:</dt>
+            <dd>@Model.Address</dd>
+        </dl>
+    </div>
+</div>
+
+<p>
+    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">تعديل</a>
+    <a asp-action="Index" class="btn btn-secondary">الرجوع إلى القائمة</a>
+</p>

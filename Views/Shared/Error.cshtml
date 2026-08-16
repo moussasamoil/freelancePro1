@@ -1,0 +1,6 @@
+﻿@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger" role="alert">
+        <strong>Error:</strong> @TempData["ErrorMessage"]
+    </div>
+}

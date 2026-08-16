@@ -1,0 +1,450 @@
+@model IEnumerable<lotus_blue.Models.ProductMinimumSellingPrice>
+
+@{
+    var pageHeaderTitle = "عرض الحد الأدنى للبيع";
+
+    ViewData["Title"] = pageHeaderTitle;
+    ViewBag.Title = pageHeaderTitle;
+    ViewBag.PageTitle = pageHeaderTitle;
+    ViewBag.HeaderTitle = pageHeaderTitle;
+}
+
+<style>
+    .min-sale-index {
+        width: 100%;
+        padding: 0 28px 24px;
+        direction: rtl;
+    }
+
+    .min-sale-layout-actions {
+        position: fixed;
+        top: 0;
+        left: 46px;
+        z-index: 1060;
+        height: 34px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        white-space: nowrap;
+    }
+
+    .min-sale-layout-list-link,
+    .min-sale-layout-delete-all {
+        height: 34px;
+        min-width: auto;
+        padding: 0;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        color: #1b263d !important;
+        font-size: 13px;
+        font-weight: 900;
+        text-decoration: none !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        white-space: nowrap;
+        cursor: pointer;
+        outline: none !important;
+    }
+
+        .min-sale-layout-list-link:hover,
+        .min-sale-layout-list-link:focus,
+        .min-sale-layout-delete-all:hover,
+        .min-sale-layout-delete-all:focus {
+            background: transparent !important;
+            color: #f28e02 !important;
+            text-decoration: none !important;
+            box-shadow: none !important;
+        }
+
+    .min-sale-layout-delete-all {
+        color: #dc2626 !important;
+    }
+
+        .min-sale-layout-delete-all:hover,
+        .min-sale-layout-delete-all:focus {
+            color: #dc2626 !important;
+        }
+
+    @@media (max-width: 768px) {
+        .min-sale-layout-actions {
+            left: 40px;
+            top: 0;
+            height: 32px;
+            gap: 10px;
+        }
+
+        .min-sale-layout-list-link,
+        .min-sale-layout-delete-all {
+            height: 32px;
+            font-size: 12px;
+        }
+    }
+
+    .min-sale-list-card {
+        width: 100%;
+        background: #ffffff;
+        border-radius: 18px;
+        box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+    }
+
+    .min-sale-list-header {
+        background: #F5F5F5;
+        padding: 18px 22px;
+        color: #f28e02;
+        font-size: 22px;
+        font-weight: 900;
+        border-bottom: 1px solid #dbe3ea;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .btn-create-min-sale {
+        background: transparent !important;
+        color: #f28e02 !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+        font-size: 14px;
+        font-weight: 900;
+        text-decoration: none !important;
+        white-space: nowrap;
+        box-shadow: none !important;
+        border: 0 !important;
+    }
+
+        .btn-create-min-sale:hover,
+        .btn-create-min-sale:focus {
+            background: transparent !important;
+            color: #f28e02 !important;
+            text-decoration: none !important;
+            box-shadow: none !important;
+        }
+
+    .min-sale-table-wrap {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .min-sale-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: center;
+        min-width: 900px;
+    }
+
+        .min-sale-table th {
+            background: #f8fafc;
+            color: #f28e02;
+            font-weight: 900;
+            padding: 13px 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .min-sale-table td {
+            padding: 13px 10px;
+            border: 1px solid #e2e8f0;
+            color: #334155;
+            font-weight: 800;
+        }
+
+    .price-pill {
+        display: inline-block;
+        min-width: 90px;
+        background: red;
+        color: whitesmoke;
+        border: 1px solid rgba(15, 159, 133, 0.26);
+        border-radius: 999px;
+        padding: 5px 12px;
+        font-weight: 900;
+    }
+
+    .table-actions {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-edit-min-sale,
+    .btn-delete-min-sale {
+        border: 0;
+        border-radius: 999px;
+        padding: 7px 14px;
+        font-weight: 900;
+        text-decoration: none;
+        font-size: 13px;
+    }
+
+    .btn-edit-min-sale {
+        background: #f28e02;
+        color: #ffffff;
+    }
+
+    .btn-delete-min-sale {
+        background: #ef4444;
+        color: #ffffff;
+    }
+
+    .empty-row {
+        padding: 26px !important;
+        color: #64748b !important;
+    }
+
+    .delete-all-popup-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+        background: rgba(15, 23, 42, 0.42);
+        direction: rtl;
+    }
+
+        .delete-all-popup-overlay.show {
+            display: flex;
+        }
+
+    .delete-all-popup {
+        width: min(440px, 94vw);
+        max-height: min(72vh, 560px);
+        background: #ffffff;
+        border-radius: 18px;
+        box-shadow: 0 18px 46px rgba(15, 23, 42, 0.24);
+        border: 1px solid #eef2f7;
+        overflow: hidden;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .delete-all-popup-close {
+        position: absolute;
+        top: 10px;
+        left: 12px;
+        border: 0;
+        background: transparent;
+        color: #64748b;
+        font-size: 26px;
+        line-height: 1;
+        cursor: pointer;
+        z-index: 2;
+    }
+
+    .delete-all-popup-icon {
+        width: 62px;
+        height: 62px;
+        min-width: 62px;
+        margin: 24px auto 10px;
+        border-radius: 50%;
+        background: rgba(239, 68, 68, 0.10);
+        color: #dc2626;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .delete-all-popup-title {
+        color: #0f172a;
+        text-align: center;
+        font-size: 18px;
+        font-weight: 900;
+        padding: 0 20px 8px;
+    }
+
+    .delete-all-popup-message {
+        color: #334155;
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 1.85;
+        text-align: center;
+        padding: 0 22px 20px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        white-space: normal;
+        max-height: 240px;
+    }
+
+    .delete-all-popup-actions {
+        border-top: 1px solid #edf2f7;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .delete-all-popup-confirm,
+    .delete-all-popup-cancel {
+        min-height: 44px;
+        border: 0;
+        background: #ffffff;
+        font-size: 15px;
+        font-weight: 900;
+        cursor: pointer;
+    }
+
+    .delete-all-popup-confirm {
+        color: #dc2626;
+    }
+
+    .delete-all-popup-cancel {
+        color: #1b263d;
+        border-right: 1px solid #edf2f7;
+    }
+
+        .delete-all-popup-confirm:hover,
+        .delete-all-popup-cancel:hover {
+            background: #f8fafc;
+        }
+</style>
+
+<div class="min-sale-layout-actions">
+    <a asp-action="Create" class="min-sale-layout-list-link">إنشاء الحد الأدنى للبيع</a>
+
+    @if (Model != null && Model.Any())
+    {
+        <button type="button" class="min-sale-layout-delete-all" id="openDeleteAllMinSalePopup">
+            حذف الجميع
+        </button>
+    }
+</div>
+
+<div class="min-sale-index">
+    <div class="min-sale-list-card">
+        <div class="min-sale-table-wrap">
+            <table class="min-sale-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>البلد</th>
+                        <th>المتجر</th>
+                        <th>المنتج الرئيسي</th>
+                        <th>الحد الأدنى للبيع</th>
+                        <th>تاريخ الإنشاء</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var index = 1;
+                    }
+
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var item in Model)
+                        {
+                            <tr>
+                                <td>@index</td>
+                                <td>@item.Country</td>
+                                <td>@(item.ManufacturingCompany?.Name ?? "-")</td>
+                                <td>@(item.MainWarehouse?.Name ?? "-")</td>
+                                <td><span class="price-pill">@item.MinimumSellingPrice.ToString("0.00")</span></td>
+                                <td>@item.CreatedAt.ToString("yyyy/MM/dd hh:mm tt")</td>
+                                <td>
+                                    <div class="table-actions">
+                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn-edit-min-sale">تعديل</a>
+
+                                        <form asp-action="Delete" asp-route-id="@item.Id" method="post" onsubmit="return confirm('هل تريد حذف هذا الحد الأدنى للبيع؟');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn-delete-min-sale">حذف</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            index++;
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="empty-row">لا توجد بيانات حتى الآن</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="deleteAllMinSalePopup" class="delete-all-popup-overlay" aria-hidden="true">
+    <div class="delete-all-popup" role="alertdialog" aria-modal="true" aria-labelledby="deleteAllMinSaleTitle">
+        <button type="button" class="delete-all-popup-close" data-close-delete-all-min-sale aria-label="إغلاق">×</button>
+
+        <div class="delete-all-popup-icon" aria-hidden="true">
+            <svg width="35" height="35" viewBox="0 0 24 24" fill="none">
+                <path d="M9 3.75H15L15.75 5.25H20.25" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M3.75 5.25H20.25" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                <path d="M6.75 8.25L7.35 19.05C7.42 20.18 8.34 21.05 9.47 21.05H14.53C15.66 21.05 16.58 20.18 16.65 19.05L17.25 8.25" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M10.25 10.75V17.25" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                <path d="M13.75 10.75V17.25" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+        </div>
+
+        <div id="deleteAllMinSaleTitle" class="delete-all-popup-title">حذف جميع بيانات الحد الأدنى للبيع</div>
+
+        <div class="delete-all-popup-message">
+            هل أنت متأكد من حذف جميع البيانات الموجودة في جدول الحد الأدنى للبيع؟ لا يمكن التراجع عن هذه العملية بعد تنفيذها.
+        </div>
+
+        <form asp-action="DeleteAll" method="post" class="delete-all-popup-actions">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="delete-all-popup-confirm">موافقة</button>
+            <button type="button" class="delete-all-popup-cancel" data-close-delete-all-min-sale>لا</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var popup = document.getElementById('deleteAllMinSalePopup');
+        var openButton = document.getElementById('openDeleteAllMinSalePopup');
+
+        function openPopup() {
+            if (!popup) {
+                return;
+            }
+
+            popup.classList.add('show');
+            popup.setAttribute('aria-hidden', 'false');
+        }
+
+        function closePopup() {
+            if (!popup) {
+                return;
+            }
+
+            popup.classList.remove('show');
+            popup.setAttribute('aria-hidden', 'true');
+        }
+
+        if (openButton) {
+            openButton.addEventListener('click', openPopup);
+        }
+
+        document.addEventListener('click', function (event) {
+            if (event.target.closest('[data-close-delete-all-min-sale]')) {
+                closePopup();
+                return;
+            }
+
+            if (event.target === popup) {
+                closePopup();
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closePopup();
+            }
+        });
+    })();
+</script>

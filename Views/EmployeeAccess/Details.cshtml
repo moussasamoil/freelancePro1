@@ -1,0 +1,55 @@
+﻿@model lotus_blue.Models.ViewModel.EmployeeAccessViewModel
+
+@{
+    ViewData["Title"] = "تفاصيل الشركة";
+}
+
+<h1>@Model.CompanyName</h1>
+
+<h2>الموظفون</h2>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>اسم الموظف</th>
+            <th>يمكنه رؤية الشركة</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var employee in Model.Employees)
+        {
+            <tr>
+                <td>@employee.EmployeeName</td>
+                <td>
+                    <input type="checkbox" @(employee.CanSeeManufacturingCompany ? "checked" : "") data-employee-id="@employee.EmployeeId" onchange="updateEmployeeStatus('@Model.Id', @employee.EmployeeId, this.checked)" />
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@section Scripts {
+    <script>
+        function updateEmployeeStatus(companyId, employeeId, checked) {
+            var url = `/EmployeeAccess/UpdateEmployeeStatusForStores?companyId=${companyId}&employeeId=${employeeId}&canSeeManufacturingCompany=${checked}`;
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log(data);
+                })
+                .catch(error => {
+                    console.error('There was a problem with the fetch operation:', error);
+                });
+        }
+    </script>
+}

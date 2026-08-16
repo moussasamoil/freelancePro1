@@ -1,0 +1,116 @@
+﻿@model List<lotus_blue.Models.ViewModel.OrderByCountryViewModel>
+
+@{
+    ViewData["Title"] = " إجمالي السعر للطلبات حسب البلد  ";
+    var itemCount = Model.Count;
+
+}
+
+<div class=" mx-3 custom-shadow background-white">
+
+    <div class="d-flex py-1 justify-content-between border-bottom">
+
+        <div class="dollar text-green">
+            الإجمالي   :  <span class="f-s-18 f-w-600">@Model[0].TotalSumInDollars</span>  (ما يقابله  USD)
+        </div>
+        <div class="turkishlira text-green" style="display:none">
+            الإجمالي   : <span class="f-s-18 f-w-600">@Model[0].TotalSumInTL</span>  (ما يقابله  TRY)
+        </div>
+        <div>
+            <img src="/static/dollarfinance.svg" width="30" onclick="exchange()" class="dollar pointer" />
+            <img style="display:none" width="30" src="/static/turkishtl.svg" onclick="exchange()" class="turkishlira pointer" />
+        </div>
+
+    </div>
+
+    @foreach (var order in Model)
+    {
+        <div class="row  mt-0 @(Model.IndexOf(order) != itemCount - 1 ? "border-bottom" : "") mt-4">
+            <div class="col-md-6   h5">
+                <img width="25" height="25" src="@Common.GetImageUrlByCountryName(order.SelectedCountry)">
+                @order.SelectedCountry
+            </div>
+
+
+            <div class="col-md-2 ps-5 text-start d-flex justify-content-end">
+
+
+                <div class="h5 my-0 text-secondary  fw-bold">
+                    <div class="ltr text-nowrap">
+                        @order.TotalPirceTl
+                        <small class="f-s-11 "> TRY</small>
+
+                    </div>
+                    <p class="f-s-11 text-grey">حساب جاري</p>
+
+
+                </div>
+            </div>
+
+            <div class="col-md-2 ps-5 pe-0 text-start  d-flex justify-content-end ">
+
+                <div class="h5 my-0 text-secondary  fw-bold">
+                    <div class="ltr text-nowrap">
+                        @order.TotalPrice
+                        <small class="f-s-11 "> @order.Currency</small>
+
+                    </div>
+                    <p class="f-s-11 text-grey">حساب جاري</p>
+
+
+                </div>
+
+
+            </div>
+
+            <div class="col-md-2 text-start d-flex justify-content-end">
+
+                <div class="h5 my-0 text-secondary  fw-bold">
+                    <div class="ltr text-nowrap">
+                        @order.TotalPirceDollar
+                        <small class="f-s-11 "> USD</small>
+
+                    </div>
+                    <p class="f-s-11 text-grey">حساب جاري</p>
+
+                </div>
+
+                <div class="my-auto me-4 ps-2 pb-2 f-s-14">
+                    <i style="font-size:20px !important;" class="fa-regular text-grey fa-chevron-left"></i>
+                </div>
+            </div>
+
+
+        </div>
+    }
+  
+</div>
+
+<div class="position-fixed bottom-0 end-0 p-3">
+    <a href="/deliverycompany/create" class="btn rounded-pill text-with-line  px-3 py-2  btn-green-v2   ">
+       إضافة دولة +
+    </a>
+</div>
+
+
+<style>
+    .border-bottom {
+        border-bottom: 1px solid rgba(143, 142, 142, 0.318);
+    }
+
+    .f-s-11 {
+        font-size: 11px
+    }
+
+   
+</style>
+
+<script>
+    function exchange() {
+        // Toggle between displaying USD and Turkish Lira
+        $('.dollar').toggle();
+        $('.turkishlira').toggle();
+    }
+
+
+</script>

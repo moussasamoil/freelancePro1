@@ -1,0 +1,121 @@
+﻿@model lotus_blue.Models.DeliveryCompanyPrice
+
+@{
+    ViewData["Title"] = "اضافة سعر  لمندوب  التوصيل";
+}
+
+<form id="deliveryForm" asp-action="Create" method="post">
+    <div class="d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">اختار سعر توصيل  للمندوب</h5>
+            </div>
+            <div class="modal-body">
+                <!-- Removed the nested form tag here, as nested forms are not valid HTML. -->
+                <div class="mb-3">
+                    <label for="SelectedCountry" class="form-label">الدولة:</label>
+                 
+                    <select id="country" class="form-select" asp-for="Country" asp-items="Html.GetEnumSelectList<lotus_blue.Models.Common.Countries>()" onchange="updateCities();">
+                    <option value=""> ---اختار الدولة ---</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="City" class="form-label">المدينة:</label>
+                    <select id="city" name="City" class="form-select" onchange="updateDeliveryCompanies();"></select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="DeliveryCompanyId" class="form-label"> اسم المندوب:</label>
+                    <select id="deliveryCompany" name="DeliveryCompanyId" class="form-select"></select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="Price" class="form-label">السعر:</label>
+                    <input asp-for="Price" type="number" class="form-control" step="0.01" />
+                </div>
+
+                <button type="submit" class="btn btn-success">موافقة</button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+    let country; // Declare country as a global variable
+    let city; // Declare city as a global variable
+
+    function updateDeliveryCompanies() {
+        country = document.getElementById('country').value; // Update the value of the global variable
+        city = document.getElementById('city').value; // Update the value of the global variable
+
+        if (country && city) {
+            fetch(`/DeliveryRepresentativePrice/GetAvailableDeliveryRepresentatives?countryId=${country}&cityId=${city}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load delivery representatives');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const deliveryCompanyDropdown = document.getElementById('deliveryCompany');
+                    deliveryCompanyDropdown.innerHTML = '';  // Clear existing options
+
+                    // Create and add the "اختار مندوب" option
+                    const defaultOption = document.createElement('option');
+                    defaultOption.text = 'اختار مندوب';
+                    defaultOption.value = '';
+                    deliveryCompanyDropdown.add(defaultOption);
+
+                    // Add fetched delivery representatives
+                    data.forEach(rep => {
+                        const option = document.createElement('option');
+                        option.text = rep.name;
+                        option.value = rep.id;
+                        deliveryCompanyDropdown.add(option);
+                    });
+
+                    console.log(data);
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+        }
+    }
+
+    function updateCities() {
+        country = document.getElementById('country').value; // Update the value of the global variable
+
+        fetch(`/Datalist/GetCitiesByCountry?CountryIds=${country}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to load cities');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const cityDropdown = document.getElementById('city');
+                const selectedCity = cityDropdown.value; // Store the currently selected city value
+                cityDropdown.innerHTML = '';  // Clear existing options
+
+                // Create and add the "اختار مدينة" option
+                const defaultOption = document.createElement('option');
+                defaultOption.text = 'اختار مدينة';
+                defaultOption.value = '';
+                cityDropdown.add(defaultOption);
+
+                // Add fetched cities
+                data.forEach(city => {
+                    const option = document.createElement('option');
+                    option.text = city;
+                    option.value = city;
+                    cityDropdown.add(option);
+                });
+
+                cityDropdown.value = selectedCity; // Reassign the selected city value
+            })
+            .catch(error => {
+                console.error(error);
+            });
+    }
+</script>

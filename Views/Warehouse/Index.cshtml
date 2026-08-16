@@ -1,0 +1,290 @@
+﻿@using lotus_blue.Models.ViewModel
+@model PaginationViewModel<WarehouseViewModel>
+
+@{
+    ViewBag.Title = "المستودعات  لشركات التوصيل";
+}
+
+    <div class="row mb-3">
+        <!-- First column -->
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="CountryId" name="CountryId" class="form-control drop-down-design">
+             
+            </select>
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="DeliveryCompanyId" name="DeliveryCompany" class="form-control drop-down-design" >
+            </select>
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="ProductId" name="Product" class="form-control drop-down-design">
+            </select>
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="ManufacturingCompanyId" name="ManufacturingCompany" class="form-control drop-down-design">
+            </select>
+        </div>
+
+ 
+
+
+
+        <!-- Second column -->
+        <div class="col-lg d-flex align-items-center justify-content-end">
+            <div class="form-group d-flex align-items-center">
+                <label for="pageSize" class="me-2">أظهر:</label>
+                <select id="pageSize" name="pageSize" class="form-control me-2">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+                <label for="pageSize">مدخلات</label>
+            </div>
+        </div>
+
+
+    </div>
+
+<!-- Print Button (Initially Hidden) -->
+<div class="col-lg d-flex align-items-center justify-content-start pb-2">
+    <form asp-controller="Warehouse" asp-action="AllWarehousesPdf" method="post" target="_blank">
+        <input type="hidden" name="DeliveryCompanyId" id="SelectedDeliveryCompanyId" />
+        <button type="submit" id="printPriceOfferButton" class="btn btn-success" style="display: none;">فاتورة</button>
+    </form>
+</div>
+
+<table class="table" id="table">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>صورة المنتج</th>
+            <th>اسم المنتج</th>
+
+            <th>الكمية</th>
+            <th>السعر</th>
+
+            <th>شركة التوصيل</th>
+            <th>شركة التصنيع</th>
+            <th>تاريخ الإضافة</th>
+            <th>تاريخ التحديث</th>
+            <th>الدولة</th>
+            <th>الإجراءات</th>
+            @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+            {
+                <th>الفعالية</th>
+            }
+
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var warehouse in Model.Items)
+        {
+            <tr>
+                <td>@warehouse.Id</td>
+                <td>
+
+                    <img loading="lazy" width="69" height="37" src="@warehouse.ProductImage " alt="Company Logo">
+
+
+
+                </td>
+                <td>@warehouse.Name</td>
+
+                <td>@warehouse.Amount</td>
+                <td>@warehouse.Price</td>
+                <td>@warehouse.DeliveryCompanyName</td>
+                <td>@warehouse.ManufacturingCompanyName</td>
+                <td>@warehouse.DateAdded</td>
+                <td>@warehouse.DateUpdated.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                <td>@warehouse.Countries</td>
+                <td>
+                    <div class="d-inline-flex">
+
+                        <a class="btn btn-outline-success" asp-action="Details" asp-route-id="@warehouse.Id">تفاصيل</a>
+                        @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+                        {
+                            <a class="btn btn-yellow-v3 me-4" asp-action="Edit" asp-route-id="@warehouse.Id">تعديل</a>
+
+                        }
+
+                    </div>
+                </td>
+                @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+                {
+                    <td>
+
+                        <div class="form-check form-switch">
+                            <input class="form-check-input shown-checkbox" type="checkbox" id="IsShown-@warehouse.Id" data-warehouse-id="@warehouse.Id" @(warehouse.IsShown ? "checked" : "unchecked")>
+                            <label class="form-check-label" for="IsShown-@warehouse.Id">  الظهور</label>
+                        </div>
+
+
+                    </td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+<!-- Display pagination controls -->
+<div id="pagination-link" class="mt-0 container-fluid">
+    <div class="d-flex justify-content-between align-items-center">
+
+        <p class="text-start pt-2 total-items-display">@Model.TotalItems عدد المستودعات</p>
+
+        <nav aria-label="Page navigation" class="mx-auto">
+            <div class="d-flex justify-content-start">
+                <ul class="pagination p-0">
+                    <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link pointer" data-page="1">
+                            <i class="fa-solid fa-chevron-double-right text-green"></i>
+                        </a>
+                    </li>
+                    <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.CurrentPage - 1)">
+                            <i class="fa-solid fa-chevron-right text-green"></i>
+                        </a>
+                    </li>
+
+                    @{
+                        int startPage = Model.CurrentPage;
+                        int endPage = startPage + 2;
+                        if (endPage > Model.TotalPages)
+                        {
+                            endPage = Model.TotalPages;
+                        }
+                    }
+
+                    @for (int i = startPage; i <= endPage; i++)
+                    {
+                        <li class="numbers page-item @(Model.CurrentPage == i ? "active" : "")">
+                            <a class="page-link" data-page="@i">@i</a>
+                        </li>
+                    }
+
+                    @if (Model.TotalPages > endPage)
+                    {
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+
+                        @for (int i = Model.TotalPages - 2; i <= Model.TotalPages; i++)
+                        {
+                            <li class="numbers page-item @(Model.CurrentPage == i ? "active" : "")">
+                                <a class="page-link" data-page="@i">@i</a>
+                            </li>
+                        }
+                    }
+
+
+
+                    <li class="page-item @(Model.CurrentPage ==  Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.CurrentPage + 1)">
+                            <i class="fa-solid fa-chevron-left text-green f-s-18"></i>
+                        </a>
+                    </li>
+                    <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.TotalPages)">
+                            <i class="fa-solid fa-chevron-double-left text-green"></i>
+                        </a>
+                    </li>
+
+
+                </ul>
+            </div>
+        </nav>
+
+
+    </div>
+</div>
+
+
+
+<script>
+    $(document).ready(function () {
+
+        $('#DeliveryCompanyId').change(function () {
+            var selectedValue = $(this).val();
+
+            if (selectedValue) {
+                // If a delivery company is selected, show the print button
+                $('#SelectedDeliveryCompanyId').val(selectedValue);
+                $('#printPriceOfferButton').show();
+            } else {
+                // If no delivery company is selected, hide the print button
+                $('#SelectedDeliveryCompanyId').val('');
+                $('#printPriceOfferButton').hide();
+            }
+        });
+
+        // Trigger change event on page load in case the dropdown is already selected
+        $('#DeliveryCompanyId').trigger('change');
+
+
+        $('#table').on('change', '.shown-checkbox', function () {
+            console.log("Checkbox change event triggered");
+            var globalDeliveryCompanyId = $(this).data('warehouse-id');
+            var isShown = $(this).is(':checked');
+            console.log("Warehouse ID: ", globalDeliveryCompanyId, " Is Shown: ", isShown);
+            $.post('/Warehouse/SetIsShown', { WareHouseId: globalDeliveryCompanyId, isShown: isShown }, function (response) {
+                console.log("Response received");
+            }).fail(function (xhr, status, error) {
+                console.error("Error in AJAX request:", status, error);
+            });
+        });
+
+        $('#pageSize').on('change', function () {
+            fetchwarehouses(1);  // Assuming you want to load the first page when pageSize changes
+        });
+
+
+        // Corrected function to fetch warehouses based on the search term
+        function fetchwarehouses(page) {
+            var countryId = $('#CountryId').val();
+            var deliveryCompanyId = $('#DeliveryCompanyId').val();
+            var mainwarehouseId = $('#ProductId').val();
+            var storeId = $('#ManufacturingCompanyId').val();
+            const pageSize = $('#pageSize').val();
+
+            $.ajax({
+                url: '@Url.Action("Index", "Warehouse")',
+                type: 'GET',
+                data: {
+                    page: page,
+                    pageSize: pageSize, countryId: countryId, deliveryCompanyId: deliveryCompanyId, mainwarehouseId: mainwarehouseId, storeId: storeId
+                },
+                success: function (result) {
+                    const newTbody = $(result).find('#table > tbody').html();  // Fetch the new tbody contents
+                    $('#table > tbody').html(newTbody);  // Replace only the tbody contents
+
+                    const pagination = $(result).find('#pagination-link').get(0).outerHTML;
+                    $('#pagination-link').replaceWith(pagination);
+                }
+            });
+        }
+
+        $(document).on('click', '.pagination a.page-link', function (event) {
+            event.preventDefault(); // Still prevent the default action
+
+            // Extract the page number from the data-page attribute instead of the href
+            const page = $(this).data('page');
+
+            // Call the loadData function with the extracted page number
+            fetchwarehouses(page);
+        });
+
+        $('#CountryId, #DeliveryCompanyId,#ProductId,#ManufacturingCompanyId').change(function () {
+            fetchwarehouses();
+        });
+
+
+
+    });
+</script>
+

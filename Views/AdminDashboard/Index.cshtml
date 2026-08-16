@@ -1,0 +1,80 @@
+@{
+    ViewData["Title"] = "لوحة تحكم المسؤول";
+    Layout = "_Layout";
+}
+
+<div class="container py-4" dir="rtl">
+    <h2 class="mb-4">لوحة تحكم المسؤول</h2>
+
+    <section class="card p-4 mb-4">
+        <h4 class="mb-3">تنظيم أرقام هواتف العملاء المحتملين</h4>
+        <p class="mb-3">
+            أرقام الهواتف في جدول <strong>العملاء المحتملين (PotentialOrder)</strong> لم تكن تمر عبر آلية التوحيد
+            (NormalizePhone) عند الحفظ، فأصبحت تحتوي على صيغ متعددة (أرقام عربية، مسافات، شرطات،
+            بادئات <code>+</code> أو <code>00</code>). هذا يُربك عمليات كشف التكرار وروابط واتساب.
+            <br />
+            استخدم زر <strong>"تجربة بدون تطبيق"</strong> أولاً لمعاينة عدد الصفوف التي ستتغير بدون أي كتابة في قاعدة البيانات.
+            ثم استخدم زر <strong>"تطبيق فعلي"</strong> لتنفيذ التغييرات نهائياً.
+        </p>
+
+        <div class="d-flex gap-2 flex-wrap">
+            <button id="dryRunBtn" type="button" class="btn btn-outline-primary">
+                تجربة بدون تطبيق (Dry Run)
+            </button>
+            <button id="applyBtn" type="button" class="btn btn-danger">
+                تطبيق فعلي
+            </button>
+        </div>
+
+        <p id="dryRunResult" class="mt-3 mb-0" style="display:none;"></p>
+        <p id="applyResult" class="mt-2 mb-0" style="display:none;"></p>
+    </section>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const csrf = document.querySelector('input[name="__RequestVerificationToken"]');
+            const token = csrf ? csrf.value : '';
+
+            function postAndRender(url, $resultEl, $btn) {
+                const originalText = $btn.text();
+                $btn.prop('disabled', true).text('...جارٍ التنفيذ');
+                $resultEl.show().removeClass('text-danger text-success').text('...');
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'RequestVerificationToken': token,
+                        'Accept': 'application/json'
+                    }
+                })
+                    .then(async r => {
+                        const data = await r.json().catch(() => ({ message: 'استجابة غير صالحة من الخادم' }));
+                        if (!r.ok) {
+                            $resultEl.addClass('text-danger').text(data.message || ('خطأ: ' + r.status));
+                        } else {
+                            $resultEl.addClass('text-success').text(data.message || JSON.stringify(data));
+                        }
+                    })
+                    .catch(err => {
+                        $resultEl.addClass('text-danger').text('فشل الاتصال: ' + err.message);
+                    })
+                    .finally(() => {
+                        $btn.prop('disabled', false).text(originalText);
+                    });
+            }
+
+            $('#dryRunBtn').on('click', function () {
+                postAndRender('/AdminDashboard/DryRunPoPhoneNormalization', $('#dryRunResult'), $(this));
+            });
+
+            $('#applyBtn').on('click', function () {
+                if (!confirm('سيتم تعديل صفوف فعلية في قاعدة البيانات. هل أنت متأكد؟')) return;
+                postAndRender('/AdminDashboard/ApplyPoPhoneNormalization', $('#applyResult'), $(this));
+            });
+        })();
+    </script>
+
+    @Html.AntiForgeryToken()
+}

@@ -1,0 +1,645 @@
+@using lotus_blue.Models
+
+<div class="modal rtl modal-dialog-centered" id="CreatePotential" data-bs-keyboard="false" data-bs-backdrop="static" tabindex="-1" aria-labelledby="CreatePotential" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content background-white-green" style="position: relative;">
+
+            @*
+                Error notification overlay system (mirrors _CreateOrder.cshtml pattern):
+                - #potentialOverlay: semi-transparent backdrop that darkens the modal behind the error dialog
+                - #potentialFailedMessage: the error dialog itself, absolutely centered over the modal content
+                  Both are hidden by default and shown together when the server rejects the request.
+            *@
+            <div id="potentialOverlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(33, 37, 41, 0.1); z-index: 10;"></div>
+            <div id="potentialFailedMessage" class="container centered" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 20; width: 80%;">
+                <div style="background-color: white;" class="flex-column b-r-8 d-flex justify-content-center">
+                    <div>
+                        <div class="text-center pt-3">
+                            <img src="/static/x-shadow-red.svg" width="50" />
+                        </div>
+                        <p class="text-center pb-3 text-black fw-bolder">خطأ</p>
+                        @* .potential-message is populated dynamically with the server's error text *@
+                        <p class="text-center text-black pb-3 potential-message text-nowrap"></p>
+                    </div>
+                    <div class="border-top grey-hover">
+                        <div class="row">
+                            @* Dismiss button — hides both the dialog and the backdrop *@
+                            <div id="closePotentialFailed" class="py-2 text-center grey-hover text-green-v2 text-decoration-underline" style="cursor: pointer;">
+                                موافق
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-header">
+                <button type="button" class="btn head-16 text-green" data-bs-dismiss="modal" aria-label="Close">تراجع</button>
+                <h5 class="modal-title head text-center">إدخال البيانات</h5>
+                <button type="button" class="btn head-16 text-green" data-bs-dismiss="modal" aria-label="Close">انتهى</button>
+            </div>
+
+            <div class="modal-body">
+                <form id="potentialClientForm">
+                    <div class="row d-flex justify-content-center">
+                        <div class="row">
+                            <div class="col-6 ">
+                                <div class="form-group">
+                                    <select class="form-control" id="potentialOrderSource" name="orderSource" required>
+                                        <option data-image="/static/hashtag-regular.svg" value="" disabled selected>نوع الصفحة</option>
+                                        @foreach (OrderSourceEnum source in Enum.GetValues(typeof(OrderSourceEnum)))
+                                        {
+                                            <option value="@((int)source)" data-image="@Common.GetSocialMediaIconUrl(source)">
+                                                @source
+                                            </option>
+                                        }
+                                    </select>
+                                    <span class="text-danger" id="potentialOrderSourceError"></span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-group">
+                                    <select class="form-control" id="potentialCountry" name="country" required>
+                                        <option data-image="/static/earth-americas-sharp-solid.svg" value="" disabled selected>    اختر الدولة   </option>
+                                        @foreach (var country in Enum.GetValues(typeof(Common.Countries)))
+                                        {
+                                            <option value="@country" data-image="@Common.GetImageUrlByCountryName(country.ToString())">@country</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-6" id="potentialStoreNameCol">
+                                <div class="form-group">
+                                    <select class="form-control" id="potentialStoreName" name="storeName" required disabled>
+                                        <option data-image="/static/building-regular.svg" value="" disabled selected>اسم المتجر</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-6" id="potentialCustomerNameWrapper">
+                                <div class="form-group w-sm-100 input-wrapper">
+                                    <input type="text" class="form-control with-bg-image-client" id="potentialCustomerName" name="customerName" required placeholder="اسم العميل" />
+                                    <i class="fa-duotone fa-spinner-third fa-spin spinner-icon"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3 " id="potentialChatUrlWrapper">
+                            <div class="col-12 ">
+                                <div class="form-group w-100 input-wrapper">
+                                    <input type="text" class="form-control with-bg-image-address" id="potentialChatUrl" name="chatUrl" required placeholder="رابط المحادثة" />
+                                    <i class="fa-duotone fa-spinner-third fa-spin spinner-icon"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3" id="potentialPhoneRowWrapper" style="display:none;">
+                            <div class="col-12 ">
+                                <div class="form-group w-100 input-wrapper" id="potentialPhoneWrapper">
+                                    <input type="tel" class="form-control with-bg-image-phonenumber" id="potentialPhoneNumber" name="phoneNumber" placeholder="رقم الهاتف" />
+                                    <i class="fa-duotone fa-spinner-third fa-spin spinner-icon" style="display:none;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex mb-3 justify-content-center ">
+                        <button style="font-size:1.3rem;" type="submit" id="submitPotentialClient" class="btn py-1 background-gold text-white mb-3 w-65 mt-3" disabled>
+                            تأكيد إدخال البيانات
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* after success PO creation *@
+<div id="potentialSuccessMessage" class="hidden" style="width:35%;">
+    <div class="container pb-5 custom-box-shadow b-r-8 background-white">
+        <div class="row pt-5">
+            <div class="col text-center">
+                <img width="70" class="mx-auto d-block" src="/static/turesign.svg">
+            </div>
+        </div>
+        <div class="row">
+            <div class="col text-center">
+                <p><span id="potentialOrderIDPlaceholder"></span></p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col text-center">
+                <p>تمت العملية بنجاح</p>
+            </div>
+        </div>
+
+        <div class="row mt-3" style="margin-top: 130px;">
+            <div class="col text-center">
+                <a id="closeAndOpenPotentialBtn" style="padding-left:132px; padding-right:132px;" class="text-gold-v2 b-r-8 custom-box-shadow">قم بإدخال بيانات جديدة</a>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div id="closePotentialSuccess" class="col text-center" style="cursor:pointer;">
+                <img src="/static/77-01.svg" width="50" />
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .error {
+        background-image: url('/static/exclamation.svg');
+        background-position: left 10px center;
+        background-repeat: no-repeat;
+        padding-right: 50px;
+        background-size: 21px;
+    }
+
+    .success {
+        background-image: url('/static/turesign.svg');
+        background-position: left 10px center;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 25px;
+    }
+
+    .required-message {
+        color: #FFFFFF;
+        background-color: #FF0000;
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin-top: 0.25rem;
+    }
+
+    #potentialSuccessMessage {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1000;
+    }
+
+    #CreatePotential .modal-content {
+        overscroll-behavior: contain;
+    }
+
+    .head {
+        font-size: 18px;
+        text-decoration: none;
+        color: black;
+    }
+
+    .head-16 {
+        font-size: 16px;
+        text-decoration: none;
+        color: grey;
+    }
+
+    .with-bg-image-phonenumber {
+        background-image: url('/static/phone-regular.svg');
+        background-position: right 10px center;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 14px 14px;
+    }
+    .success.with-bg-image-phonenumber {
+        background-image: url('/static/turesign.svg'), url('/static/phone-regular.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 25px 25px, 14px 14px;
+    }
+    .error.with-bg-image-phonenumber {
+        background-image: url('/static/exclamation.svg'), url('/static/phone-regular.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 21px 21px, 14px 14px;
+    }
+    .input-wrapper {
+        position: relative;
+    }
+
+    .spinner-icon {
+        color: black;
+        position: absolute;
+        left: 10px;
+        top: 30%;
+        transform: translateY(-50%);
+        display: none;
+    }
+
+    #potentialPhoneWrapper .spinner-icon {
+        top: 50%;
+    }
+    #potentialPhoneWrapper {
+        position: relative;
+    }
+    .with-bg-image-client {
+        background-image: url('/static/client.svg');
+        background-position: right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 14px 14px;
+    }
+    .success.with-bg-image-client {
+        background-image: url('/static/turesign.svg'), url('/static/client.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 25px 25px, 14px 14px;
+    }
+    .with-bg-image-address {
+        background-image: url('/static/location-dot-light.svg');
+        background-position: right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 14px 14px;
+    }
+    .success.with-bg-image-address {
+        background-image: url('/static/turesign.svg'), url('/static/location-dot-light.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 25px 25px, 14px 14px;
+    }
+</style>
+
+<script>
+    $(document).ready(function () {
+        // Prevent scroll from leaking out of Select2 dropdowns to the page behind the modal
+        $(document).on('wheel', '#CreatePotential .select2-results', function (e) {
+            var el = this;
+            if ((el.scrollTop === 0 && e.originalEvent.deltaY < 0) ||
+                (el.scrollTop + el.clientHeight >= el.scrollHeight && e.originalEvent.deltaY > 0)) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+
+        // Format option with image (same as _CreateOrder)
+        function formatOption(option) {
+            var imageUrl = $(option.element).data('image');
+            var imageTag = imageUrl ? '<img src="' + imageUrl + '" class="img-flag" style="margin-right: 5px; width: 14px; height: 14px;" />' : '';
+            return $('<span>' + imageTag + option.text + '</span>');
+        }
+
+        // Initialize Select2 on dropdowns
+        $('#potentialCountry, #potentialOrderSource').each(function () {
+            $(this).select2({
+                templateResult: formatOption,
+                templateSelection: formatOption,
+                dropdownParent: $('#CreatePotential'),
+                dir: "rtl",
+                minimumResultsForSearch: 1,
+                width: '100%',
+            });
+
+            $(this).on('select2:close', function () {
+                var $dropdown = $(this);
+                if (!$dropdown.val()) {
+                    potentialAddErrorClassAndMessage($dropdown, potentialGetErrorMessage($dropdown));
+                } else {
+                    potentialRemoveErrorClassAndMessage($dropdown);
+                }
+            });
+        });
+
+        function potentialGetErrorMessage($dropdown) {
+            switch ($dropdown.attr('id')) {
+                case 'potentialCountry': return 'يرجى إختيار دولة صحيحة.';
+                case 'potentialOrderSource': return 'يرجى إختيار نوع صفحة صحيح.';
+                case 'potentialStoreName': return 'يرجى إختيار اسم متجر صحيح.';
+                default: return '';
+            }
+        }
+
+        function potentialAddErrorClassAndMessage($dropdown, message) {
+            const $container = $dropdown.next('.select2-container');
+            $container.find('.select2-selection__rendered').addClass('error');
+            $container.next('.required-message').remove();
+            $container.after('<div class="required-message">' + message + '</div>');
+        }
+
+        function potentialRemoveErrorClassAndMessage($dropdown) {
+            const $container = $dropdown.next('.select2-container');
+            $container.find('.select2-selection__rendered').removeClass('error').addClass('success');
+            $container.next('.required-message').remove();
+        }
+
+        function potentialUpdateFieldStatus(selector, errorMessage) {
+            var $input = $(selector);
+            var value = $input.val().trim();
+            var $container = $input.closest('.form-group');
+            var $spinner = $container.find('.spinner-icon');
+
+            if (!$input.hasClass('success')) {
+                $spinner.show();
+            }
+
+            setTimeout(function () {
+                $spinner.hide();
+                if (value !== "") {
+                    $input.addClass('success').removeClass('error');
+                    $container.next('.required-message').remove();
+                } else {
+                    $input.removeClass('success').addClass('error');
+                    if ($container.next('.required-message').length === 0) {
+                        $container.after('<div class="required-message">' + errorMessage + '</div>');
+                    }
+                }
+            }, 2000);
+        }
+
+
+        // Load stores dropdown
+        $.ajax({
+            url: '/DataList/GetAllStores',
+            type: 'GET',
+            success: function (data) {
+                var dropdown = $('#potentialStoreName');
+                dropdown.empty();
+                dropdown.append($('<option></option>').val('').text('اسم المتجر').attr('data-image', '/static/building-regular.svg').attr('disabled', 'disabled').attr('selected', 'selected'));
+                $.each(data, function (index, item) {
+                    dropdown.append($('<option></option>').val(item.id).text(item.name).attr('data-image', item.logoUrl));
+                });
+                dropdown.prop('disabled', false);
+
+                // Re-initialize Select2 after populating options
+                dropdown.select2({
+                    templateResult: formatOption,
+                    templateSelection: formatOption,
+                    dropdownParent: $('#CreatePotential'),
+                    dir: "rtl",
+                    minimumResultsForSearch: 1,
+                    width: '100%',
+                });
+
+                dropdown.on('select2:close', function () {
+                    if (!dropdown.val()) {
+                        potentialAddErrorClassAndMessage(dropdown, potentialGetErrorMessage(dropdown));
+                    } else {
+                        potentialRemoveErrorClassAndMessage(dropdown);
+                    }
+                });
+            },
+            error: function (error) {
+                console.log(error);
+            }
+        });
+
+        // Phone number validation (identical to _CreateOrder)
+        function getExpectedPhoneNumberLength(country) {
+            switch (country) {
+                case 'العراق':
+                    return { length: 11, pattern: /^(07)\d{9}$/, startsWith: '07' };
+                case 'تركيا':
+                    return { length: 11, pattern: /^(05)\d{9}$/, startsWith: '05' };
+                case 'ليبيا':
+                    return { length: 10, pattern: /^(09)\d{8}$/, startsWith: '09' };
+                case 'الإمارات':
+                    return { length: 10, pattern: /^(05)\d{8}$/, startsWith: '05' };
+                case 'سلطنة_عمان':
+                    return { length: 8, pattern: /^(9|7)\d{7}$/, startsWith: ['9', '7'] };
+                case 'البحرين':
+                    return { length: 8, pattern: /^(3|6)\d{7}$/, startsWith: ['3', '6'] };
+                case 'تونس':
+                    return { length: 8, pattern: /^(9|4|5|3|2)\d{7}$/, startsWith: ['9', '4', '5', '3', '2'] };
+                case 'الكويت':
+                    return { length: 8, pattern: /^(5|6|9|4)\d{7}$/, startsWith: ['5', '6', '9', '4'] };
+                case 'السعودية':
+                    return { length: 9, pattern: /^(05)\d{7}$/, startsWith: '05' };
+                case 'قطر':
+                    return { length: 8, pattern: /^(7|3|5|6)\d{7}$/, startsWith: ['7', '3', '5', '6'] };
+                case 'فلسطين':
+                    return { length: 10, pattern: /^0\d{9}$/, startsWith: '0' };
+                default:
+                    return { length: null, pattern: /^\d+$/, startsWith: '' };
+            }
+        }
+
+        function updatePhoneNumberValidation(country) {
+            const { length, pattern, startsWith } = getExpectedPhoneNumberLength(country);
+            const $phone = $('#potentialPhoneNumber');
+            $phone.removeAttr('maxlength').removeAttr('minlength').removeAttr('pattern').data('startsWith', '');
+            if (length) {
+                $phone.attr('maxlength', length).attr('minlength', length);
+            }
+            $phone.attr('pattern', pattern.source);
+            if (startsWith) {
+                $phone.data('startsWith', startsWith);
+            }
+            // Clear current validation state
+            $phone.val('').removeClass('error success');
+            $phone.closest('.form-group').next('.required-message').remove();
+            potentialPhoneErrorShown = false;
+        }
+
+        let potentialPhoneErrorShown = false;
+        let potentialPhoneSpinnerTimeout;
+
+        $('#potentialPhoneNumber').on('input blur', function (event) {
+            const inputElement = $(this);
+            const phoneNumber = inputElement.val();
+            const $container = inputElement.closest('.form-group');
+            const $spinner = $container.find('.spinner-icon');
+
+            // Empty is fine — field is optional
+            if (!phoneNumber) {
+                inputElement.removeClass('error success');
+                $spinner.hide();
+                clearTimeout(potentialPhoneSpinnerTimeout);
+                $container.next('.required-message').remove();
+                potentialPhoneErrorShown = false;
+                return;
+            }
+
+            const patternAttr = inputElement.attr('pattern');
+            const countryPattern = patternAttr ? new RegExp(patternAttr) : null;
+
+            let isValid = phoneNumber.length > 0 && /^(\+|00)?\d+$/.test(phoneNumber);
+            if (isValid && countryPattern) {
+                isValid = countryPattern.test(phoneNumber);
+            }
+
+            inputElement.removeClass('error success');
+
+            if (event.type === 'input') {
+                $spinner.show();
+
+                if (potentialPhoneErrorShown) {
+                    $container.next('.required-message').hide();
+                }
+
+                clearTimeout(potentialPhoneSpinnerTimeout);
+                potentialPhoneSpinnerTimeout = setTimeout(function () {
+                    $spinner.hide();
+
+                    if (!isValid) {
+                        inputElement.addClass('error');
+                        if (!potentialPhoneErrorShown) {
+                            $container.after('<div class="required-message">يرجى إدخال رقم هاتف صحيح</div>');
+                            potentialPhoneErrorShown = true;
+                        } else {
+                            $container.next('.required-message').show();
+                        }
+                    }
+                }, 2000);
+            }
+
+            if (isValid) {
+                clearTimeout(potentialPhoneSpinnerTimeout);
+                $spinner.show();
+                potentialPhoneSpinnerTimeout = setTimeout(function () {
+                    $spinner.hide();
+                    inputElement.addClass('success');
+                    if (potentialPhoneErrorShown) {
+                        $container.next('.required-message').remove();
+                        potentialPhoneErrorShown = false;
+                    }
+                }, 1500);
+            }
+        });
+
+        // Update phone validation when country changes
+        $('#potentialCountry').on('change select2:select', function () {
+            updatePhoneNumberValidation($(this).val());
+        });
+
+        function isPhoneValid() {
+            var isWhatsApp = $('#potentialOrderSource').val() === '4';
+            var phone = $('#potentialPhoneNumber').val();
+            if (isWhatsApp && !phone) return false; // required for WhatsApp
+            if (!phone) return true; // empty is fine — optional for others
+            var patternAttr = $('#potentialPhoneNumber').attr('pattern');
+            var countryPattern = patternAttr ? new RegExp(patternAttr) : null;
+            if (!/^(\+|00)?\d+$/.test(phone)) return false;
+            if (countryPattern && !countryPattern.test(phone)) return false;
+            return true;
+        }
+
+        function toggleWhatsAppMode() {
+            var isWhatsApp = $('#potentialOrderSource').val() === '4';
+            if (isWhatsApp) {
+                $('#potentialChatUrlWrapper').hide();
+                $('#potentialChatUrl').removeAttr('required').val('').removeClass('error success');
+                $('#potentialChatUrl').closest('.form-group').next('.required-message').remove();
+                $('#potentialPhoneRowWrapper').show();
+                $('#potentialPhoneNumber').attr('required', true);
+                $('#potentialCustomerNameWrapper').hide();
+                $('#potentialCustomerName').removeAttr('required').val('').removeClass('error success');
+                $('#potentialCustomerName').closest('.form-group').next('.required-message').remove();
+                $('#potentialStoreNameCol').removeClass('col-6').addClass('col-12');
+            } else {
+                $('#potentialChatUrlWrapper').show();
+                $('#potentialChatUrl').attr('required', true);
+                $('#potentialPhoneRowWrapper').hide();
+                $('#potentialPhoneNumber').removeAttr('required').val('');
+                $('#potentialCustomerNameWrapper').show();
+                $('#potentialCustomerName').attr('required', true);
+                $('#potentialStoreNameCol').removeClass('col-12').addClass('col-6');
+            }
+            toggleSubmitButton();
+        }
+
+        function toggleSubmitButton() {
+            var isWhatsApp = $('#potentialOrderSource').val() === '4';
+            var customerName = $('#potentialCustomerName').val();
+            var country = $('#potentialCountry').val();
+            var chatUrl = $('#potentialChatUrl').val();
+            var storeName = $('#potentialStoreName').val();
+            var orderSource = $('#potentialOrderSource').val();
+            var isValid = (isWhatsApp || customerName) && country && storeName && orderSource && isPhoneValid()
+                && (isWhatsApp || chatUrl);
+            $('#submitPotentialClient').prop('disabled', !isValid);
+        }
+
+        // Dismiss the error dialog and backdrop when the user clicks موافق
+        $(document).on('click', '#closePotentialFailed', function () {
+            $('#potentialFailedMessage').hide();
+            $('#potentialOverlay').hide();
+        });
+
+        // Close PO success modal
+        $('#closePotentialSuccess').click(function (event) {
+            $('#potentialSuccessMessage').addClass('hidden');
+            event.stopPropagation();
+        });
+
+        // Close PO success modal when clicking outside
+        $(document).click(function (event) {
+            if (!$(event.target).closest('#potentialSuccessMessage').length && !$(event.target).closest('#CreatePotential').length) {
+                $('#potentialSuccessMessage').addClass('hidden');
+            }
+        });
+
+        // Close success modal and open new PO form (with cleared fields)
+        $('#closeAndOpenPotentialBtn').click(function (event) {
+            $('#potentialSuccessMessage').addClass('hidden');
+            $('#potentialCustomerName, #potentialChatUrl, #potentialPhoneNumber').val('');
+            $('#potentialCountry, #potentialStoreName, #potentialOrderSource').val(null).trigger('change');
+            $('#submitPotentialClient').prop('disabled', true);
+            $('#CreatePotential').modal('show');
+            event.stopPropagation();
+        });
+
+        $('#potentialCustomerName, #potentialChatUrl, #potentialPhoneNumber').on('input', toggleSubmitButton);
+
+        $('#potentialCustomerName').on('input blur', function () {
+            if ($('#potentialCustomerNameWrapper').is(':visible')) {
+                potentialUpdateFieldStatus(this, 'يرجى إدخال اسم عميل صحيح.');
+            }
+        });
+
+        $('#potentialChatUrl').on('input blur', function () {
+            if ($('#potentialChatUrlWrapper').is(':visible')) {
+                potentialUpdateFieldStatus(this, 'يرجى إدخال رابط صحيح.');
+            }
+        });
+        $('#potentialCountry, #potentialStoreName').on('change select2:select', toggleSubmitButton);
+        $('#potentialOrderSource').on('change select2:select', toggleWhatsAppMode);
+
+        $('#potentialClientForm').on('submit', function (e) {
+            e.preventDefault();
+
+            $('#submitPotentialClient').prop('disabled', true);
+            setTimeout(function () {
+                $('#submitPotentialClient').prop('disabled', false);
+            }, 40000);
+
+            $.ajax({
+                url: '/Home/CreatePotentialClient',
+                type: 'POST',
+                data: {
+                    customerName: $('#potentialCustomerName').val(),
+                    country: $('#potentialCountry').val(),
+                    chatUrl: $('#potentialChatUrl').val(),
+                    storeId: $('#potentialStoreName').val(),
+                    phoneNumber: $('#potentialPhoneNumber').val(),
+                    orderSource: $('#potentialOrderSource').val()
+                },
+                success: function (response) {
+                    var potentialId = response.id;
+                    $('#CreatePotential').modal('hide');
+
+                    // Show the success container
+                    $('#potentialSuccessMessage').removeClass('hidden').css('display', 'block');
+                    $('#potentialOrderIDPlaceholder').text(potentialId);
+                },
+                error: function (xhr) {
+                    // Server returns { message } with HTTP 4xx when the request is rejected
+                    // (e.g. duplicate chat URL already exists as a normal order).
+                    // Populate and show the inline error dialog instead of a Swal popup.
+                    var message = xhr.responseJSON ? xhr.responseJSON.message : 'حدث خطأ غير متوقع';
+                    $('.potential-message').text(message);
+                    $('#potentialOverlay').show();
+                    $('#potentialFailedMessage').show();
+                }
+            });
+        });
+    });
+</script>

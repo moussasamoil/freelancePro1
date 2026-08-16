@@ -1,0 +1,226 @@
+﻿@model DeliveryCompanyViewModel
+@using lotus_blue.Models.ViewModel
+
+@{
+    ViewData["Title"] = "إنشاء مندوب توصيل";
+}
+
+<form asp-action="Create" method="post" enctype="multipart/form-data">
+    <div class="row mt-2">
+        <div class="col-md-6">
+            <div class="form-group">
+                <div class="input-group">
+                    <input type="file" id="LogoUrl" name="logoFile" class="form-control-file image-upload" accept="image/*" style="display: none;">
+                    <label class="form-control" for="LogoUrl" aria-describedby="inputGroupFileAddon">
+                        تحميل صورة المندوب  (اختياري)
+                    </label>
+                </div>
+                <img id="logoImage" class="image-upload img-fluid" src="" alt="Uploaded Logo" style="display: none; max-width: 200px; max-height: 150px;">
+            </div>
+        </div>
+        <div class="col-md-6 ">
+            <div class="form-group">
+                <div class="input-group">
+                    <input type="file" id="InformationUrl" name="infoFile" class="form-control" accept="image/*" style="display: none;">
+                    <label class="form-control" for="InformationUrl" aria-describedby="inputGroupFileAddon"> تحميل معلومات المندوب (اختياري)   </label>
+
+                </div>
+                <img id="infoImage" class="image-upload img-fluid" src="" alt="Uploaded Information" style="display: none; max-width: 200px; max-height: 150px;">
+            </div>
+
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+
+            <div class="form-group">
+                <input type="text" id="Name" name="Name" class="form-control" placeholder=" اسم المندوب" value="@Model.Name" required />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <input required type="text" id="Address" name="Address" class="form-control" placeholder="عنوان المندوب" value="@Model.Address" />
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+
+            <div class="form-group">
+                <input type="text" id="TaxRegistrationNumber" name="TaxRegistrationNumber" class="form-control" placeholder="رقم السجل التجاري (اختياري)" value="@Model.TaxRegistrationNumber" />
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <input required type="text" id="PhoneNumber" name="PhoneNumber" class="form-control" placeholder="رقم الهاتف" value="@Model.PhoneNumber" />
+                <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="form-group">
+                <input required type="text" id="IdNumber" name="IdNumber" class="form-control" placeholder="رقم الهوية" value="@Model.IdNumber" />
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <input id="Website" name="Website" class="form-control" placeholder="الموقع الإلكتروني (اختياري)" value="@Model.Website" />
+                <span asp-validation-for="Website" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+
+            <div class="form-group">
+                <input type="text" id="specialty" name="specialty" class="form-control" placeholder="اختصاص المندوب (اختياري)" value="@Model.Specialty" />
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <input id="Notes" name="ألملاحظات" class="form-control" placeholder="ألملاحظات (اختياري)">@Model.Notes</input>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="form-group">
+                <input required placeholder="البريد الالكتروني" asp-for="Email" class="form-control" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+
+        </div>
+        <div class="col-md-6">
+
+            <div class="form-group">
+                <select asp-for="Country" class="form-control" id="countryDropdown">
+                    <!-- Placeholder label -->
+                    <option value="" selected disabled>----اختار الدولة----</option>
+
+                    @foreach (var country in Enum.GetValues(typeof(Common.Countries)))
+                    {
+                        <option value="@country">@country</option>
+                    }
+                </select>
+                <span asp-validation-for="Country" class="text-danger"></span>
+            </div>
+
+
+
+
+        </div>
+    </div>
+
+
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="form-group">
+                <input required placeholder="كلمة المرور" asp-for="Password" type="password" class="form-control" />
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-md-6">
+
+            <div class="form-group">
+                <input required placeholder="تاكيد كلمة المرور" asp-for="ConfirmPassword" type="password" class="form-control" />
+                <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+
+        <div class="col-md-6">
+            <select asp-for="City" class="form-control" id="cityDropdown" required>
+                <option value="" selected>المدينة</option>
+                <!-- Add your option elements here -->
+            </select>
+            <span asp-validation-for="City" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-6">
+            <div class="form-group">
+                <input required placeholder="اسم العرض " asp-for="DisplayName" class="form-control" />
+                <span asp-validation-for="DisplayName" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+
+
+
+
+    <div class="d-flex justify-content-center">
+        <button type="submit" class="btn btn-success  mt-5">
+            موافقة
+        </button>
+    </div>
+
+
+</form>
+
+<script>
+    var cityDropdown = $("#cityDropdown");
+    var citiesByCountry = @Html.Raw(Json.Serialize(lotus_blue.Models.Common.CitiesByCountry));
+
+    // Repopulate the city dropdown when the selected country changes
+    $('#countryDropdown').change(function () {
+        // Store the current value
+        var selectedCountry = $(this).val();
+
+        // Reset the form
+
+        // After resetting, set the previous value back to the dropdown
+        $('#countryDropdown').val(selectedCountry);
+
+        // Now repopulate the cities and update delivery companies
+        populateCities(selectedCountry);
+
+
+
+    });
+
+
+
+    // Function to populate cities dropdown based on the selected country
+    function populateCities(selectedCountry) {
+        cityDropdown.empty(); // Clear any existing options
+
+        if (selectedCountry && citiesByCountry[selectedCountry]) {
+
+            cityDropdown.append($('<option>', {
+                value: 'المدينة',
+                text: 'المدينة'
+            }));
+            citiesByCountry[selectedCountry].forEach(function (city) {
+                cityDropdown.append($('<option>', {
+                    value: city,
+                    text: city
+                }));
+            });
+
+        } else {
+            cityDropdown.append($('<option>', {
+                value: 'المدينة',
+                text: 'المدينة'
+            }));
+            cityDropdown.val('المدينة');
+        }
+    }
+    $('form').submit(function (e) {
+        console.log("Selected city: " + $('#cityDropdown').val());
+        // Uncomment the next line to prevent form submission for testing
+        // e.preventDefault();
+    });
+
+
+</script>

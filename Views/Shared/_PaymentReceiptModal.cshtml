@@ -1,0 +1,29 @@
+<div class="modal rtl modal-dialog-centered" id="paymentReceiptModal" data-bs-keyboard="false" data-bs-backdrop="static" tabindex="-1" aria-labelledby="paymentReceiptModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content background-white-green" style="position: relative;">
+            <div class="modal-header">
+                <button type="button" class="btn head-16 text-green" data-bs-dismiss="modal" aria-label="Close"> تراجع</button>
+                <h5 class="modal-title head" id="paymentReceiptModalLabel">صورة إيصال الحوالة البنكية</h5>
+                <button type="button" class="btn head-16 text-green" onclick="submitPaymentReceipt()"> تأكيد</button>
+            </div>
+            <div class="modal-body">
+                <div id="paymentReceiptPaste" class="form-control" contenteditable="true" data-placeholder="الصق صورة الوصل هنا أو اضغط لاختيار ملف" style="min-height:120px;cursor:text;text-align:center;"></div>
+                <input type="file" id="paymentReceiptFileInput" accept="image/*" style="display:none;" />
+                <div id="paymentReceiptError" class="text-danger mt-2" style="display:none;">الرجاء إرفاق صورة الوصل.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #paymentReceiptPaste:empty:before {
+        content: attr(data-placeholder);
+        color: #999;
+    }
+
+    #paymentReceiptPaste img {
+        max-height: 200px;
+        max-width: 100%;
+        object-fit: contain;
+    }
+</style>

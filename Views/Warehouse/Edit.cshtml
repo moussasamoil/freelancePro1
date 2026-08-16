@@ -1,0 +1,182 @@
+﻿@model lotus_blue.Models.ViewModel.WarehouseViewModel
+@{
+    ViewData["Title"] = "تعديل المستودع";
+}
+<h2>تعديل المستودع</h2>
+
+<form asp-action="Edit" method="post" enctype="multipart/form-data">
+    <input type="hidden" asp-for="Id" />
+
+  
+    <div class="form-group">
+        <label asp-for="Price">السعر</label>
+        <input asp-for="Price" class="form-control" />
+        <span asp-validation-for="Price" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="Amount">الكمية</label>
+        <input asp-for="Amount" class="form-control" />
+        <span asp-validation-for="Amount" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="ProductImage">صورة المنتج</label>
+        <input type="file" name="productimage" class="form-control-file image-upload" accept="image/*" />
+        <span asp-validation-for="ProductImage" class="text-danger"></span>
+        <img class="image-upload" id="previewImage" src="@Model.ProductImage" alt="Preview Image" style="max-width: 150px; max-height: 150px; display: block;" />
+    </div>
+
+    <div class="row mt-2">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label asp-for="Countries">الدولة</label>
+                <input asp-for="Countries" value="@Model.Countries" disabled class="form-control" />
+                <span asp-validation-for="Countries" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-2">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label asp-for="City">المدينة</label>
+                <input value="@Model.City" disabled asp-for="City" class="form-control" />
+                <span asp-validation-for="City" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="DeliveryCompanyId" class="control-label"></label>
+        <select asp-for="DeliveryCompanyId" class="form-control" disabled>
+            <option value="@Model.DeliveryCompanyId">@Model.DeliveryCompanyName</option>
+        </select>
+        <span asp-validation-for="DeliveryCompanyId" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="ManufacturingCompanyId" class="control-label"></label>
+        <select id="manufacturingCompanyDropdown" required asp-for="ManufacturingCompanyId" class="form-control">
+            <option value="">اختار الشركة المصنعة</option>
+        </select>
+        <span asp-validation-for="ManufacturingCompanyId" class="text-danger"></span>
+    </div>
+
+    <div class="row">
+        <div class="form-group col-lg-12">
+            <label asp-for="MainWarehouseId" class="control-label">المستودع الرئيسي</label>
+            <select id="warehouseId" required asp-for="MainWarehouseId" class="form-control">
+                <option value="">احتار المستودع الرئيسي</option>
+            </select>
+            <span asp-validation-for="MainWarehouseId" class="text-danger"></span>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="form-group col-lg-12">
+            <label asp-for="SubWarehouseId" class="control-label">المستودع الفرعي</label>
+            <select id="subWarehouseId" required asp-for="SubWarehouseId" class="form-control">
+                <option value="">احتار المستودع الفرعي</option>
+            </select>
+            <span asp-validation-for="SubWarehouseId" class="text-danger"></span>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">تحديث</button>
+</form>
+
+<script>
+    var initialMainWarehouseId = '@Html.Raw(Model.MainWarehouseId)';
+    var initialSubWarehouseId = '@Html.Raw(Model.SubWarehouseId)';
+    var initialManufacturingCompanyId = '@Html.Raw(Model.ManufacturingCompanyId)';
+    var initialManufacturingCompanyId = '@Html.Raw(Model.ManufacturingCompanyId)';
+
+    $(function () {
+        // Fetch main warehouses
+        $.ajax({
+            url: '/DATALIST/GetMainWarehouses',
+            type: 'GET',
+            success: function (data) {
+                var dropdown = $('#warehouseId');
+                dropdown.empty();
+                dropdown.append('<option value="">احتار المستودع الرئيسي</option>');
+                $.each(data, function (index, warehouse) {
+                    dropdown.append($('<option>', {
+                        value: warehouse.id,
+                        text: warehouse.name
+                    }));
+                });
+                dropdown.val(initialMainWarehouseId); // Set the initial selected value
+                // Trigger change to populate sub warehouses
+                if (initialMainWarehouseId) {
+                    dropdown.trigger('change');
+                }
+            },
+            error: function (error) {
+                console.error('Error fetching warehouses:', error);
+            }
+        });
+
+        $.ajax({
+            url: '/DATALIST/GetAllStores',
+            type: 'GET',
+            success: function (data) {
+                var dropdown = $('#manufacturingCompanyDropdown');
+                dropdown.empty();
+                dropdown.append('<option value="">اختار الشركة المصنعة</option>');
+                $.each(data, function (index, company) {
+                    dropdown.append($('<option>', {
+                        value: company.id,
+                        text: company.name
+                    }));
+                });
+                dropdown.val(initialManufacturingCompanyId); // Set the initial selected value
+            },
+            error: function (error) {
+                console.error('Error fetching companies:', error);
+            }
+        });
+
+        // Handle change event for MainWarehouseId dropdown
+        $('#warehouseId').change(function () {
+            var selectedMainWarehouseId = $(this).val();
+            var subWarehouseDropdown = $('#subWarehouseId');
+
+            if (selectedMainWarehouseId) {
+                $.ajax({
+                    url: '/DATALIST/GetSubWarehouses',
+                    type: 'GET',
+                    data: { mainWarehouseId: selectedMainWarehouseId },
+                    success: function (data) {
+                        subWarehouseDropdown.empty();
+                        subWarehouseDropdown.append('<option value="">احتار المستودع الفرعي</option>');
+                        $.each(data, function (index, subWarehouse) {
+                            subWarehouseDropdown.append($('<option>', {
+                                value: subWarehouse.id,
+                                text: subWarehouse.name
+                            }));
+                        });
+                        subWarehouseDropdown.val(initialSubWarehouseId); // Set the initial selected value
+                    },
+                    error: function (error) {
+                        console.error('Error fetching sub warehouses:', error);
+                    }
+                });
+            } else {
+                subWarehouseDropdown.empty();
+                subWarehouseDropdown.append('<option value="">احتار المستودع الفرعي</option>');
+            }
+        });
+    });
+</script>
+
+<style>
+    .col-lg-8 {
+        border-right: 1px solid #ccc;
+    }
+
+    .bd {
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2);
+    }
+</style>

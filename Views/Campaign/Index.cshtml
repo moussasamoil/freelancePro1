@@ -1,0 +1,237 @@
+﻿@model lotus_blue.Models.ViewModel.PaginationViewModel<lotus_blue.ViewModels.CampaignViewModel>
+@{
+    ViewData["Title"] = "الحملات";
+}
+
+
+
+<table id="table" class="table">
+    <thead>
+        <tr>
+            <th>الصورة</th>
+            <th>المستودع الرئيسي</th>
+            <th>البلد</th>
+            <th>المتجر</th>
+            <th>الحالة</th>
+            <th>الإجراءات</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.Items)
+        {
+            <tr id="campaign-row-@item.Id">
+                <td>
+                    @if (!string.IsNullOrEmpty(item.ImageUrl))
+                    {
+                        <img src="@item.ImageUrl" alt="Campaign Image" style="width: 50px; height: 50px; object-fit: cover;" class="img-thumbnail">
+                    }
+                    else
+                    {
+                        <span>لا توجد صورة</span>
+                    }
+                </td>
+                <td>@item.WarehouseName</td>
+                <td>@item.Country</td>
+                <td>@item.ManufacturingCompanyName</td>
+                <td>
+                    @if (item.IsActive)
+                    {
+                        <span class="badge bg-success">نشط</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger">غير نشط</span>
+                    }
+                </td>
+                <td>
+                    <div class="d-inline-flex">
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-yellow-v3 me-1">تعديل</a>
+
+                        @if (item.IsActive)
+                        {
+                            <button type="button" class="btn btn-warning-v3 toggle-status me-1"
+                                    data-campaign-id="@item.Id"
+                                    data-is-active="false">
+                                إلغاء التفعيل
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-green-v2 toggle-status me-1"
+                                    data-campaign-id="@item.Id"
+                                    data-is-active="true">
+                                تفعيل
+                            </button>
+                        }
+
+                        <button type="button" class="btn btn-red delete-campaign  me-1"
+                                data-campaign-id="@item.Id"
+                                data-campaign-name="@item.WarehouseName">
+                            حذف
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- Display pagination controls -->
+<div id="pagination-link" class="mt-0 container-fluid">
+    <div class="d-flex justify-content-between align-items-center">
+        <p class="text-start pt-2 total-items-display">@Model.TotalItems حملة</p>
+
+        <nav aria-label="Page navigation" class="mx-auto">
+            <div class="d-flex justify-content-start">
+                <ul class="pagination p-0">
+                    <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link pointer" data-page="1">
+                            <i class="fa-solid fa-chevron-double-right text-gold"></i>
+                        </a>
+                    </li>
+                    <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.CurrentPage - 1)">
+                            <i class="fa-solid fa-chevron-right text-gold"></i>
+                        </a>
+                    </li>
+
+                    @{
+                        int startPage = Model.CurrentPage;
+                        int endPage = startPage + 2;
+                        if (endPage > Model.TotalPages)
+                        {
+                            endPage = Model.TotalPages;
+                        }
+                    }
+
+                    @for (int i = startPage; i <= endPage; i++)
+                    {
+                        <li class="numbers page-item @(Model.CurrentPage == i ? "active" : "")">
+                            <a class="page-link" data-page="@i">@i</a>
+                        </li>
+                    }
+
+                    @if (Model.TotalPages > endPage)
+                    {
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+
+                        @for (int i = Model.TotalPages - 2; i <= Model.TotalPages; i++)
+                        {
+                            <li class="numbers page-item @(Model.CurrentPage == i ? "active" : "")">
+                                <a class="page-link" data-page="@i">@i</a>
+                            </li>
+                        }
+                    }
+
+                    <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.CurrentPage + 1)">
+                            <i class="fa-solid fa-chevron-left text-gold f-s-18"></i>
+                        </a>
+                    </li>
+                    <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.TotalPages)">
+                            <i class="fa-solid fa-chevron-double-left text-gold"></i>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            var urlParams = new URLSearchParams(window.location.search);
+            var currentPageSize = urlParams.get('pageSize') || '10';
+            $('#pageSize').val(currentPageSize);
+
+            $('#pageSize').change(function () {
+                loadPage(1);
+            });
+        });
+
+        function loadPage(page) {
+            const pageSize = $('#pageSize').val();
+
+            $.ajax({
+                url: '/Campaign',
+                type: 'GET',
+                data: {
+                    pageSize: pageSize,
+                    page: page
+                },
+                success: function (response) {
+                    $('#table').html($(response).find('#table').html());
+                    $('#pagination-link').html($(response).find('#pagination-link').html());
+
+                    const url = new URL(window.location);
+                    url.searchParams.set('page', page);
+                    url.searchParams.set('pageSize', pageSize);
+                    window.history.pushState({}, '', url);
+                },
+                error: function (error) {
+                    console.log(error);
+                }
+            });
+        }
+
+        $(document).on('click', '.pagination a.page-link', function (event) {
+            event.preventDefault();
+            const page = $(this).data('page');
+            if (page) {
+                loadPage(page);
+            }
+        });
+
+        $(document).on('click', '.toggle-status', function () {
+            var button = $(this);
+            var campaignId = button.data('campaign-id');
+            var isActive = button.data('is-active');
+            var statusText = isActive ? 'تفعيل' : 'إلغاء تفعيل';
+
+            if (confirm(`هل أنت متأكد من ${statusText} هذه الحملة؟`)) {
+                $.ajax({
+                    url: '@Url.Action("ToggleStatus", "Campaign")',
+                    type: 'POST',
+                    data: {
+                        campaignId: campaignId,
+                        isActive: isActive
+                    },
+                    success: function (response) {
+                        alert(response);
+                        loadPage(@Model.CurrentPage);
+                    },
+                    error: function (xhr) {
+                        alert('خطأ: ' + (xhr.responseText || 'حدث خطأ'));
+                    }
+                });
+            }
+        });
+
+        $(document).on('click', '.delete-campaign', function () {
+            var button = $(this);
+            var campaignId = button.data('campaign-id');
+            var campaignName = button.data('campaign-name') || 'هذه الحملة';
+
+            if (confirm(`هل أنت متأكد من حذف ${campaignName}؟ لا يمكن التراجع عن هذا الإجراء!`)) {
+                $.ajax({
+                    url: '@Url.Action("Delete", "Campaign")',
+                    type: 'POST',
+                    data: {
+                        campaignId: campaignId
+                    },
+                    success: function (response) {
+                        alert(response);
+                        loadPage(@Model.CurrentPage);
+                    },
+                    error: function (xhr) {
+                        alert('خطأ: ' + (xhr.responseText || 'حدث خطأ'));
+                    }
+                });
+            }
+        });
+    </script>
+}

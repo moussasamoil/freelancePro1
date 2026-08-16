@@ -1,0 +1,1078 @@
+@model lotus_blue.Models.ViewModel.OrderViewModel
+@inject lotus_blue.Services.GetCurrentTimeInIstanbul TimeService
+
+@{
+    DateTime istanbulTime = TimeService.GetIstanbulTimeWithOffset();
+}
+<div style="direction:rtl !important" class="modal fade" id="Resend" tabindex="-1" data-bs-backdrop="static" aria-labelledby="Resend" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered ">
+        <div class="modal-content  ">
+            <div class="modal-header">
+                <button type="button" class="btn head-16 close" data-bs-dismiss="modal" aria-label="Close"> تراجع</button>
+                <h5 class="modal-title  head text center" id="createOrderModalTitle">انشاء طلب</h5>
+                <button type="button" class="btn head-16  close" data-bs-dismiss="modal" aria-label="Close"> انتهى</button>
+            </div>
+            <div class="modal-body">
+                <form id="createOrderForm" method="post" asp-controller="Order" asp-route-id="@Model.Id" asp-action="Create">
+                    <input type="hidden" name="ExternalOrderId" value="@Model.ExternalOrderId" />
+                    <input type="hidden" name="DeliveryCompanyId" id="hiddenDeliveryCompanyId" value="" />
+                    <input type="hidden" name="ManufacturingCompanyId" id="hiddenManufacturingCompanyId" value="@Model.ManufacturingCompanyId" />
+
+                    <input type="hidden" name="State" id="hiddenState" value="">
+
+                    <div class="row d-flex justify-content-center">
+                        <div class="row">
+                            <div class="col-lg-3">
+                                <div class="form-group">
+                                    <input type="text" name="Country" class="form-control with-bg-image-country" id="countryInput" value="@Model.Country" readonly style="background-image: url('@Common.GetImageUrlByCountryName(Model.Country.ToString())');">
+                                </div>
+                            </div>
+
+                            <div class="col-lg-3">
+                                <div class="form-group">
+                                    <select name="State" class="form-control" id="cityDropdown"></select>
+                                    <span asp-validation-for="State" class="text-danger"></span>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-3">
+                                <div class="form-group">
+                                    <select asp-for="OrderSource" id="orderSourceDropdown" class="form-control w-100">
+                                        @foreach (var source in Enum.GetValues(typeof(OrderSourceEnum)))
+                                        {
+                                            <option data-image="@Common.GetSocialMediaIconUrl((OrderSourceEnum)source)" value="@source">@source</option>
+                                        }
+                                    </select>
+                                    <span asp-validation-for="OrderSource" class="text-danger"></span>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-3" id="sourceNameDiv">
+                                <div class="form-group">
+                                    <input placeholder="اسم الصفحة" asp-for="SourceName" class="form-control with-bg-image-pagename" />
+                                    <span asp-validation-for="SourceName" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+
+
+
+                        <div class="row mt-3 sbshide" style="@(Model.ExternalOrderId != null ? "display: none;" : "")">
+                            <div class="col-lg-6">
+                                <div class="form-group">
+                                    <select id="manufacturingCompanyDropdown" class="form-control">
+                                        <option value="" disabled selected>اسم  المتجر</option>
+                                    </select>
+                                    <span asp-validation-for="ManufacturingCompanyId" class="text-danger"></span>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-3">
+                                <div class="form-group">
+                                    <select id="deliveryCompanyDropdown" asp-for="DeliveryCompanyId" class="form-control">
+                                        <option data-image="/static/truck-regular.svg" value="" selected> شركة التوصيل</option>
+                                        <!-- Options will be dynamically added here based on the selected country and city -->
+                                    </select>
+                                    <span asp-validation-for="DeliveryCompanyId" class="text-danger"></span>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-3">
+                                <div class="form-group">
+                                    <select id="deliveryRepresentativeDropdown" asp-for="DeliveryCompanyId" class="form-control">
+                                        <option data-image="/static/truck-regular.svg" value="" selected>أسم  المندوب</option>
+                                        <!-- Options will be dynamically added here based on the selected country and city -->
+                                    </select>
+                                    <span asp-validation-for="DeliveryCompanyId" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+
+
+                        <div class="row mt-3">
+                            <div class="col-lg-6">
+                                <div class="form-group">
+                                    <input type="number" placeholder="رقم الهاتف الأول" asp-for="TelephoneNumber" class="form-control  with-bg-image-phonenumber " />
+                                    <span asp-validation-for="TelephoneNumber" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="form-group">
+                                    <input type="number" placeholder="رقم الهاتف التاني " asp-for="SecondTelephoneNumber" class="form-control  with-bg-image-phonenumber" />
+                                    <span asp-validation-for="SecondTelephoneNumber" class="text-danger"></span>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-lg-6">
+                                <div class="form-group">
+                                    <input placeholder="اسم العميل " asp-for="CustomerName" class="form-control with-bg-image-client " />
+                                    <span asp-validation-for="CustomerName" class="text-danger"></span>
+                                </div>
+
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="form-group">
+                                    <input placeholder="الملاحظات" asp-for="Notes" class="form-control with-bg-image-note" />
+                                    <span asp-validation-for="Notes" class="text-danger"></span>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="row mt-3">
+
+
+                            <div class="form-group col-lg-6 ">
+                                <div class="form-group">
+                                    <input placeholder="العنوان بالكامل" asp-for="Address" class="form-control with-bg-image-address" />
+                                    <span asp-validation-for="Address" class="text-danger"></span>
+                                </div>
+                            </div>
+
+                            <div class="form-group col-lg-6 ">
+
+                                <!-- Adjusted width for the gender dropdown -->
+                                <select asp-for="Gender" class="form-control w-100" id="GenderDropdown" required>
+                                    <!-- Placeholder option -->
+                                    @*                                         <option selected value="" data-image="/static/Gender.svg">الجنس</option>
+                                    *@
+                                    <!-- Other gender options -->
+                                    <option value="false" data-image="/static/Female.svg">أنثى</option>
+
+                                    <option value="true" data-image="/static/Male.svg">ذكر</option>
+                                </select>
+                                <span asp-validation-for="Gender" class="text-danger"></span>
+                            </div>
+
+                          
+                          
+                        </div>
+
+
+
+                        <div class="row mt-3">
+
+                            <div class="form-group col-6  ">
+                                <div class="form-group d-flex justify-content-center">
+                                    <!-- Adjusted width for the gender dropdown -->
+                                    <select asp-for="IsPaid" class="form-control w-100" id="IsPaid">
+                                        <!-- Placeholder option -->
+                                        <option data-image="/static/credit-card-front-regular.svg" value="">طريقة الدفع (اختياري)</option>
+                                        <option value="true" data-image="/static/credit-card-front-regular.svg">تم التحويل حوالة بنكية</option>
+                                        <option value="false" data-image="/static/credit-card-front-regular.svg">غير مدفوع</option>
+
+                                    </select>
+                                    <span asp-validation-for="Gender" class="text-danger"></span>
+                                </div>
+                            </div>
+
+
+
+                            <div class="form-group col-lg-6 ">
+                                <div class="form-group d-flex justify-content-center">
+                                    <!-- Use 'asp-for' for model binding, and set 'name' to match -->
+                                    <input required asp-for="CreatedDate" name="CreatedDate" value="@Model.CreatedDate.ToString("yyyy-MM-ddTHH:mm")" type="datetime-local" class="form-control text-end with-bg-image-calendar calendar  pe-2 ps-2" />
+                                    <span asp-validation-for="CreatedDate" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+
+
+                        <div id="selectedProductsList" class="row mt-3">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <div class="warehouse-item">
+                                        <select class="form-control warehouse-select" id="productDropdown" asp-for="SelectedWarehouses[0].WarehouseId" asp-items="Model.WarehouseList" required>
+                                            <option data-image="/static/box-open-2.svg" disabled selected value="">قم بإختيار إحدى المنتجات</option>
+                                        </select>
+                                        <span asp-validation-for="SelectedWarehouses[0].WarehouseId" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                   
+                        <div class="row mt-3">
+                            <div class="d-flex justify-content-center">
+                                <div class="form-group d-flex justify-content-center">
+                                    <input  value="@Model.TotalPrice" asp-for="TotalPrice" class="form-control w-50 with-bg-image-price" style="color: #1d273b;" />
+                                    <span asp-validation-for="TotalPrice" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="d-flex mb-3 justify-content-center ">
+                            <button type="submit" style="background-color:#1d273b!important;" class="btn text-white  mb-3  w-75 mt-3"> <i class="fa-regular fa-floppy-disk"></i> تاكيد تعديل الطلب</button>
+                        </div>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+<input hidden value="@Model.ExternalOrderId" id="ExternalId" />
+<div id="deliveryInfo" data-delivery-company-id="@Model.DeliveryCompanyId"></div>
+
+<style>
+    .select2-container--default {
+        width: 100% !important;
+    }
+
+
+
+    @@media (min-width: 992px) {
+        .modal-lg, .modal-xl {
+            max-width: 650px !important;
+        }
+    }
+
+    .with-bg-image-country {
+        background-position: right 10px center !important; /* Adjust the vertical positioning to leave space at the bottom */
+        background-repeat: no-repeat;
+        padding-right: 25px; /* Adjust padding to ensure text does not overlap the image */
+        background-size: 14px 14px; /* Set the size of the background image */
+    }
+
+    .with-bg-image-pagename {
+        background-image: url('/static/page-regular.svg'); /* Path to your image */
+        background-position: right 10px center !important; /* Adjust the vertical positioning to leave space at the bottom */
+        background-repeat: no-repeat;
+        padding-right: 25px; /* Adjust padding to ensure text does not overlap the image */
+        background-size: 14px 14px; /* Set the size of the background image */
+    }
+
+    .with-bg-image-phonenumber {
+        background-image: url('/static/phone-regular.svg'); /* Path to your image */
+        background-position: right 10px center !important; /* Adjust the vertical positioning to leave space at the bottom */
+        background-repeat: no-repeat;
+        padding-right: 25px; /* Adjust padding to ensure text does not overlap the image */
+        background-size: 14px 14px; /* Set the size of the background image */
+    }
+
+    .with-bg-image-address {
+        background-image: url('/static/location-dot-light.svg'); /* Path to your image */
+        background-position: right 10px center !important; /* Adjust the vertical positioning to leave space at the bottom */
+        background-repeat: no-repeat;
+        padding-right: 25px; /* Adjust padding to ensure text does not overlap the image */
+        background-size: 14px 14px; /* Set the size of the background image */
+    }
+
+    .with-bg-image-note {
+        background-image: url('/static/note-regular.svg'); /* Path to your image */
+        background-position: right 10px center !important; /* Adjust the vertical positioning to leave space at the bottom */
+        background-repeat: no-repeat;
+        padding-right: 25px; /* Adjust padding to ensure text does not overlap the image */
+        background-size: 14px 14px; /* Set the size of the background image */
+    }
+
+    .with-bg-image-client {
+        background-image: url('/static/client.svg'); /* Path to your image */
+        background-position: right 10px center !important; /* Adjust the vertical positioning to leave space at the bottom */
+        background-repeat: no-repeat;
+        padding-right: 25px; /* Adjust padding to ensure text does not overlap the image */
+        background-size: 14px 14px; /* Set the size of the background image */
+    }
+
+    .with-bg-image-price {
+        background-image: url('/static/dollar.svg'); /* Path to your image */
+        background-position: right 10px center !important; /* Adjust the vertical positioning to leave space at the bottom */
+        background-repeat: no-repeat;
+        padding-right: 25px; /* Adjust padding to ensure text does not overlap the image */
+        background-size: 14px 14px; /* Set the size of the background image */
+    }
+
+    .with-bg-image-calendar {
+        background-image: url('/static/calendar.svg'); /* Path to your image */
+        background-position: right 10px center !important; /* Adjust the vertical positioning to leave space at the bottom */
+        background-repeat: no-repeat;
+        padding-right: 32px !important;
+        background-size: 14px 14px; /* Set the size of the background image */
+    }
+
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+        display: none;
+    }
+
+    .my-input-group .btn.rounded-btn {
+        border-radius: 16px !important;
+        color: white !important;
+    }
+
+    .my-input-group .form-control {
+        border-radius: 8px !important;
+        background-color: #1d273b;
+        color: white !important;
+    }
+
+    /* Existing styles */
+    .my-input-group {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        border-radius: 8px;
+        width: 105% !important; /* Adjust as per your layout */
+    }
+
+    .blue-warehouse {
+        background-color: #1d273b;
+        color: white !important;
+    }
+    /* Centering placeholder */
+    .my-input-group .form-control::placeholder {
+        text-align: center;
+        color: white !important;
+    }
+
+    /* Optional: Centering input text */
+    .my-input-group .form-control {
+        text-align: center;
+    }
+
+
+
+    /* Overriding Bootstrap styles if necessary */
+    .my-input-group .btn {
+        position: relative;
+        z-index: 2;
+    }
+
+    .my-input-group .decrease {
+        border-end-end-radius: 0;
+        border-start-end-radius: 0;
+        position: absolute;
+        right: 4px;
+    }
+
+    .my-input-group .increase {
+        border-start-start-radius: 0;
+        border-end-start-radius: 0;
+        position: absolute;
+        left: 4px;
+    }
+
+    .my-input-group .form-control::-webkit-outer-spin-button,
+    .my-input-group .form-control::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .my-input-group .form-control[type=number] {
+        -moz-appearance: textfield;
+    }
+
+
+    .green {
+        color: #ffffff;
+        background-color: #2ab149 !important; /* Text color */
+        border-color: #2ab149 !important; /* Outline (border) color */
+        border-radius: 8px;
+        box-shadow: 0px 0px 6px rgba(42, 177, 73, 1); /* Box shadow with the same color */
+    }
+
+        .green:hover {
+            color: white;
+            background-color: #2ab149 !important; /* Bootstrap 5 success color */
+            border-color: #2ab149 !important; /* Bootstrap 5 success color */
+        }
+
+    .modal-dialog {
+        width: 120% !important; /* You can adjust this width as needed */
+    }
+
+    .head {
+        font-size: 18px;
+        text-decoration: none;
+        font-weight: bold;
+        color: grey;
+    }
+
+    .head-16 {
+        font-size: 16px;
+        text-decoration: none;
+        font-weight: bold;
+        color: grey;
+    }
+
+    .modal-dialog {
+        transform: translate(-50%, -50%);
+        color: #ffffff;
+        border-radius: 8px !important; /* Border radius for the entire <thead> */
+    }
+
+
+
+    .modal-header {
+        padding: 0;
+        border-bottom: 1px solid #dee2e6;
+        width: 95%;
+        margin: 0 auto; /* Center the element horizontally */
+    }
+
+
+    select {
+        color: #ffffff;
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2); /* Box shadow */
+        border-radius: 8px !important; /* Border radius for the entire <thead> */
+    }
+
+    .appenddiv {
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2) !important; /* Box shadow */
+        border-radius: 8px !important; /* Border radius for the entire <thead> */
+        padding: 5px !important;
+        width: 105%;
+    }
+
+</style>
+
+
+
+
+<script>
+
+    function formatOption(option) {
+        // Ensure option.element is available to prevent errors in non-DOM options
+        if (!option.id || !option.element) {
+            // Check for and handle the placeholder option specifically
+            var imageUrl = $(option.element).data('image');
+            var imageTag = imageUrl ? '<img src="' + imageUrl + '" class="img-flag" style="margin-bottom: 5px; width: 14px; height: 14px;" />' : '';
+            return $('<span>' + imageTag + option.text + '</span>');
+        }
+
+        var imageUrl = $(option.element).data('image');
+        var imageTag = imageUrl ? '<img src="' + imageUrl + '" class="img-flag" style="margin-bottom: 5px; width: 14px; height: 14px;" />' : '';
+        return $('<span>' + imageTag + option.text + '</span>');
+    }
+
+
+
+    $('#cityDropdown,#orderSourceDropdown,#manufacturingCompanyDropdown,#StoreNameDropDown,#productDropdown,#GenderDropdown,#deliveryCompanyDropdown,#deliveryRepresentativeDropdown,#IsPaid').select2({
+        templateResult: formatOption,
+        templateSelection: formatOption,
+        dropdownParent: $('#Resend'), // Ensure this is the correct container for your modal/dialog.
+        dir: "rtl" // Applies RTL layout to both dropdowns.
+    });
+
+</script>
+
+<script type="text/javascript">
+
+    var modelDeliveryCompanyId = $('#deliveryInfo').data('delivery-company-id');
+    console.log("Model DeliveryCompanyId:", modelDeliveryCompanyId);
+    $('#deliveryCompanyDropdown').change(function () {
+        // Reset delivery representative dropdown
+        $('#deliveryRepresentativeDropdown').val('');
+
+        // Update the hidden input to the value of delivery company dropdown
+        var selectedValue = $(this).val();
+        $('#hiddenDeliveryCompanyId').val(selectedValue);
+
+        // Optional: Add any specific logic for when the delivery company dropdown changes
+    });
+
+    $('#deliveryRepresentativeDropdown').change(function () {
+        // Reset delivery company dropdown
+        $('#deliveryCompanyDropdown').val('');
+
+        // Update the hidden input to the value of delivery representative dropdown
+        var selectedValue = $(this).val();
+        $('#hiddenDeliveryCompanyId').val(selectedValue);
+
+        // Optional: Add any specific logic for when the delivery representative dropdown changes
+    });
+
+    function updateHiddenInput() {
+        var companyDropdownValue = $('#deliveryCompanyDropdown').val();
+        var representativeDropdownValue = $('#deliveryRepresentativeDropdown').val();
+
+        if (companyDropdownValue) {
+            $('#hiddenDeliveryCompanyId').val(companyDropdownValue);
+        } else if (representativeDropdownValue) {
+            $('#hiddenDeliveryCompanyId').val(representativeDropdownValue);
+        }
+
+        // Event handler for delivery company dropdown change
+        $('#deliveryCompanyDropdown').change(function () {
+            // Reset delivery representative dropdown
+            $('#deliveryRepresentativeDropdown').val('');
+
+            // Update the hidden input to the value of delivery company dropdown
+            var selectedValue = $(this).val();
+            $('#hiddenDeliveryCompanyId').val(selectedValue);
+        });
+
+        // Event handler for delivery representative dropdown change
+        $('#deliveryRepresentativeDropdown').change(function () {
+            // Reset delivery company dropdown
+            $('#deliveryCompanyDropdown').val('');
+
+            // Update the hidden input to the value of delivery representative dropdown
+            var selectedValue = $(this).val();
+            $('#hiddenDeliveryCompanyId').val(selectedValue);
+        });
+
+        // Check if options match the modelDeliveryCompanyId for initial load or other triggers
+        var modelDeliveryCompanyId = $('#hiddenDeliveryCompanyId').val(); // Assuming this value is pre-defined or set elsewhere
+        var isCompanyOptionAvailable = $('#deliveryCompanyDropdown option[value="' + modelDeliveryCompanyId + '"]').length > 0;
+        var isRepresentativeOptionAvailable = $('#deliveryRepresentativeDropdown option[value="' + modelDeliveryCompanyId + '"]').length > 0;
+
+        var selectedValue = null;
+        // Check which dropdown contains an option that matches the modelDeliveryCompanyId and set that as the selectedValue
+        if (isRepresentativeOptionAvailable) {
+            selectedValue = modelDeliveryCompanyId; // Assuming this ID is for a representative
+            $('#deliveryRepresentativeDropdown').val(selectedValue); // Set the dropdown if necessary
+        } else if (isCompanyOptionAvailable) {
+            selectedValue = modelDeliveryCompanyId; // Assuming this ID is for a company
+            $('#deliveryCompanyDropdown').val(selectedValue); // Set the dropdown if necessary
+        }
+
+        // Update the hidden input with the selected value if not already done by change handlers
+        if (selectedValue !== null) {
+            $('#hiddenDeliveryCompanyId').val(selectedValue);
+            console.log("Updated hiddenDeliveryCompanyId value:", selectedValue);
+        }
+    }
+
+    // Initial call to setup event handlers and perform any initial updates
+    updateHiddenInput();
+
+
+    function updateWarehouseIndexes() {
+        $('.appended-warehouse-row').each(function (index) {
+            // Update the index for each warehouse element
+            $(this).find('.selected-warehouse').attr('name', `SelectedWarehouses[${index}].WarehouseName`);
+            $(this).find('input[type=hidden]').attr('name', `SelectedWarehouses[${index}].WarehouseId`);
+            $(this).find('.amount').attr('name', `SelectedWarehouses[${index}].Amount`);
+            $(this).find('.amount').attr('id', `SelectedWarehouses_${index}__Amount`);
+        });
+    }
+
+    // At the top of your script
+    var warehousesToRemove = [];
+
+    // amount increase button
+    $(document).on('click', '.increase', function () {
+        var $amountInput = $(this).closest('.my-input-group').find('.amount');
+        var value = parseInt($amountInput.val() || 0); // Handle null or undefined values
+        var maxAmount = parseInt($amountInput.closest('.row').data('warehouse-remaining-amount'));
+
+        $amountInput.val(value + 1);
+    });
+
+    // amount decrease button
+    $(document).on('click', '.decrease', function () {
+        var $amountInput = $(this).closest('.my-input-group').find('.amount');
+        var value = parseInt($amountInput.val());
+
+        if (!isNaN(value) && value > 1) {
+            $amountInput.val(value - 1);
+        } else {
+            if (confirm('هل انت متاكد من حذف المستودع')) {
+                var $row = $(this).closest('.appended-warehouse-row');
+                $row.remove();
+                updateWarehouseIndexes();
+            }
+        }
+    });
+
+
+    function checkWarehouseCount() {
+        var allWarehouseElements = document.querySelectorAll('.existing-warehouse-class, .appended-warehouse-row');
+        if (allWarehouseElements.length < 1) {
+            alert("يجب أن يكون هناك مستودع واحد على الأقل.");
+            return false; // Return false if the condition to prevent submission is met
+        }
+        return true; // Return true to allow form submission
+    }
+
+    form.addEventListener("submit", function (event) {
+        if (!checkWarehouseCount()) {
+            event.preventDefault(); // Prevent form submission if there are no warehouses
+        } else {
+            // If the form is being submitted, send AJAX requests to remove warehouses
+            warehousesToRemove.forEach(function (warehouse) {
+                $.ajax({
+                    url: '/Order/RemoveWarehouse',
+                    type: 'POST',
+                    data: {
+                        orderId: warehouse.orderId,
+                        warehouseId: warehouse.warehouseId
+                    },
+                    success: function (result) {
+                        console.log('Warehouse removed successfully from the backend.');
+                    },
+                    error: function (xhr, status, error) {
+                        var errorMessage = xhr.status + ': ' + xhr.statusText;
+                        console.error('Error - ' + errorMessage);
+                        alert('Error - ' + errorMessage);
+                    }
+                });
+            });
+            warehousesToRemove = []; // Clear the array after processing
+        }
+    });
+
+
+
+    $(document).ready(function () {
+
+
+        $.ajax({
+            type: 'GET',
+            url: '@Url.Action("GetAllStores", "DataList")',
+            success: function (data) {
+                populateDropdown(data);
+            },
+            error: function (xhr, status, error) {
+                console.error(error);
+            }
+        });
+
+        $('#hiddenManufacturingCompanyId').val('@Model.ManufacturingCompanyId');
+
+
+        $('#manufacturingCompanyDropdown').change(function () {
+            // Update the value of hiddenManufacturingCompanyId when the dropdown changes
+            $('#hiddenManufacturingCompanyId').val($(this).val());
+        });
+
+        function populateDropdown(companies) {
+            var dropdown = $('#manufacturingCompanyDropdown');
+            dropdown.empty();
+            dropdown.append($('<option>').val('').text('اسم  المتجر').prop('disabled', true));
+            $.each(companies, function (index, company) {
+                var option = $('<option>').val(company.id).text(company.name).data('image', company.logoUrl);
+                if (company.id == '@Model.ManufacturingCompanyId') {
+                    option.prop('selected', true);
+                }
+                dropdown.append(option);
+            });
+        }
+
+
+
+        var source = @Html.Raw(Json.Serialize(Model.OrderSource)); // Assuming Model.OrderSource contains the value
+
+        console.log("Order Source:", source); // Debugging)
+
+        // Check if the source is "واىساب"
+        if (source === 4) {
+            var sourceNameInput = document.querySelector('#sourceNameDiv input');
+            sourceNameInput.disabled = true;
+        }
+
+
+
+        $('#form').on('submit', function () {
+            // Explicitly set the dropdown value to ensure it's captured
+            cityDropdown.val(cityDropdown.find('option:selected').val());
+
+            // Set the hidden input value to the dropdown's selected value
+            $('#hiddenState').val(cityDropdown.val());
+
+
+
+            // Log values to console for debugging purposes
+            updateHiddenInput(); // Ensure hidden input value is current
+            console.log("Submitting with Delivery Company/Representative ID:", $('input[name="DeliveryCompanyId"]').val());
+        });
+
+
+        $("#cityDropdown").change(function () {
+            var selectedState = $(this).val();
+            $("#hiddenState").val(selectedState);
+        });
+
+        $('#StoreNameDropDown').on('change', function () {
+            // Get the selected option
+            var selectedOption = $(this).find('option:selected');
+            var id = selectedOption.val(); // The value of the option is the ID
+            var name = selectedOption.text(); // The text of the option is the name
+
+            // Print the ID and name
+            console.log('Selected ID: ' + id + ', Name: ' + name);
+
+            // Optionally, display these values on your web page
+            // $('#someElement').text('Selected ID: ' + id + ', Name: ' + name);
+        });
+
+
+
+
+        // get from  id
+        var form = document.getElementById("form");
+        // get ware house amount input id
+        var amountInput = document.getElementById("amountInput");
+
+
+        // get current coutnry value
+        var initialCountry = '@Html.Raw(Model.Country)';
+        // get current state  value
+        var initialState = '@Html.Raw(Model.State)';
+
+        // Set the initial values for the coutnry drop down
+        $('#countryDropdown').val(initialCountry);
+
+        // Set the initial values for the city drop down
+
+
+
+        // Debugging: Log the initial values to the console
+        console.log("Initial Country:", initialCountry);
+        console.log("Initial State:", initialState);
+
+
+        var warehouseOptions = [];
+        // get cities
+        var citiesByCountry = @Html.Raw(Json.Serialize(lotus_blue.Models.Common.CitiesByCountry));
+        // get current city
+
+
+        // get country drop down value
+        var countryDropdown = $('#countryDropdown');
+        // get city drop down value
+        var cityDropdown = $("#cityDropdown");
+
+        var selectedCountry = countryDropdown.val();
+
+
+        // Function to populate cities dropdown based on the selected country
+        function populateCities(selectedCountry) {
+            console.log("populateCities called with selectedCountry:", selectedCountry); // Debug
+
+            cityDropdown.empty(); // Clear any existing options
+            console.log("Dropdown cleared"); // Debug
+
+            cityDropdown.append($('<option>', {
+                value: '',
+                text: 'المدينة',
+                'data-image': '/static/city-regular.svg'
+            }));
+            console.log("Default city option appended"); // Debug
+
+            // Check if the selectedCountry is defined and has cities in the citiesByCountry object
+            if (selectedCountry && citiesByCountry[selectedCountry]) {
+                var cities = citiesByCountry[selectedCountry];
+                console.log("Cities for selectedCountry:", cities); // Debug
+
+                var cityExistsInModel = cities.includes(initialState); // Check if initialState exists in cities
+                console.log("Does the city exist in the model?", cityExistsInModel); // Debug
+
+                // Append cities to the dropdown
+                cities.forEach(function (city) {
+                    cityDropdown.append($('<option>', {
+                        value: city,
+                        text: city,
+                        'data-image': '/static/city-regular.svg'
+
+                    }));
+                    console.log("Appended city:", city); // Debug
+                });
+
+                // Set the selected city if it exists in the model; otherwise, default to 'المدينة'
+                cityDropdown.val(cityExistsInModel ? initialState : '');
+                console.log("Dropdown value set to:", cityDropdown.val()); // Debug to confirm value set
+            } else {
+                // If no cities or invalid country, keep the dropdown to 'المدينة'
+                cityDropdown.val('');
+                console.log("No valid country selected or no cities available. Dropdown set to default."); // Debug
+            }
+        }
+
+
+        // Populate the city dropdown on page load
+        populateCities(initialCountry);
+
+
+        // update delviery companies based on country
+        function updateDeliveryCompanies(selectedCountry) {
+            var country = selectedCountry || $('#countryDropdown').val(); // Use the provided selectedCountry or get it from the dropdown
+            var city = $('#cityDropdown').val();
+            // Add a variable for the initial delivery company id from the model
+            var initialDeliveryCompanyId = '@Model.DeliveryCompanyId';
+
+            $.ajax({
+                type: 'GET',
+                url: '@Url.Action("GetAllDeliveryCompanies", "DataList")',
+                data: { countryId: country },
+                success: function (data) {
+                    var deliveryCompanyDropdown = $('#deliveryCompanyDropdown');
+                    deliveryCompanyDropdown.empty();
+                    deliveryCompanyDropdown.append($('<option>', {
+                        value: '',
+                        text: 'أسم شركة التوصيل',
+                        disabled: true,
+                        "data-image": "/static/truck-regular.svg", // Static image for the placeholder
+
+                    }));
+
+                    $.each(data, function (index, company) {
+                        deliveryCompanyDropdown.append($('<option>', {
+                            value: company.id,
+                            text: company.name,
+                            "data-image": "/static/truck-regular.svg", // Static image for the placeholder
+
+                        }));
+                    });
+
+                    // After populating, set the selected value if the initialDeliveryCompanyId is present
+                    if (initialDeliveryCompanyId) {
+                        deliveryCompanyDropdown.val(initialDeliveryCompanyId);
+                    }
+                },
+                error: function (xhr, textStatus, errorThrown) {
+                    console.error('Error: ' + textStatus, errorThrown);
+                }
+            });
+        }
+
+        // call this function to populate delivery companies based on model country
+        updateDeliveryCompanies(initialCountry);
+
+
+        function updateDeliveryRepresentatives() {
+            var country = initialCountry;// Use the provided selectedCountry or get it from the dropdown
+            var city = $('#cityDropdown').val();
+            // Add a variable for the initial delivery company id from the model
+            var initialDeliveryCompanyId = '@Model.DeliveryCompanyId';
+
+            $.ajax({
+                type: 'GET',
+                url: '@Url.Action("GetAllDeliveryRepresentatives", "DataList")',
+                data: { countryId: country, cityId: city },
+                success: function (data) {
+                    var deliveryRepresentativeDropdown = $('#deliveryRepresentativeDropdown');
+                    deliveryRepresentativeDropdown.empty();
+                    deliveryRepresentativeDropdown.append($('<option>', {
+                        value: '',
+                        text: 'أسم شركة التوصيل',
+                        disabled: true,
+                        "data-image": "/static/truck-regular.svg", // Static image for the placeholder
+
+                    }));
+
+                    $.each(data, function (index, company) {
+                        deliveryRepresentativeDropdown.append($('<option>', {
+                            value: company.id,
+                            text: company.name,
+                            "data-image": "/static/truck-regular.svg", // Static image for the placeholder
+
+                        }));
+                    });
+
+                    // After populating, set the selected value if the initialDeliveryCompanyId is present
+                    if (initialDeliveryCompanyId) {
+                        deliveryRepresentativeDropdown.val(initialDeliveryCompanyId);
+                    }
+
+                    if ($('#deliveryRepresentativeDropdown').val()) {
+                        console.log("Delivery representative dropdown has a value");
+
+                        // If it has a value, disable cityDropdown
+                        $('#cityDropdown').prop('disabled', true);
+                    } else {
+                        console.log("Delivery representative dropdown does not have a value");
+                    }
+
+                },
+                error: function (xhr, textStatus, errorThrown) {
+                    console.error('Error: ' + textStatus, errorThrown);
+                }
+            });
+        }
+        updateDeliveryRepresentatives();
+
+
+        $('#deliveryCompanyDropdown, #deliveryRepresentativeDropdown').change(function () {
+            updateHiddenInput();
+            var hasAppendedWarehouses = $('.appended-warehouse-row').length > 0;
+
+            if (hasAppendedWarehouses && confirm('Changing the delivery company will remove all listed warehouses. Do you want to continue?')) {
+                removeAllWarehouses();
+                // Directly call updateHiddenInput() to reflect changes made by removeAllWarehouses()
+                updateHiddenInput();
+            }
+
+            // Update warehouses and amount
+            updateWarehouses();
+        });
+
+
+
+
+
+        //get the value for delivey company on page load
+        var initialDeliveryCompanyIdFromModel = '@Model.DeliveryCompanyId';
+        console.log("Initial Delivery Company ID:", initialDeliveryCompanyIdFromModel);
+
+        // Call updateWarehouses function with the retrieved delivery company ID on page load
+        updateWarehouses(initialDeliveryCompanyIdFromModel);
+        // update warehouses function based on delviery company changed
+        function updateWarehouses(deliveryCompanyId) {
+            var country = $('#countryDropdown').val();
+            var city = $('#cityDropdown').val();
+            var deliveryCompanyId = $('#deliveryCompanyDropdown').val() || initialDeliveryCompanyIdFromModel;
+            var deliveryRepresentativeValue = $('#deliveryRepresentativeDropdown').val();
+            var companyIdToSend = deliveryCompanyId; // Separate variable to store the value to send
+            if (deliveryCompanyId === null || deliveryCompanyId === "") {
+                // If deliveryCompanyId is null or empty, use the value of deliveryRepresentativeValue
+                companyIdToSend = deliveryRepresentativeValue;
+            }
+
+            if (deliveryRepresentativeValue === null || deliveryRepresentativeValue === "") {
+                // If deliveryRepresentativeValue is null or empty, use the value of deliveryCompanyId
+                companyIdToSend = deliveryCompanyId;
+            }
+            $.ajax({
+                type: 'GET',
+                url: '@Url.Action("GetFilteredWarehouses", "DataList")', // Replace with your actual URL
+                data: { deliveryCompanyId: companyIdToSend },
+                success: function (data) {
+                    warehouseOptions = data; // Store the warehouse data
+                    populateFirstWarehouseDropdown(); // Corrected the function call
+                    console.log("Inside AJAX call, Delivery Company ID: ", deliveryCompanyId);
+                },
+                error: function (xhr, textStatus, errorThrown) {
+                    console.error('Error: ' + textStatus, errorThrown);
+                }
+            });
+        }
+
+        // show append قم باختيار احدى المنتجات
+        function populateFirstWarehouseDropdown() {
+            var warehouseDropdown = $('#productDropdown');
+            warehouseDropdown.empty();
+            warehouseDropdown.append($('<option>', {
+                disabled: true,
+                selected: true,
+                text: 'قم بإختيار إحدى المنتجات',
+                'data-image': '/static/box-open-2.svg'
+
+            }));
+
+            warehouseOptions.forEach(function (warehouse) {
+                warehouseDropdown.append($('<option>', {
+                    value: warehouse.id,
+                    text: warehouse.name,
+                    'data-image': warehouse.productImage // Assuming this is correct
+
+                }));
+            });
+        }
+
+
+        // اضافة مستودع جديد
+
+        function addNewWarehouseItem() {
+            var selectedWarehouseId = $('#productDropdown').val();
+            var selectedWarehouse = warehouseOptions.find(warehouse => warehouse.id.toString() === selectedWarehouseId);
+
+            if (!selectedWarehouse) return; // Exit if no warehouse is selected
+
+            // Calculate the new index based on the total number of warehouses
+            var warehouseIndex = $('.appended-warehouse-row').length;
+
+            var warehouseHtml = `
+                                            <div class="appended-warehouse-row row ms-0 mt-3" data-warehouse-id="${selectedWarehouse.id}" data-warehouse-name="${selectedWarehouse.name}" data-warehouse-amount="${selectedWarehouse.amount}">
+                                                <div class="col-lg-6">
+                                                    <div class="form-group appenddiv blue-warehouse">
+                                                        <div class="warehouse-item">
+                                                            <span class="selected-warehouse">${selectedWarehouse.name}</span>
+                                                            <input type="hidden" name="SelectedWarehouses[${warehouseIndex}].WarehouseId" value="${selectedWarehouse.id}">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-lg-6 pe-4 ps-0">
+                                                    <div class="form-group">
+                                                        <div class="input-group my-input-group" style="width: 105%!important">
+                                                                <button type="button" class="btn decrease rounded-btn">-</button>
+                                                            <input min="1" required value="1" placeholder="الكمية" class="form-control amount" name="SelectedWarehouses[${warehouseIndex}].Amount">
+                                                                <button  type="button" class="btn increase rounded-btn">+</button>
+                                                        </div>
+                                                        <span class="text-danger"></span> <!-- Placeholder for validation message -->
+                                                    </div>
+                                                </div>
+                                            </div>`;
+
+            $('#selectedProductsList').append(warehouseHtml);
+
+            // Update warehouse dropdown
+            warehouseOptions = warehouseOptions.filter(warehouse => warehouse.id.toString() !== selectedWarehouseId);
+            populateFirstWarehouseDropdown();
+
+        }
+
+
+        // when قم باختيار احدى المنتجات  change its calling adding new warehouse to add a new item
+
+        $('#productDropdown').change(function () {
+            if ($(this).val()) {
+                addNewWarehouseItem();
+                updateWarehouseIndexes()
+            }
+        });
+
+
+        // check max amount
+        $('#selectedProductsList').on('input', '.amount', function () {
+            var $amountInput = $(this);
+            var enteredValue = parseInt($amountInput.val());
+            var maxAmount = parseInt($amountInput.closest('.row').data('warehouse-amount'));
+
+            // Check if the entered value exceeds the maximum available amount
+            if (!isNaN(enteredValue) && enteredValue > maxAmount) {
+                alert(`Available amount is ${maxAmount}`);
+                $amountInput.val(maxAmount); // Optionally reset the value to the max amount
+            }
+        });
+
+        // remove all warehouses on country delivery company changes
+        function removeAllWarehouses() {
+            // Confirm with the user before proceeding
+            if (confirm('القيام بهذه العملية سوف يحذف المنتجات. هل تريد المتابعة؟')) {
+                $('.appended-warehouse-row').each(function () {
+                    var warehouseId = $(this).data('warehouse-id');
+                    var orderId = '@Model.Id'; // Ensure this value is correctly populated
+
+                    // Perform the AJAX request to remove the warehouse
+                    $.ajax({
+                        url: '/Order/RemoveWarehouse', // Adjust the URL as needed for your routing
+                        type: 'POST',
+                        data: {
+                            orderId: orderId,
+                            warehouseId: warehouseId
+                        },
+                        context: this, // This line is important to maintain the context inside the success callback
+                        success: function (result) {
+                            // If the warehouse is successfully removed, remove the corresponding row in the DOM
+                            $(this).remove(); // 'this' refers to the '.appended-warehouse-row' element
+                            console.log('Warehouse removed successfully');
+
+                        },
+                        error: function (xhr, status, error) {
+                        }
+                    });
+                });
+            }
+        }
+
+        // remove appended items function
+        function removeAppendedWarehouseItems() {
+            $('.appended-warehouse-row').remove(); // This targets the specific rows to remove
+            updateWarehouseIndexes()
+
+        };
+
+
+
+    });
+
+</script>

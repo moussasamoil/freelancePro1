@@ -1,0 +1,184 @@
+﻿@model lotus_blue.Models.ViewModel.PriceOfferViewModel
+@{
+    ViewData["Title"] = "إنشاء فاتورة";
+}
+<form asp-action="CreatePriceOffer" method="post">
+
+    <div class="row">
+        <div class="form-group col">
+            <label for="Country">البلد</label>
+            <input type="text" class="form-control" name="Country" value="@Model.Country" />
+        </div>
+        <div class="form-group col">
+            <label for="City">المدينة</label>
+            <input type="text" class="form-control" name="City" value="@Model.City" />
+        </div>
+    </div>
+
+
+    <div class="row">
+        <div class="form-group col">
+            <label for="DeliveryCompanyName">اسم شركة التوصيل</label>
+            <input type="text" class="form-control" name="DeliveryCompanyName" value="@Model.DeliveryCompanyName" />
+        </div>
+        <div class="form-group col">
+            <label for="DeliveryCompanyAddress">عنوان شركة التوصيل</label>
+            <input type="text" class="form-control" name="DeliveryCompanyAddress" value="@Model.DeliveryCompanyAddress" />
+        </div>
+    </div>
+
+
+    <div class="row">
+        <div class="form-group col">
+            <label for="DeliveryCompanyPhoneNumber">رقم هاتف شركة التوصيل</label>
+            <input type="text" class="form-control" name="DeliveryCompanyPhoneNumber" value="@Model.DeliveryCompanyPhoneNumber" />
+        </div>
+        <div class="form-group col">
+            <label for="DeliveryCompanyEmail">بريد إلكتروني لشركة التوصيل</label>
+            <input type="email" class="form-control" name="DeliveryCompanyEmail" value="@Model.DeliveryCompanyEmail" />
+        </div>
+    </div>
+
+    <div id="products">
+        <!-- This will be dynamically filled with products and select dropdowns -->
+    </div>
+
+    <div class="form-group mt-3 col-3">
+        <label>السعر الإجمالي لجميع المنتجات</label>
+        <input type="number" id="totalSumDisplay" class="form-control" readonly />
+    </div>
+
+
+    <div class="form-group mt-3">
+        <button type="button" onclick="addProduct()" class="btn btn-primary">إضافة منتج</button>
+    </div>
+
+
+    <div class="form-group mt-3">
+        <input type="submit" value="موافقة" class="btn btn-success" />
+    </div>
+
+</form>
+
+
+<script>
+    function loadSubWarehouses(productIndex) {
+        $.ajax({
+            url: '@Url.Action("GetSubWarehouses", "Datalist")', // Adjust the controller name if necessary
+            type: 'GET',
+            success: function (data) {
+                var select = document.querySelector(`select[name='Products[${productIndex}].SelectedProductId']`);
+                select.innerHTML = `<option value="">-- اختر منتجاً --</option>`;
+                data.forEach(function (warehouse) {
+                    select.innerHTML += `<option value="${warehouse.id}">${warehouse.name}</option>`;
+                });
+            },
+            error: function (error) {
+                console.error('Error loading sub-warehouses:', error);
+            }
+        });
+    }
+
+    function addProduct() {
+        var productsDiv = document.getElementById('products');
+        var productIndex = document.querySelectorAll('.product').length;
+
+        var newProductHtml = `
+                <div class="form-row row product">
+                    <div class="form-group col">
+                        <label>تحديد منتج</label>
+                        <select class="form-control product-select" name="Products[${productIndex}].SelectedProductId">
+                            <option value="">-- اختر منتجاً --</option>
+                        </select>
+                    </div>
+                    <div class="form-group col">
+                        <label>اسم المنتج</label>
+                        <input type="text" class="form-control product-name" name="Products[${productIndex}].Name" value="" />
+                    </div>
+                    <div class="form-group col">
+                        <label>السعر</label>
+                        <input type="number" class="form-control product-price" step="0.01" name="Products[${productIndex}].Price" value="" />
+                    </div>
+                    <div class="form-group col">
+                        <label>الكمية</label>
+                        <input type="number" class="form-control product-amount" name="Products[${productIndex}].Amount" value="" />
+                    </div>
+                    <div class="form-group col">
+                        <label>السعر الإجمالي</label>
+                        <input type="number" class="form-control product-total-price" name="Products[${productIndex}].TotalPrice" value="" readonly />
+                    </div>
+                    <div class="form-group mt-4 col">
+                        <button type="button" class="btn btn-danger remove-product">إزالة</button>
+                    </div>
+                </div>`;
+
+        productsDiv.insertAdjacentHTML('beforeend', newProductHtml);
+
+        var newProductRow = productsDiv.querySelector('.product:last-child');
+
+        var productSelect = newProductRow.querySelector('.product-select');
+        var productNameInput = newProductRow.querySelector('.product-name');
+        var priceInput = newProductRow.querySelector('.product-price');
+        var amountInput = newProductRow.querySelector('.product-amount');
+
+        // Load sub-warehouses dynamically
+        loadSubWarehouses(productIndex);
+
+        productSelect.addEventListener('change', function () {
+            if (productSelect.value) {
+                productNameInput.readOnly = true; // Use readonly instead of disabled
+                productNameInput.value = productSelect.options[productSelect.selectedIndex].text; // Set the name input to the selected product's name
+                priceInput.value = 100; // Example value, replace with actual product price if available
+                calculateTotal(priceInput);
+            } else {
+                productNameInput.readOnly = false; // Make the input editable if no product is selected
+            }
+        });
+
+        productNameInput.addEventListener('input', function () {
+            if (productNameInput.value) {
+                productSelect.disabled = true;
+            } else {
+                productSelect.disabled = false;
+            }
+        });
+
+        [priceInput, amountInput].forEach(input => {
+            input.addEventListener('change', function () {
+                calculateTotal(this);
+            });
+        });
+
+        var removeButton = newProductRow.querySelector('.remove-product');
+        removeButton.addEventListener('click', function () {
+            removeProduct(this);
+        });
+    }
+
+    function calculateTotal(input) {
+        var productDiv = input.closest('.product');
+        var price = parseFloat(productDiv.querySelector('input[name*="Price"]').value) || 0;
+        var amount = parseInt(productDiv.querySelector('input[name*="Amount"]').value) || 0;
+        var totalPriceInput = productDiv.querySelector('input[name*="TotalPrice"]');
+        totalPriceInput.value = (price * amount).toFixed(2);
+
+        updateTotalSum();
+    }
+
+    function updateTotalSum() {
+        var totalPriceInputs = document.querySelectorAll('input[name*=".TotalPrice"]');
+        var totalSum = 0;
+
+        totalPriceInputs.forEach(function (input) {
+            var value = parseFloat(input.value) || 0;
+            totalSum += value;
+        });
+
+        document.getElementById('totalSumDisplay').value = totalSum.toFixed(2); // Set value instead of textContent
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        updateTotalSum();
+    });
+
+</script>

@@ -1,0 +1,1478 @@
+@using lotus_blue.Models
+@model lotus_blue.Models.ViewModel.SalesIndicatorViewModel
+@{
+    ViewData["Title"] = "مؤشرات البيع";
+    Layout = "_MainLayout";
+    var successMessage = TempData["SuccessMessage"] as string;
+    var successTitle = TempData["SuccessTitle"] as string;
+    if (string.IsNullOrWhiteSpace(successTitle) && !string.IsNullOrWhiteSpace(successMessage))
+    {
+        successTitle = successMessage.Contains("حفظ") ? "تم الحفظ بنجاح" :
+            successMessage.Contains("حذف") ? "تم الحذف بنجاح" : "تم التعديل بنجاح";
+    }
+    var errorMessage = TempData["ErrorMessage"] as string;
+}
+
+
+@functions {
+    static string SalesIndicatorImageUrl(string? raw, string fallback = "/static/DefaultImage.svg")
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return fallback;
+        }
+
+        var value = raw.Trim().Replace("\\", "/");
+
+        if (value.StartsWith("~/", System.StringComparison.OrdinalIgnoreCase))
+        {
+            value = value.Substring(1);
+        }
+
+        if (value.StartsWith("http://", System.StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith("https://", System.StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith("data:", System.StringComparison.OrdinalIgnoreCase))
+        {
+            return value;
+        }
+
+        return "/" + value.TrimStart('/');
+    }
+
+    static string SalesIndicatorCountryImageUrl(Common.Countries country)
+    {
+        return SalesIndicatorImageUrl(
+            Common.GetImageUrlByCountryName(country.ToString()),
+            "/static/earth-americas-sharp-solid.svg");
+    }
+}
+
+<div class="sales-indicators-page" dir="rtl">
+    <style>
+            .sales-indicators-page {
+                width: 100%;
+                padding: 18px 20px 28px;
+                box-sizing: border-box;
+            }
+
+            .sales-indicators-header,
+            .sales-indicators-card,
+            .sales-indicators-table-card {
+                background: #ffffff;
+                border: 1px solid #edf2f1;
+                border-radius: 18px;
+                box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+            }
+
+            .sales-indicators-header {
+                background: #F5F5F5;
+                color: #f28e02;
+                padding: 15px 18px;
+                margin-bottom: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+
+            .sales-indicators-title {
+                margin: 0;
+                font-size: 23px;
+                font-weight: 900;
+                color: #f28e02;
+            }
+
+            .sales-indicators-card {
+                padding: 18px;
+                margin-bottom: 18px;
+            }
+
+            .sales-indicators-section-title {
+                color: #18a088;
+                font-size: 18px;
+                font-weight: 900;
+                margin-bottom: 14px;
+            }
+
+            .sales-indicators-grid {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 14px;
+            }
+
+            .sales-indicators-product-row,
+            .sales-indicators-country-row {
+                margin-bottom: 16px;
+            }
+
+            /* Create form: keep product dropdown + all price inputs in one row on desktop */
+            .sales-indicators-create-card {
+                display: grid;
+                grid-template-columns: minmax(190px, .85fr) minmax(250px, 1.15fr) repeat(3, minmax(220px, 1fr));
+                gap: 14px;
+                align-items: start;
+                overflow: visible !important;
+            }
+
+                .sales-indicators-create-card .sales-indicators-section-title {
+                    grid-column: 1 / -1;
+                    margin-bottom: 0;
+                }
+
+                .sales-indicators-create-card > .sales-indicators-country-row {
+                    grid-column: 1;
+                    margin-bottom: 0;
+                    align-self: stretch;
+                }
+
+                .sales-indicators-create-card > .sales-indicators-product-row {
+                    grid-column: 2;
+                    margin-bottom: 0;
+                    align-self: stretch;
+                }
+
+                .sales-indicators-create-card > .sales-indicators-grid {
+                    grid-column: 3 / -1;
+                    display: grid;
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
+                    gap: 14px;
+                    align-items: stretch;
+                }
+
+                .sales-indicators-create-card .sales-indicators-limit-box {
+                    min-width: 0;
+                    height: 100%;
+                }
+
+                .sales-indicators-create-card .sales-indicators-two-inputs {
+                    gap: 8px;
+                }
+
+                .sales-indicators-create-card .sales-indicators-input,
+                .sales-indicators-create-card .min-sale-custom-trigger {
+                    min-height: 44px;
+                    height: 44px;
+                }
+
+                .sales-indicators-create-card > .text-danger,
+                .sales-indicators-create-card > .sales-indicators-actions {
+                    grid-column: 1 / -1;
+                }
+
+                .sales-indicators-create-card > .sales-indicators-actions {
+                    margin-top: 4px;
+                }
+
+            .sales-indicators-limit-box {
+                border: 1px solid #edf2f1;
+                border-radius: 15px;
+                padding: 14px;
+                background: #fbfdfd;
+            }
+
+            .sales-indicators-limit-title {
+                display: block;
+                color: #334155;
+                font-size: 14px;
+                font-weight: 900;
+                margin-bottom: 10px;
+                text-align: center;
+            }
+
+            .sales-indicators-two-inputs {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .sales-indicators-input,
+            .sales-indicators-select {
+                width: 100%;
+                min-width: 0;
+                box-sizing: border-box;
+                min-height: 44px;
+                border-radius: 9px !important;
+                border: 0 !important;
+                background-color: #ffffff !important;
+                box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2) !important;
+                color: #111827 !important;
+                font-size: 15px;
+                font-weight: 800;
+                padding: 8px 12px;
+                outline: none !important;
+            }
+
+            .sales-indicators-page .select2-container {
+                width: 100% !important;
+                direction: rtl !important;
+            }
+
+            .sales-indicators-page .select2-container--default .select2-selection--single {
+                width: 100% !important;
+                min-height: 44px !important;
+                height: 44px !important;
+                border-radius: 9px !important;
+                border: 0 !important;
+                background-color: #ffffff !important;
+                box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2) !important;
+                display: flex !important;
+                align-items: center !important;
+                outline: none !important;
+            }
+
+                .sales-indicators-page .select2-container--default .select2-selection--single .select2-selection__rendered {
+                    width: 100% !important;
+                    min-height: 44px !important;
+                    line-height: 44px !important;
+                    padding-right: 12px !important;
+                    padding-left: 34px !important;
+                    color: #111827 !important;
+                    font-size: 15px !important;
+                    font-weight: 800 !important;
+                    text-align: right !important;
+                }
+
+                .sales-indicators-page .select2-container--default .select2-selection--single .select2-selection__arrow {
+                    height: 44px !important;
+                    left: 8px !important;
+                    right: auto !important;
+                }
+
+            .sales-product-option {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                gap: 8px !important;
+                direction: rtl !important;
+                width: 100% !important;
+                text-align: right !important;
+                color: #111827 !important;
+                font-weight: 800 !important;
+            }
+
+            .sales-product-option-img {
+                width: 24px !important;
+                height: 24px !important;
+                min-width: 24px !important;
+                border-radius: 50% !important;
+                object-fit: cover !important;
+                background: #f8fafc !important;
+                border: 1px solid rgba(24, 160, 136, 0.22) !important;
+            }
+
+            .sales-indicators-label {
+                display: block;
+                color: #334155;
+                font-size: 13px;
+                font-weight: 800;
+                margin-bottom: 6px;
+            }
+
+            .sales-indicators-actions {
+                display: flex;
+                justify-content: center;
+                gap: 10px;
+                flex-wrap: wrap;
+                margin-top: 18px;
+            }
+
+            .sales-indicators-save-btn,
+            .sales-indicators-reset-btn,
+            .sales-indicators-edit-btn,
+            .sales-indicators-delete-btn {
+                border: 0;
+                border-radius: 999px;
+                min-height: 38px;
+                padding: 6px 18px;
+                color: #ffffff !important;
+                text-decoration: none !important;
+                font-size: 14px;
+                font-weight: 900;
+                cursor: pointer;
+                box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+            }
+
+            .sales-indicators-save-btn {
+                background: #18a088;
+                min-width: 150px;
+            }
+
+            .sales-indicators-reset-btn {
+                background: #64748b;
+                min-width: 110px;
+            }
+
+            .sales-indicators-edit-btn {
+                background: #f28e02;
+            }
+
+            .sales-indicators-delete-btn {
+                background: #dc2626;
+            }
+
+            .sales-indicators-table-card {
+                overflow: hidden;
+            }
+
+            .sales-indicators-table-header {
+                background: #F5F5F5;
+                color: #f28e02;
+                padding: 14px 18px;
+                font-size: 19px;
+                font-weight: 900;
+                border-bottom: 1px solid #edf2f1;
+            }
+
+            .sales-indicators-table-wrap {
+                overflow-x: auto;
+            }
+
+            .sales-indicators-table {
+                width: 100%;
+                min-width: 950px;
+                margin: 0;
+                border-collapse: collapse;
+                text-align: center;
+            }
+
+                .sales-indicators-table th,
+                .sales-indicators-table td {
+                    padding: 10px 8px;
+                    border-bottom: 1px solid #edf2f1;
+                    vertical-align: middle;
+                    white-space: nowrap;
+                }
+
+                .sales-indicators-table th {
+                    background: #f8fafc;
+                    color: #334155;
+                    font-weight: 900;
+                }
+
+            .sales-indicators-product-cell {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                color: #18a088;
+                font-weight: 900;
+            }
+
+            .sales-indicators-product-img {
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                object-fit: cover;
+                border: 2px solid rgba(24, 160, 136, 0.20);
+                background: #f8fafc;
+            }
+
+            .sales-indicators-message {
+                margin-bottom: 14px;
+                border-radius: 12px;
+                padding: 10px 14px;
+                font-weight: 900;
+                text-align: center;
+            }
+
+                .sales-indicators-message.success {
+                    background: rgba(34, 197, 94, 0.10);
+                    color: #16a34a;
+                }
+
+                .sales-indicators-message.error {
+                    background: rgba(239, 68, 68, 0.10);
+                    color: #dc2626;
+                }
+
+            .text-danger {
+                font-weight: 800;
+                font-size: 12px;
+            }
+
+
+
+            .sales-indicators-modal-open {
+                overflow: hidden;
+            }
+
+            .sales-indicators-modal-backdrop,
+            .sales-indicators-result-popup-backdrop {
+                position: fixed;
+                inset: 0;
+                z-index: 2147483000;
+                background: rgba(15, 23, 42, 0.48);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                padding: 18px;
+                direction: rtl;
+            }
+
+            .sales-indicators-modal-card {
+                width: min(1280px, calc(100vw - 70px));
+                max-height: calc(100vh - 42px);
+                overflow-y: auto;
+                overflow-x: hidden;
+                background: #ffffff;
+                border-radius: 28px;
+                box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+                padding: 34px 42px 30px;
+                position: relative;
+                box-sizing: border-box;
+            }
+
+            .sales-indicators-modal-title {
+                margin: 0 0 16px;
+                color: #18a088;
+                font-size: 22px;
+                font-weight: 900;
+                text-align: center;
+            }
+
+            .sales-indicators-modal-close {
+                position: absolute;
+                top: 12px;
+                left: 14px;
+                width: 34px;
+                height: 34px;
+                border: 0;
+                border-radius: 50%;
+                background: #f1f5f9;
+                color: #64748b;
+                font-size: 24px;
+                font-weight: 900;
+                line-height: 1;
+                cursor: pointer;
+            }
+
+                .sales-indicators-modal-close:hover {
+                    background: #e2e8f0;
+                    color: #111827;
+                }
+
+            #salesIndicatorEditPopup .sales-indicators-product-row {
+                margin-bottom: 24px;
+            }
+
+            #salesIndicatorEditPopup .sales-indicators-select {
+                min-height: 52px;
+                font-size: 16px;
+                padding: 10px 14px;
+            }
+
+            #salesIndicatorEditPopup .select2-container--default .select2-selection--single,
+            #salesIndicatorEditPopup .select2-container--default .select2-selection--single .select2-selection__rendered,
+            #salesIndicatorEditPopup .select2-container--default .select2-selection--single .select2-selection__arrow {
+                min-height: 52px !important;
+                height: 52px !important;
+                line-height: 52px !important;
+            }
+
+            #salesIndicatorEditPopup .sales-indicators-grid {
+                grid-template-columns: repeat(3, minmax(260px, 1fr));
+                gap: 24px;
+                align-items: stretch;
+            }
+
+            #salesIndicatorEditPopup .sales-indicators-limit-box {
+                padding: 22px 20px 20px;
+                border-radius: 20px;
+                background: #fbfdfd;
+                min-width: 0;
+            }
+
+            #salesIndicatorEditPopup .sales-indicators-limit-title {
+                font-size: 15px;
+                margin-bottom: 16px;
+            }
+
+            #salesIndicatorEditPopup .sales-indicators-two-inputs {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 18px;
+            }
+
+            #salesIndicatorEditPopup .sales-indicators-label {
+                text-align: right;
+                margin-bottom: 8px;
+            }
+
+            #salesIndicatorEditPopup .sales-indicators-input {
+                min-height: 52px;
+                font-size: 16px;
+                text-align: center;
+                direction: ltr;
+                padding: 10px 12px;
+            }
+
+            #salesIndicatorEditPopup .sales-indicators-actions {
+                margin-top: 28px;
+                gap: 14px;
+            }
+
+            #salesIndicatorEditPopup .sales-indicators-save-btn,
+            #salesIndicatorEditPopup .sales-indicators-reset-btn {
+                min-height: 44px;
+                min-width: 150px;
+                font-size: 15px;
+            }
+
+            .sales-indicators-result-popup-card {
+                width: min(420px, calc(100vw - 34px));
+                background: #ffffff;
+                border-radius: 22px;
+                box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+                padding: 26px 22px 20px;
+                text-align: center;
+                position: relative;
+            }
+
+            .sales-indicators-result-icon {
+                width: 68px;
+                height: 68px;
+                border-radius: 50%;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                color: #ffffff;
+                font-size: 38px;
+                font-weight: 900;
+                margin-bottom: 14px;
+                box-shadow: 0 10px 22px rgba(24, 160, 136, 0.25);
+            }
+
+                .sales-indicators-result-icon.success {
+                    background: #18a088;
+                }
+
+                .sales-indicators-result-icon.error {
+                    background: #dc2626;
+                }
+
+            .sales-indicators-result-title {
+                margin: 0 0 8px;
+                color: #111827;
+                font-size: 20px;
+                font-weight: 900;
+            }
+
+            .sales-indicators-result-text {
+                margin: 0;
+                color: #475569;
+                font-size: 15px;
+                font-weight: 800;
+                line-height: 1.8;
+            }
+
+            .sales-indicators-result-ok {
+                margin-top: 18px;
+                border: 0;
+                border-radius: 999px;
+                background: #18a088;
+                color: #ffffff;
+                min-width: 135px;
+                min-height: 40px;
+                padding: 7px 20px;
+                font-size: 15px;
+                font-weight: 900;
+                cursor: pointer;
+            }
+
+
+            /* Product dropdown design like the main Index dropdowns: full rows, image, and radio circle */
+            .sales-indicators-page .select2-container--default .select2-dropdown {
+                border: 1px solid #111827 !important;
+                border-radius: 10px !important;
+                overflow: hidden !important;
+                background: #ffffff !important;
+                box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14) !important;
+                direction: rtl !important;
+            }
+
+            .sales-indicators-page .select2-container--default .select2-results__options {
+                max-height: 370px !important;
+                overflow-y: auto !important;
+            }
+
+            .sales-indicators-page .select2-container--default .select2-results__option {
+                padding: 0 !important;
+                margin: 0 !important;
+                min-height: 44px !important;
+                border-bottom: 1px solid #111827 !important;
+                background: #ffffff !important;
+                color: #111827 !important;
+                direction: rtl !important;
+            }
+
+                .sales-indicators-page .select2-container--default .select2-results__option:last-child {
+                    border-bottom: 0 !important;
+                }
+
+            .sales-indicators-page .select2-container--default .select2-results__option--highlighted[aria-selected],
+            .sales-indicators-page .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+                background: #f8fafc !important;
+                color: #111827 !important;
+            }
+
+            .sales-indicators-page .select2-container--default .select2-results__option--selected {
+                background: #ecfdf5 !important;
+            }
+
+            .sales-product-option-result {
+                min-height: 44px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                gap: 10px !important;
+                width: 100% !important;
+                padding: 8px 14px !important;
+                box-sizing: border-box !important;
+                direction: rtl !important;
+                text-align: right !important;
+            }
+
+                .sales-product-option-result .sales-product-radio {
+                    width: 16px !important;
+                    height: 16px !important;
+                    min-width: 16px !important;
+                    border: 2px solid #cbd5e1 !important;
+                    border-radius: 50% !important;
+                    background: #ffffff !important;
+                    box-sizing: border-box !important;
+                }
+
+            .select2-results__option--selected .sales-product-option-result .sales-product-radio {
+                border-color: #18a088 !important;
+                box-shadow: inset 0 0 0 4px #ffffff !important;
+                background: #18a088 !important;
+            }
+
+            .sales-product-option-result .sales-product-option-img {
+                width: 24px !important;
+                height: 24px !important;
+                min-width: 24px !important;
+                border-radius: 50% !important;
+                object-fit: cover !important;
+                background: #f8fafc !important;
+                border: 1px solid rgba(24, 160, 136, 0.22) !important;
+            }
+
+            .sales-product-option-result .sales-product-option-text {
+                flex: 1 !important;
+                min-width: 0 !important;
+                color: #111827 !important;
+                font-size: 14px !important;
+                font-weight: 900 !important;
+                line-height: 1.4 !important;
+                text-align: right !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                white-space: nowrap !important;
+            }
+
+            .sales-product-option-selection {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                gap: 8px !important;
+                width: 100% !important;
+                direction: rtl !important;
+                text-align: right !important;
+                color: #111827 !important;
+                font-weight: 900 !important;
+            }
+
+                .sales-product-option-selection .sales-product-option-img {
+                    width: 24px !important;
+                    height: 24px !important;
+                    min-width: 24px !important;
+                    border-radius: 50% !important;
+                    object-fit: cover !important;
+                    background: #f8fafc !important;
+                    border: 1px solid rgba(24, 160, 136, 0.22) !important;
+                }
+
+                .sales-product-option-selection .sales-product-option-text {
+                    min-width: 0 !important;
+                    overflow: hidden !important;
+                    text-overflow: ellipsis !important;
+                    white-space: nowrap !important;
+                }
+
+
+
+
+            /* Custom product dropdown copied from الحد الأدنى للبيع page - no Select2 / no extra input */
+            .sales-indicators-card,
+            .sales-indicators-product-row,
+            .sales-indicators-page {
+                overflow: visible !important;
+            }
+
+            .sales-indicators-modal-backdrop {
+                overflow-y: auto !important;
+            }
+
+            .sales-indicators-modal-card {
+                overflow: visible !important;
+            }
+
+            .sales-indicators-hidden-field {
+                display: none !important;
+            }
+
+            .min-sale-custom-select {
+                position: relative;
+                width: 100%;
+                direction: rtl;
+                overflow: visible !important;
+                z-index: 20;
+            }
+
+                .min-sale-custom-select.open {
+                    z-index: 2147483000;
+                }
+
+            .min-sale-custom-trigger {
+                width: 100%;
+                height: 46px;
+                min-height: 46px;
+                border: 1px solid #d7dee6;
+                border-radius: 12px;
+                background: #ffffff;
+                box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+                color: #0f172a;
+                font-size: 14px;
+                font-weight: 800;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                padding: 0 14px;
+                cursor: pointer;
+                overflow: hidden;
+                text-align: right;
+            }
+
+            .min-sale-custom-trigger-main {
+                min-width: 0;
+                flex: 1 1 auto;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                overflow: hidden;
+            }
+
+            .min-sale-custom-image {
+                width: 24px;
+                height: 24px;
+                min-width: 24px;
+                border-radius: 50%;
+                object-fit: cover;
+                border: 1px solid #dbe3ea;
+                background: #f8fafc;
+                display: none;
+            }
+
+            .min-sale-custom-select.has-value .min-sale-custom-image {
+                display: inline-block;
+            }
+
+            .min-sale-custom-text {
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                color: #0f172a;
+            }
+
+            .min-sale-custom-select:not(.has-value) .min-sale-custom-text {
+                color: #64748b;
+            }
+
+            .min-sale-custom-arrow {
+                flex: 0 0 auto;
+                color: #64748b;
+                font-size: 13px;
+                transition: transform .15s ease;
+            }
+
+            .min-sale-custom-select.open .min-sale-custom-arrow {
+                transform: rotate(180deg);
+            }
+
+            .min-sale-custom-menu {
+                position: absolute;
+                top: calc(100% + 6px);
+                right: 0;
+                left: 0;
+                z-index: 2147483000;
+                display: none;
+                background: #ffffff;
+                border: 1px solid #111827;
+                border-radius: 12px;
+                box-shadow: 0 16px 38px rgba(15, 23, 42, 0.18);
+                overflow: hidden;
+            }
+
+            .min-sale-custom-select.open .min-sale-custom-menu {
+                display: block;
+            }
+
+            .min-sale-custom-options {
+                max-height: 360px;
+                overflow-y: auto;
+                overflow-x: hidden;
+                background: #ffffff;
+            }
+
+            .min-sale-custom-option {
+                width: 100%;
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                border: 0;
+                border-bottom: 1px solid #111827;
+                background: #ffffff;
+                color: #0f172a;
+                font-size: 14px;
+                font-weight: 900;
+                padding: 10px 12px;
+                text-align: right;
+                cursor: pointer;
+            }
+
+                .min-sale-custom-option:last-child {
+                    border-bottom: 0;
+                }
+
+                .min-sale-custom-option:hover,
+                .min-sale-custom-option.selected {
+                    background: rgba(15, 159, 133, 0.10);
+                    color: #0f9f85;
+                }
+
+                .min-sale-custom-option::before {
+                    content: "";
+                    width: 16px;
+                    height: 16px;
+                    min-width: 16px;
+                    border-radius: 50%;
+                    border: 2px solid #cbd5e1;
+                    background: #ffffff;
+                    display: inline-block;
+                }
+
+                .min-sale-custom-option.selected::before {
+                    border-color: #0f9f85;
+                    background: radial-gradient(circle, #0f9f85 0 42%, #ffffff 45% 100%);
+                }
+
+                .min-sale-custom-option img {
+                    width: 24px;
+                    height: 24px;
+                    min-width: 24px;
+                    border-radius: 50%;
+                    object-fit: cover;
+                    border: 1px solid #dbe3ea;
+                    background: #f8fafc;
+                    display: inline-block;
+                }
+
+                .min-sale-custom-option span {
+                    min-width: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
+
+            @@media (max-width: 1100px) {
+                #salesIndicatorEditPopup .sales-indicators-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .sales-indicators-modal-card {
+                    width: min(760px, calc(100vw - 24px));
+                    padding: 24px 18px 22px;
+                }
+            }
+
+            @@media (max-width: 1250px) {
+                .sales-indicators-create-card {
+                    grid-template-columns: 1fr;
+                }
+
+                    .sales-indicators-create-card > .sales-indicators-country-row,
+                    .sales-indicators-create-card > .sales-indicators-product-row,
+                    .sales-indicators-create-card > .sales-indicators-grid {
+                        grid-column: 1 / -1;
+                    }
+
+                    .sales-indicators-create-card > .sales-indicators-grid {
+                        grid-template-columns: 1fr;
+                    }
+            }
+
+            @@media (max-width: 900px) {
+                .sales-indicators-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .sales-indicators-modal-card {
+                    padding: 20px 14px;
+                }
+
+                #salesIndicatorEditPopup .sales-indicators-two-inputs {
+                    gap: 12px;
+                }
+            }
+    </style>
+
+    <div class="sales-indicators-header">
+        <h1 class="sales-indicators-title">مؤشرات البيع</h1>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(successMessage))
+    {
+        <div id="salesIndicatorSuccessPopup" class="sales-indicators-result-popup-backdrop" style="display:flex;">
+            <div class="sales-indicators-result-popup-card">
+                <div class="sales-indicators-result-icon success">✓</div>
+                <h2 class="sales-indicators-result-title">@successTitle</h2>
+                <p class="sales-indicators-result-text">@successMessage</p>
+                <button type="button" class="sales-indicators-result-ok" data-sales-popup-close="salesIndicatorSuccessPopup">حسناً</button>
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div id="salesIndicatorErrorPopup" class="sales-indicators-result-popup-backdrop" style="display:flex;">
+            <div class="sales-indicators-result-popup-card">
+                <div class="sales-indicators-result-icon error">!</div>
+                <h2 class="sales-indicators-result-title">تنبيه</h2>
+                <p class="sales-indicators-result-text">@errorMessage</p>
+                <button type="button" class="sales-indicators-result-ok" data-sales-popup-close="salesIndicatorErrorPopup">حسناً</button>
+            </div>
+        </div>
+    }
+
+    <form asp-controller="SalesIndicators" asp-action="Save" method="post" class="sales-indicators-card sales-indicators-create-card">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="Id" value="0" />
+
+        <div class="sales-indicators-section-title">
+            إضافة مؤشر بيع
+        </div>
+
+        <div class="sales-indicators-country-row">
+            <label asp-for="Country" class="sales-indicators-label"></label>
+            <input asp-for="Country" type="hidden" id="Country" name="Country" class="sales-indicators-hidden-field" />
+
+            <div class="min-sale-custom-select" data-target="#Country" data-placeholder="اختاري الدولة">
+                <button type="button" class="min-sale-custom-trigger">
+                    <span class="min-sale-custom-trigger-main">
+                        <img class="min-sale-custom-image" src="" alt="" />
+                        <span class="min-sale-custom-text">اختاري الدولة</span>
+                    </span>
+                    <span class="min-sale-custom-arrow">▾</span>
+                </button>
+
+                <div class="min-sale-custom-menu">
+                    <div class="min-sale-custom-options">
+                        @foreach (Common.Countries countryItem in Enum.GetValues(typeof(Common.Countries)))
+                        {
+                            var countryImage = SalesIndicatorCountryImageUrl(countryItem);
+
+                            <button type="button"
+                                    class="min-sale-custom-option"
+                                    data-value="@((int)countryItem)"
+                                    data-text="@countryItem"
+                                    data-image="@countryImage">
+                                <img src="@countryImage" alt="" onerror="this.remove();" />
+                                <span>@countryItem</span>
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+            <span asp-validation-for="Country" class="text-danger"></span>
+        </div>
+
+        <div class="sales-indicators-product-row">
+            <label asp-for="MainWarehouseId" class="sales-indicators-label"></label>
+            <input asp-for="MainWarehouseId" type="hidden" id="MainWarehouseId" name="MainWarehouseId" class="sales-indicators-hidden-field" />
+
+            <div class="min-sale-custom-select" data-target="#MainWarehouseId" data-placeholder="اسم المنتج الرئيسي">
+                <button type="button" class="min-sale-custom-trigger">
+                    <span class="min-sale-custom-trigger-main">
+                        <img class="min-sale-custom-image" src="" alt="" />
+                        <span class="min-sale-custom-text">اسم المنتج الرئيسي</span>
+                    </span>
+                    <span class="min-sale-custom-arrow">▾</span>
+                </button>
+
+                <div class="min-sale-custom-menu">
+                    <div class="min-sale-custom-options">
+                        @if (Model.MainWarehouseOptions != null)
+                        {
+                            foreach (var productItem in Model.MainWarehouseOptions)
+                            {
+                                var productImage = SalesIndicatorImageUrl(productItem.ImageUrl, "/static/DefaultImage.svg");
+
+                                <button type="button"
+                                        class="min-sale-custom-option"
+                                        data-value="@productItem.Id"
+                                        data-text="@productItem.Name"
+                                        data-image="@productImage">
+                                    <img src="@productImage" alt="" onerror="this.remove();" />
+                                    <span>@productItem.Name</span>
+                                </button>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+            <span asp-validation-for="MainWarehouseId" class="text-danger"></span>
+        </div>
+
+        <div class="sales-indicators-grid">
+            <div class="sales-indicators-limit-box">
+                <span class="sales-indicators-limit-title">الحد الأدنى للبيع</span>
+                <div class="sales-indicators-two-inputs">
+                    <div>
+                        <label asp-for="MinimumSellingFrom" class="sales-indicators-label">من</label>
+                        <input asp-for="MinimumSellingFrom" type="number" step="0.01" min="0" class="sales-indicators-input" />
+                        <span asp-validation-for="MinimumSellingFrom" class="text-danger"></span>
+                    </div>
+                    <div>
+                        <label asp-for="MinimumSellingTo" class="sales-indicators-label">إلى</label>
+                        <input asp-for="MinimumSellingTo" type="number" step="0.01" min="0" class="sales-indicators-input" />
+                        <span asp-validation-for="MinimumSellingTo" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sales-indicators-limit-box">
+                <span class="sales-indicators-limit-title">الحد الأساسي للبيع</span>
+                <div class="sales-indicators-two-inputs">
+                    <div>
+                        <label asp-for="BasicSellingFrom" class="sales-indicators-label">من</label>
+                        <input asp-for="BasicSellingFrom" type="number" step="0.01" min="0" class="sales-indicators-input" />
+                        <span asp-validation-for="BasicSellingFrom" class="text-danger"></span>
+                    </div>
+                    <div>
+                        <label asp-for="BasicSellingTo" class="sales-indicators-label">إلى</label>
+                        <input asp-for="BasicSellingTo" type="number" step="0.01" min="0" class="sales-indicators-input" />
+                        <span asp-validation-for="BasicSellingTo" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sales-indicators-limit-box">
+                <span class="sales-indicators-limit-title">الحد الوسطي للبيع</span>
+                <div class="sales-indicators-two-inputs">
+                    <div>
+                        <label asp-for="MiddleSellingFrom" class="sales-indicators-label">من</label>
+                        <input asp-for="MiddleSellingFrom" type="number" step="0.01" min="0" class="sales-indicators-input" />
+                        <span asp-validation-for="MiddleSellingFrom" class="text-danger"></span>
+                    </div>
+                    <div>
+                        <label asp-for="MiddleSellingTo" class="sales-indicators-label">إلى</label>
+                        <input asp-for="MiddleSellingTo" type="number" step="0.01" min="0" class="sales-indicators-input" />
+                        <span asp-validation-for="MiddleSellingTo" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div asp-validation-summary="ModelOnly" class="text-danger mt-2"></div>
+
+        <div class="sales-indicators-actions">
+            <button type="submit" class="sales-indicators-save-btn">
+                حفظ
+            </button>
+            <a asp-controller="SalesIndicators" asp-action="Index" class="sales-indicators-reset-btn">تفريغ</a>
+        </div>
+    </form>
+
+    <div class="sales-indicators-table-card">
+        <div class="sales-indicators-table-header">المؤشرات المسجلة</div>
+        <div class="sales-indicators-table-wrap">
+            <table class="sales-indicators-table">
+                <thead>
+                    <tr>
+                        <th>الدولة</th>
+                        <th>المنتج الرئيسي</th>
+                        <th>الحد الأدنى للبيع</th>
+                        <th>الحد الأساسي للبيع</th>
+                        <th>الحد الوسطي للبيع</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Rows != null && Model.Rows.Any())
+                    {
+                        foreach (var row in Model.Rows)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="sales-indicators-product-cell">
+                                        <img src="@SalesIndicatorImageUrl(row.CountryImageUrl)" class="sales-indicators-product-img" onerror="this.onerror=null; this.src='/static/earth-americas-sharp-solid.svg';" />
+                                        @row.CountryName
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="sales-indicators-product-cell">
+                                        <img src="/@row.MainWarehouseImageUrl" class="sales-indicators-product-img" onerror="this.onerror=null; this.src='/static/DefaultImage.svg';" />
+                                        @row.MainWarehouseName
+                                    </span>
+                                </td>
+                                <td>@row.MinimumSellingFrom.ToString("0.##") - @row.MinimumSellingTo.ToString("0.##")</td>
+                                <td>@row.BasicSellingFrom.ToString("0.##") - @row.BasicSellingTo.ToString("0.##")</td>
+                                <td>@row.MiddleSellingFrom.ToString("0.##") - @row.MiddleSellingTo.ToString("0.##")</td>
+                                <td>
+                                    <button type="button"
+                                            class="sales-indicators-edit-btn js-open-sales-edit-popup"
+                                            data-id="@row.Id"
+                                            data-country="@((int)row.Country)"
+                                            data-main-warehouse-id="@row.MainWarehouseId"
+                                            data-minimum-selling-from="@row.MinimumSellingFrom.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                            data-minimum-selling-to="@row.MinimumSellingTo.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                            data-basic-selling-from="@row.BasicSellingFrom.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                            data-basic-selling-to="@row.BasicSellingTo.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                            data-middle-selling-from="@row.MiddleSellingFrom.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                            data-middle-selling-to="@row.MiddleSellingTo.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                                        تعديل
+                                    </button>
+                                    <form asp-controller="SalesIndicators" asp-action="Delete" method="post" style="display:inline;" onsubmit="return confirm('هل أنت متأكد من حذف مؤشر البيع؟');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@row.Id" />
+                                        <button type="submit" class="sales-indicators-delete-btn">حذف</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="6">لا توجد مؤشرات بيع مسجلة حتى الآن</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+    <div id="salesIndicatorEditPopup" class="sales-indicators-modal-backdrop">
+        <div class="sales-indicators-modal-card">
+            <button type="button" class="sales-indicators-modal-close" id="salesIndicatorEditClose" aria-label="إغلاق">×</button>
+            <h2 class="sales-indicators-modal-title">تعديل مؤشر بيع</h2>
+
+            <form asp-controller="SalesIndicators" asp-action="Save" method="post" id="salesIndicatorEditForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" id="Edit_Id" />
+
+                <div class="sales-indicators-country-row">
+                    <label class="sales-indicators-label" for="Edit_Country">الدولة</label>
+                    <input type="hidden" name="Country" id="Edit_Country" class="sales-indicators-hidden-field" />
+
+                    <div class="min-sale-custom-select" data-target="#Edit_Country" data-placeholder="اختاري الدولة">
+                        <button type="button" class="min-sale-custom-trigger">
+                            <span class="min-sale-custom-trigger-main">
+                                <img class="min-sale-custom-image" src="" alt="" />
+                                <span class="min-sale-custom-text">اختاري الدولة</span>
+                            </span>
+                            <span class="min-sale-custom-arrow">▾</span>
+                        </button>
+
+                        <div class="min-sale-custom-menu">
+                            <div class="min-sale-custom-options">
+                                @foreach (Common.Countries countryItem in Enum.GetValues(typeof(Common.Countries)))
+                                {
+                                    var countryImage = SalesIndicatorCountryImageUrl(countryItem);
+
+                                    <button type="button"
+                                            class="min-sale-custom-option"
+                                            data-value="@((int)countryItem)"
+                                            data-text="@countryItem"
+                                            data-image="@countryImage">
+                                        <img src="@countryImage" alt="" onerror="this.remove();" />
+                                        <span>@countryItem</span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sales-indicators-product-row">
+                    <label class="sales-indicators-label" for="Edit_MainWarehouseId">المنتج الرئيسي</label>
+                    <input type="hidden" name="MainWarehouseId" id="Edit_MainWarehouseId" class="sales-indicators-hidden-field" />
+
+                    <div class="min-sale-custom-select" data-target="#Edit_MainWarehouseId" data-placeholder="اسم المنتج الرئيسي">
+                        <button type="button" class="min-sale-custom-trigger">
+                            <span class="min-sale-custom-trigger-main">
+                                <img class="min-sale-custom-image" src="" alt="" />
+                                <span class="min-sale-custom-text">اسم المنتج الرئيسي</span>
+                            </span>
+                            <span class="min-sale-custom-arrow">▾</span>
+                        </button>
+
+                        <div class="min-sale-custom-menu">
+                            <div class="min-sale-custom-options">
+                                @if (Model.MainWarehouseOptions != null)
+                                {
+                                    foreach (var productItem in Model.MainWarehouseOptions)
+                                    {
+                                        var productImage = SalesIndicatorImageUrl(productItem.ImageUrl, "/static/DefaultImage.svg");
+
+                                        <button type="button"
+                                                class="min-sale-custom-option"
+                                                data-value="@productItem.Id"
+                                                data-text="@productItem.Name"
+                                                data-image="@productImage">
+                                            <img src="@productImage" alt="" onerror="this.remove();" />
+                                            <span>@productItem.Name</span>
+                                        </button>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sales-indicators-grid">
+                    <div class="sales-indicators-limit-box">
+                        <span class="sales-indicators-limit-title">الحد الأدنى للبيع</span>
+                        <div class="sales-indicators-two-inputs">
+                            <div>
+                                <label class="sales-indicators-label" for="Edit_MinimumSellingFrom">من</label>
+                                <input name="MinimumSellingFrom" id="Edit_MinimumSellingFrom" type="number" step="0.01" min="0" class="sales-indicators-input" required />
+                            </div>
+                            <div>
+                                <label class="sales-indicators-label" for="Edit_MinimumSellingTo">إلى</label>
+                                <input name="MinimumSellingTo" id="Edit_MinimumSellingTo" type="number" step="0.01" min="0" class="sales-indicators-input" required />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sales-indicators-limit-box">
+                        <span class="sales-indicators-limit-title">الحد الأساسي للبيع</span>
+                        <div class="sales-indicators-two-inputs">
+                            <div>
+                                <label class="sales-indicators-label" for="Edit_BasicSellingFrom">من</label>
+                                <input name="BasicSellingFrom" id="Edit_BasicSellingFrom" type="number" step="0.01" min="0" class="sales-indicators-input" required />
+                            </div>
+                            <div>
+                                <label class="sales-indicators-label" for="Edit_BasicSellingTo">إلى</label>
+                                <input name="BasicSellingTo" id="Edit_BasicSellingTo" type="number" step="0.01" min="0" class="sales-indicators-input" required />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sales-indicators-limit-box">
+                        <span class="sales-indicators-limit-title">الحد الوسطي للبيع</span>
+                        <div class="sales-indicators-two-inputs">
+                            <div>
+                                <label class="sales-indicators-label" for="Edit_MiddleSellingFrom">من</label>
+                                <input name="MiddleSellingFrom" id="Edit_MiddleSellingFrom" type="number" step="0.01" min="0" class="sales-indicators-input" required />
+                            </div>
+                            <div>
+                                <label class="sales-indicators-label" for="Edit_MiddleSellingTo">إلى</label>
+                                <input name="MiddleSellingTo" id="Edit_MiddleSellingTo" type="number" step="0.01" min="0" class="sales-indicators-input" required />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sales-indicators-actions">
+                    <button type="submit" class="sales-indicators-save-btn">حفظ التعديل</button>
+                    <button type="button" class="sales-indicators-reset-btn" id="salesIndicatorEditCancel">تراجع</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var editPopup = document.getElementById('salesIndicatorEditPopup');
+
+            if (!window.CSS) { window.CSS = {}; }
+            if (!window.CSS.escape) { window.CSS.escape = function (value) { return String(value).replace(/[^a-zA-Z0-9_\-]/g, '\\$&'); }; }
+
+            function closeAllCustomDropdowns(exceptElement) {
+                document.querySelectorAll('.sales-indicators-page .min-sale-custom-select.open').forEach(function (selectWrap) {
+                    if (exceptElement && selectWrap === exceptElement) {
+                        return;
+                    }
+
+                    selectWrap.classList.remove('open');
+                });
+            }
+
+            function refreshCustomSelect(selectWrap) {
+                if (!selectWrap) return;
+
+                var targetSelector = selectWrap.getAttribute('data-target');
+                var placeholder = selectWrap.getAttribute('data-placeholder') || 'اختار';
+                var hiddenInput = document.querySelector(targetSelector);
+                var value = hiddenInput ? (hiddenInput.value || '').toString() : '';
+                var textEl = selectWrap.querySelector('.min-sale-custom-text');
+                var imageEl = selectWrap.querySelector('.min-sale-custom-image');
+
+                selectWrap.querySelectorAll('.min-sale-custom-option').forEach(function (option) {
+                    option.classList.remove('selected');
+                });
+
+                if (!value) {
+                    selectWrap.classList.remove('has-value');
+                    if (textEl) textEl.textContent = placeholder;
+                    if (imageEl) imageEl.setAttribute('src', '');
+                    return;
+                }
+
+                var selectedOption = selectWrap.querySelector('.min-sale-custom-option[data-value="' + CSS.escape(value) + '"]');
+
+                if (!selectedOption) {
+                    selectWrap.classList.remove('has-value');
+                    if (textEl) textEl.textContent = placeholder;
+                    if (imageEl) imageEl.setAttribute('src', '');
+                    return;
+                }
+
+                selectedOption.classList.add('selected');
+                selectWrap.classList.add('has-value');
+                if (textEl) textEl.textContent = selectedOption.getAttribute('data-text') || selectedOption.textContent.trim();
+                if (imageEl) imageEl.setAttribute('src', selectedOption.getAttribute('data-image') || '');
+            }
+
+            function refreshCustomSelectByTarget(targetSelector) {
+                document.querySelectorAll('.sales-indicators-page .min-sale-custom-select[data-target="' + targetSelector + '"]').forEach(function (selectWrap) {
+                    refreshCustomSelect(selectWrap);
+                });
+            }
+
+            document.querySelectorAll('.sales-indicators-page .min-sale-custom-select').forEach(function (selectWrap) {
+                refreshCustomSelect(selectWrap);
+            });
+
+            document.querySelectorAll('.sales-indicators-page .min-sale-custom-trigger').forEach(function (trigger) {
+                trigger.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    var selectWrap = trigger.closest('.min-sale-custom-select');
+                    var isOpen = selectWrap.classList.contains('open');
+
+                    closeAllCustomDropdowns(selectWrap);
+
+                    if (isOpen) {
+                        selectWrap.classList.remove('open');
+                    } else {
+                        selectWrap.classList.add('open');
+                    }
+                });
+            });
+
+            document.querySelectorAll('.sales-indicators-page .min-sale-custom-option').forEach(function (option) {
+                option.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    var selectWrap = option.closest('.min-sale-custom-select');
+                    var targetSelector = selectWrap.getAttribute('data-target');
+                    var hiddenInput = document.querySelector(targetSelector);
+
+                    if (hiddenInput) {
+                        hiddenInput.value = option.getAttribute('data-value') || '';
+                        hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+
+                    refreshCustomSelect(selectWrap);
+                    selectWrap.classList.remove('open');
+                });
+            });
+
+            document.addEventListener('click', function () {
+                closeAllCustomDropdowns(null);
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    closeAllCustomDropdowns(null);
+                    closeEditPopup();
+                }
+            });
+
+            function setField(id, value) {
+                var el = document.getElementById(id);
+                if (!el) return;
+
+                el.value = value || '';
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+                refreshCustomSelectByTarget('#' + id);
+            }
+
+            function openEditPopup(button) {
+                setField('Edit_Id', button.getAttribute('data-id'));
+                setField('Edit_Country', button.getAttribute('data-country'));
+                setField('Edit_MainWarehouseId', button.getAttribute('data-main-warehouse-id'));
+                setField('Edit_MinimumSellingFrom', button.getAttribute('data-minimum-selling-from'));
+                setField('Edit_MinimumSellingTo', button.getAttribute('data-minimum-selling-to'));
+                setField('Edit_BasicSellingFrom', button.getAttribute('data-basic-selling-from'));
+                setField('Edit_BasicSellingTo', button.getAttribute('data-basic-selling-to'));
+                setField('Edit_MiddleSellingFrom', button.getAttribute('data-middle-selling-from'));
+                setField('Edit_MiddleSellingTo', button.getAttribute('data-middle-selling-to'));
+
+                if (editPopup) {
+                    editPopup.style.display = 'flex';
+                    document.body.classList.add('sales-indicators-modal-open');
+                    refreshCustomSelectByTarget('#Edit_Country');
+                    refreshCustomSelectByTarget('#Edit_MainWarehouseId');
+                }
+            }
+
+            function closeEditPopup() {
+                if (editPopup) {
+                    editPopup.style.display = 'none';
+                    document.body.classList.remove('sales-indicators-modal-open');
+                    closeAllCustomDropdowns(null);
+                }
+            }
+
+            document.querySelectorAll('.js-open-sales-edit-popup').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    openEditPopup(button);
+                });
+            });
+
+            var closeButton = document.getElementById('salesIndicatorEditClose');
+            var cancelButton = document.getElementById('salesIndicatorEditCancel');
+            if (closeButton) closeButton.addEventListener('click', closeEditPopup);
+            if (cancelButton) cancelButton.addEventListener('click', closeEditPopup);
+
+            if (editPopup) {
+                editPopup.addEventListener('click', function (e) {
+                    if (e.target === editPopup) closeEditPopup();
+                });
+            }
+
+            document.querySelectorAll('[data-sales-popup-close]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    var popupId = button.getAttribute('data-sales-popup-close');
+                    var popup = document.getElementById(popupId);
+                    if (popup) popup.style.display = 'none';
+                });
+            });
+        });
+    </script>
+    <partial name="_ValidationScriptsPartial" />
+}

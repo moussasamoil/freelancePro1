@@ -1,0 +1,52 @@
+﻿@model lotus_blue.Models.DeliveryCompanyPrice
+
+@{
+    ViewData["Title"] = "تعديل سعر  مندوب  التوصيل";
+}
+
+<form asp-action="Edit" method="post">
+    <input hidden value="@Model.Id"/>
+    <div class="d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    تعديل سعر المندوب  <div> @Model.City</div>
+                </h5>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" asp-for="City" />
+                <input type="hidden" asp-for="DeliveryCompanyId" />
+                <input type="hidden" asp-for="Country" />
+                <form asp-action="Create" method="post">
+                    <div class="mb-3">
+                        <label for="Country" class="form-label">الدولة:</label>
+                        <input disabled id="country" class="form-select" asp-for="Country" asp-items="Html.GetEnumSelectList<lotus_blue.Models.Common.Countries>()" onchange="updateDeliveryCompanies(); updateCities();">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="DeliveryCompanyId" class="form-label"> اسم المندوب :</label>
+                        <input disabled asp-for="DeliveryCompanyId" placeholder="@Model.DeliveryCompany.Name" value="@Model.DeliveryCompany.Name" id="deliveryCompany" class="form-select">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="City" class="form-label">المدينة:</label>
+                        <input disabled asp-for="City" id="city" value="@Model.City" class="form-select">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="Price" class="form-label">السعر:</label>
+                        <input asp-for="Price" type="number" class="form-control" step="0.01" />
+                    </div>
+
+
+                    <button type="submit" class="btn btn-primary">تعديل</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</form>
+
+
+
+
+

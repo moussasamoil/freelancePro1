@@ -1,0 +1,37 @@
+﻿@model lotus_blue.Models.ViewModel.ExchangeRateViewModel
+@{
+    ViewData["Title"] = "تعديل سعر الصرف";
+}
+<h2>تعديل سعر الصرف</h2>
+
+<form asp-action="Edit">
+    <input type="hidden" asp-for="Id" />
+
+    <div class="form-group">
+        <label asp-for="Country" class="control-label">العملة</label>
+        <select asp-for="Country" class="form-control">
+            @foreach (var country in Enum.GetNames(typeof(lotus_blue.Models.Common.Countries)))
+            {
+                <option value="@country">@country</option>
+            }
+        </select>
+        <span asp-validation-for="Country" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="BuyToUSD" class="control-label">شراء مقابل الدولار</label>
+        <input asp-for="BuyToUSD" class="form-control" />
+        <span asp-validation-for="BuyToUSD" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="SellToUSD" class="control-label">بيع مقابل الدولار</label>
+        <input asp-for="SellToUSD" class="form-control" />
+        <span asp-validation-for="SellToUSD" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <input type="submit" value="احفظ" class="btn btn-primary" />
+        <a asp-action="Index" class="btn btn-secondary"> العودة </a>
+    </div>
+</form>

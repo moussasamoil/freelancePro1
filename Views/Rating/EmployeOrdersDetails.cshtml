@@ -1,0 +1,773 @@
+@model lotus_blue.Models.ViewModel.HomeViewModel
+@using lotus_blue.Services
+@inject DynamicCommon dynamicommon
+
+@{
+    ViewData["Title"] = "";
+    Layout = "_NoHeaderLayout";
+    // Get the countryId from the query string
+    string countryName = ViewContext.HttpContext.Request.Query["countryName"];
+    string storeName = ViewContext.HttpContext.Request.Query["storeName"];
+
+    string faviconUrl = "~/favicon.svg"; // Default favicon
+    string image = "null";
+    string name = "";
+    int width = 25;
+    int height = 25;
+    if (!string.IsNullOrEmpty(countryName))
+    {
+        ViewData["Title"] = countryName;
+        faviconUrl = Common.GetImageUrlByCountryName(countryName); // Call method correctly without @
+        image = Common.GetImageUrlByCountryName(countryName);
+        name = countryName;
+    }
+    else
+    {
+        // Check if employeeName is available
+        string employeeId = ViewContext.HttpContext.Request.Query["employeeId"];
+
+        string employeeName = ViewContext.HttpContext.Request.Query["employeeName"];
+        if (!string.IsNullOrEmpty(employeeName))
+        {
+            ViewData["Title"] = employeeName;
+            faviconUrl = await dynamicommon.GetEmployeeImageByNameAsync(employeeId);
+            image = faviconUrl;
+            name = employeeName;
+        }
+        else if (!string.IsNullOrEmpty(storeName))
+        {
+            // Convert storeId to an int
+            if (int.TryParse(ViewContext.HttpContext.Request.Query["storeId"], out int storeId))
+            {
+                faviconUrl = await dynamicommon.GetImageForStore(storeId);
+                image = await dynamicommon.GetSecondImageForStore(storeId);
+                if (storeId == 1)
+                {
+                    width = 200;
+                    height = 110;
+                }
+                if (storeId == 2)
+                {
+                    width = 200;
+                    height = 80;
+                }
+                if (storeId == 4)
+                {
+                    width = 200;
+                    height = 70;
+                }
+            }
+            ViewData["Title"] = storeName;
+        }
+    }
+    ViewData["FaviconUrl"] = faviconUrl; // Set ViewData
+}
+
+<style>
+    .custom-shadow-inpage:hover {
+        box-shadow: 0px 0px 6px #1d273b;
+    }
+  
+</style>
+
+<header style="direction:ltr !important">
+    <nav class="nav-shadow background-white-green navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom ">
+        <div class="container-fluid">
+            <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                <div>
+                    <i class=""></i>
+                </div>
+
+                <div>
+                    @name
+                    <img src="/@image" width="@width" height="@height" />
+                </div>
+                <div class="p-0 " style="direction: rtl;">
+                    @await Component.InvokeAsync("Sidebar")
+                </div>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<div id="total" class="main-hover mt-2">
+    <div class="row align-items-center background-white custom-shadow-inpage py-0">
+        <div class="col-md-auto text-md-end mb-3 mb-md-0">
+            <div id="navigateButton" class="fw-bold text-white btn background-gold" onclick="navigateToPage()">
+                يحصل الأن
+            </div>
+        </div>
+        @if (User.IsInRole("Admin"))
+        {
+            <div class="col-md">
+                <div class="text-muted text-nowrap mb-2">
+                    إجمالي المبلغ الذي تم انفاقه
+                </div>
+                <div class="d-flex align-items-center">
+                    <div class="fw-bold">
+                        TRY
+                    </div>
+                    <div class="fw-bold ms-2">
+                        @Model.EmployeeRatingCompositeViewModel.TotalOrdersPriceInTL
+                    </div>
+                </div>
+            </div>
+            <div class="col-md">
+                <div class="text-muted text-nowrap mb-2">
+                    إجمالي المبلغ الذي تم انفاقه
+                </div>
+                <div class="d-flex align-items-center">
+                    <div class="fw-bold">
+                        USD
+                    </div>
+                    <div class="fw-bold ms-2">
+                        @Model.EmployeeRatingCompositeViewModel.TotalOrdersPriceInDollar
+                    </div>
+                </div>
+            </div>
+        }
+        <div class="col-md ordersDiv">
+            <div class="text-muted mb-2">
+                عدد الطلبات
+            </div>
+            <div class="fw-bold">
+                @Model.EmployeeRatingCompositeViewModel.TotalNumberOfOrders
+            </div>
+        </div>
+        <div class="col-md processedDiv">
+            <div class="text-muted mb-2">
+                تم المعالجة
+            </div>
+            <div class="fw-bold">
+                @Model.EmployeeRatingCompositeViewModel.FixedOrdersCount
+            </div>
+        </div>
+        <div class="col-md offersDiv">
+            <div class="text-muted mb-2">
+                العروض
+            </div>
+            <div class="fw-bold">
+                @Model.EmployeeRatingCompositeViewModel.OrderFromOffersCount
+            </div>
+        </div>
+        <div class="col-md discountdiv">
+            <div class="text-muted mb-2">
+                التخفضيفات
+            </div>
+            <div class="fw-bold">
+                @Model.EmployeeRatingCompositeViewModel.OrderFromOfferDiscountsCount
+            </div>
+        </div>
+        <div class="col-md employeebonusdiv">
+            <div class="text-muted mb-2">
+                عمولة المبيعات
+            </div>
+            <div class="fw-bold">
+                @Model.EmployeeRatingCompositeViewModel.NumberOfBouneses
+            </div>
+        </div>
+        <div class="col-md productcountdiv">
+            <div class="text-muted mb-2">
+                عدد القطع
+            </div>
+            <div class="fw-bold">
+                @Model.EmployeeRatingCompositeViewModel.TotalProductsCount
+            </div>
+        </div>
+        <div class="col-md commentsdiv">
+            <div class="text-muted mb-2">
+                التعليقات
+            </div>
+            <div class="fw-bold">
+                @Model.EmployeeRatingCompositeViewModel.OrderFromCommentsCount
+            </div>
+        </div>
+        <div class="col-md femalediv">
+            <div class="text-muted mb-2">
+                أنثى
+            </div>
+            <div class="fw-bold">
+                @Model.EmployeeRatingCompositeViewModel.OrderFromFemalesCount
+            </div>
+        </div>
+        <div class="col-md malediv">
+            <div class="text-muted mb-2">
+                ذكر
+            </div>
+            <div class="fw-bold">
+                @Model.EmployeeRatingCompositeViewModel.OrderFromMalesCount
+            </div>
+        </div>
+        <div class="col-md-auto text-md-start pe-3">
+            <div class="fw-bold">
+                <span class="text-green b-r-8  px-2" style="background-color:f0fffc;">Management</span>
+            </div>
+            <div class="fw-bold">
+                شركة LUXIRA HOLDING التركية
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="width-99 my-2 me-0 mx-auto ">
+
+    <div class="row me-0 text-end mx-auto d-flex justify-content-between">
+
+
+
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap ">
+
+
+            <div class=" d-none d-md-block">
+                <input id="custom-datepicker" class="form-control custom-datepicker" placeholder=" فلتر حسب التاريخ " readonly>
+                <script src="/js/datepicker.min.js"></script>
+            </div>
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+
+            <a id="printButton" class="btn print-hide  my-2 me-4  shadow">
+
+                سحب فاتورة
+            </a>
+        </div>
+
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="EmployeeId" name="Employee" class="form-control drop-down-design">
+            </select>
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="GenderId" name="Gender" class="form-control drop-down-design">
+            </select>
+        </div>
+
+
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="ProductId" name="Product" class="form-control drop-down-design">
+            </select>
+
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="ManufacturingCompanyId" name="ManufacturingCompany" class="form-control drop-down-design">
+            </select>
+        </div>
+
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="OrderSourceId" name="OrderSource" class="form-control drop-down-design">
+            </select>
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="CountryId" name="CountryId" class="form-control drop-down-design">
+            </select>
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="WorkShift" name="WorkShift" class="form-control drop-down-design">
+            </select>
+        </div>
+
+
+    </div>
+
+</div>
+<input type="hidden" id="startDate" value="">
+<input type="hidden" id="endDate" value="">
+
+<div class="form-group d-flex align-items-center">
+    <label for="pageSize" class="me-2">أظهر:</label>
+    <select id="pageSize" name="pageSize" class="custom-shadow-small me-2">
+
+        @foreach (var size in new int?[] { 10, 20, 35, 50, 100, 200, 300, 500, 1000, 2000 })
+        {
+            if (Model.PaginationViewModel.PageSize == size)
+            {
+                <option value="@size" selected>@size</option>
+            }
+            else
+            {
+                <option value="@size">@size</option>
+            }
+        }
+    </select>
+    <label for="pageSize">مدخلات</label>
+</div>
+
+
+
+<input type="hidden" id="allOrderIds" value="@string.Join(",", Model.PaginationViewModel.Items.Select(order => order.Id))" />
+
+
+@if (Model != null)
+{
+    <table class="table mt-2 mx-auto width-99" id="ordersTable">
+        <thead>
+            <tr>
+                <th>رقم الوصل </th>
+                @if (User.IsInRole("Admin"))
+                {
+                    <th>اسم  الموظف</th>
+                }
+                <th>اسم الزبون</th>
+                <th>رقم الهاتف</th>
+                <th>تاريخ الأنشاء</th>
+                @if (!User.IsInRole("DeliveryCompany") && !User.IsInRole("DeliveryRepresentative"))
+                {
+                    <th> الدولة</th>
+                }
+                <th>المدينة </th>
+                <th> المنتجات</th>
+                <th> الكمية</th>
+
+                @if (!User.IsInRole("DeliveryCompany") && !User.IsInRole("DeliveryRepresentative"))
+                {
+                    <th>نوع الصفحة</th>
+
+                    <th>اسم الصفحة</th>
+                    <th> الجنس </th>
+                }
+                <th> المتجر</th>
+                @* @if (!User.IsInRole("DeliveryCompany") && !User.IsInRole("DeliveryRepresentative"))
+                {
+                    <th>شركة التوصيل</th>
+                } *@
+                <th>اخر تحديث </th>
+                <th>  حالة الطلب</th>
+                @*  @if (User.IsInRole("Admin"))
+            {
+            <th>سعر التوصيل</th>
+            } *@
+                <th>قيمة المبلغ </th>
+
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var order in Model.PaginationViewModel.Items)
+            {
+
+                <tr class="pointer order-details" data-order-id="@order.Id">
+                    <td class="text-green"><i class="fa-solid f-s-14 text-green fa-cube"></i>  @order.Id</td>
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <td class="text-nowrap text-end">
+                            <img src="@order.Employee.LogoUrl" width="14" class="b-r-50">
+                            @order.Employee.Name
+                        </td>
+                    }
+                    <td class="text-nowrap">@order.CustomerName</td>
+                    <td>@order.TelephoneNumber</td>
+                    @if (order.OrderStatus == OrderStatusEnum.تم_المعالجة)
+                    {
+                        <td>@order.FixedOrderDate?.ToString("yyyy-MM-dd HH:mm")</td>
+
+                    }
+                    else
+                    {
+                        <td>@order.CreatedDate.ToString("yyyy-MM-dd HH:mm")</td>
+
+                    }
+                    @if (!User.IsInRole("DeliveryCompany") && !User.IsInRole("DeliveryRepresentative"))
+                    {
+                        <td class="text-end text-nowrap">
+                            <img loading="lazy" class="pb-1 icon-size-standard" src="@Model.CountryImageUrls[(order.Country.ToString())]" />
+
+                            @order.Country
+
+                        </td>
+                    }
+                    <td>@order.State</td>
+                    <td>
+                        <div class="row">
+                            @foreach (var warehouse in order.SelectedWarehouses)
+                            {
+                                <div class="col-auto text-nowrap">
+                                    <img src="@warehouse.Image" width="17" height="17" class="rounded-circle me-1">
+                                    @warehouse.WarehouseName
+                                </div>
+                            }
+                        </div>
+                    </td>
+
+                    <td>
+                        @order.TotalAmountOfOrderWarehouses
+
+                    </td>
+                    @if (!User.IsInRole("DeliveryCompany") && !User.IsInRole("DeliveryRepresentative"))
+                    {
+                        <td>
+                            <img loading="lazy" class="pb-1 icon-size-standard" src="@Model.SocialMediaIconUrls[(order.OrderSource.ToString())]" />
+
+                            @order.OrderSource
+                        </td>
+
+                        <td>
+
+                            @order.SourceName
+                        </td>
+                        <td>@(order.Gender ? "ذكر" : "انثى")</td>
+                    }
+                    <td class="@(User.IsInRole("DeliveryCompany") || User.IsInRole("DeliveryRepresentative") ? "pe-5 text-end" : "text-end pe-5")" style="@(User.IsInRole("DeliveryCompany") || User.IsInRole("DeliveryRepresentative") ? "padding-right:4rem;" : "")">
+
+                        <img loading="lazy" class="pb-1 icon-size-standard" src="@order.ManufacturingCompany.Logo" />
+                        @order.ManufacturingCompany.Name
+
+                    </td>
+                  @*   @if (!User.IsInRole("DeliveryCompany") && !User.IsInRole("DeliveryRepresentative"))
+                    {
+                        <td class="text-end">
+                            <img loading="lazy" class="pb-1 b-r-50 icon-size-standard" src="@order.DeliveryCompany.Logo" />
+                            @order.DeliveryCompany.Name
+                        </td>
+                    }
+ *@
+                    <td>@order.LastEditedDate?.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td class="text-end text-nowrap">
+                        <img loading="lazy" class="pb-1 icon-size-standard" src="@Model.OrderStatusIconUrls[(order.OrderStatus.ToString())]" />
+
+                        @order.OrderStatus
+                    </td>
+
+                    <td class="text-start ltr">
+
+
+                        @order.TotalPrice.ToString("N0")
+                        <span>@Model.CurrencySymbols[(order.Country.ToString())]</span>
+
+                    </td>
+
+                </tr>
+
+
+            }
+        </tbody>
+
+
+    </table>
+}
+
+
+else
+{
+    <p>No orders found for this employee.</p>
+}
+
+
+
+<!-- Display pagination controls -->
+<div id="pagination-link" class="mt-0 container-fluid">
+    <div class="d-flex justify-content-center align-items-center flex-wrap">
+
+        <p class="text-start pt-2 total-items-display">@Model.PaginationViewModel.TotalItems عدد الطلبات</p>
+
+        <nav aria-label="Page navigation" class="mx-auto">
+            <div class="d-flex justify-content-start">
+                <ul class="pagination p-0">
+                    <li class="page-item @(Model.PaginationViewModel.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link pointer" data-page="1">
+                            <i class="fa-solid fa-chevron-double-right text-green"></i>
+                        </a>
+                    </li>
+                    <li class="page-item @(Model.PaginationViewModel.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.PaginationViewModel.CurrentPage - 1)">
+                            <i class="fa-solid fa-chevron-right text-green"></i>
+                        </a>
+                    </li>
+
+                    @{
+                        int startPage = Model.PaginationViewModel.CurrentPage;
+                        int endPage = startPage + 2;
+                        if (endPage > Model.PaginationViewModel.TotalPages)
+                        {
+                            endPage = Model.PaginationViewModel.TotalPages;
+                        }
+                    }
+
+                    @for (int i = startPage; i <= endPage; i++)
+                    {
+                        <li class="numbers page-item @(Model.PaginationViewModel.CurrentPage == i ? "active" : "")">
+                            <a class="page-link" data-page="@i">@i</a>
+                        </li>
+                    }
+
+                    @if (Model.PaginationViewModel.TotalPages > endPage)
+                    {
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+
+                        @for (int i = Model.PaginationViewModel.TotalPages - 2; i <= Model.PaginationViewModel.TotalPages; i++)
+                        {
+                            <li class="numbers page-item @(Model.PaginationViewModel.CurrentPage == i ? "active" : "")">
+                                <a class="page-link" data-page="@i">@i</a>
+                            </li>
+                        }
+                    }
+
+
+
+                    <li class="page-item @(Model.PaginationViewModel.CurrentPage ==  Model.PaginationViewModel.TotalPages ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.PaginationViewModel.CurrentPage + 1)">
+                            <i class="fa-solid fa-chevron-left text-green f-s-18"></i>
+                        </a>
+                    </li>
+                    <li class="page-item @(Model.PaginationViewModel.CurrentPage == Model.PaginationViewModel.TotalPages ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.PaginationViewModel.TotalPages)">
+                            <i class="fa-solid fa-chevron-double-left text-green"></i>
+                        </a>
+                    </li>
+
+
+                </ul>
+            </div>
+        </nav>
+
+
+
+        @if (User.IsInRole("Admin"))
+        {
+
+            <div class="d-flex justify-content-end">
+                @if (@Model.TotalOrderPrice != null)
+                {
+                    <div class="custom-shadow ms-3 TotalOrderPrice" style="display:none;">
+                        <span class="total-price-display text-green">
+                            @Model.TotalOrderPrice
+                            @if (Model.SelectedCoutnry != null)
+                            {
+                                @Common.GetCurrencyByCountryName(Model.SelectedCoutnry)
+                            }
+                        </span>
+                    </div>
+                }
+
+                <div class="custom-shadow">
+                    <span class="total-price-display-try text-green">
+                        @(Model.TotalOrderPriceTRY)
+
+                        TRY
+
+                    </span>
+                </div>
+                <div class="custom-shadow">
+                    <span class="total-price-display-usd text-green">
+                        @(Model.TotalOrderPriceDollar)
+
+                        USD
+
+                    </span>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+
+<style>
+    .icon-size-standard {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Set a fixed height for table rows */
+    table#ordersTable tbody tr {
+        height: 50px; /* Adjust as needed for the fixed height */
+        overflow: hidden;
+    }
+
+        /* Allow rows to expand beyond the fixed height if needed */
+        table#ordersTable tbody tr.expanded {
+            height: auto;
+        }
+
+        /* Apply ellipsis for content that overflows in fixed height rows */
+        table#ordersTable tbody tr td {
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            overflow: hidden;
+        }
+
+        /* Ensure rows with more content can expand when needed */
+        table#ordersTable tbody tr.expanded td {
+            white-space: normal;
+            overflow: visible;
+        }
+
+
+</style>
+
+
+
+
+<script>
+
+
+    $(document).ready(function () {
+
+        initializeLitepicker('.custom-datepicker', loadData);
+
+
+        $('#printButton').click(function (event) {
+            const allOrderIds = $('#allOrderIds').val();
+            if (allOrderIds) {
+                var url = '@Url.Action("PrintSelectedOrders", "Order")?ids=' + allOrderIds;
+                window.open(url, '_blank');
+            } else {
+                alert("No orders found to print.");
+            }
+        });
+
+        $('.order-details').click(function () {
+            // Get the order ID from the data attribute
+            var orderId = $(this).data('order-id');
+            // Redirect to the order details page with the order ID
+            window.location.href = '/Order/Details/' + orderId; // Replace '/Order/Details/' with your actual details page URL
+        });
+
+
+
+
+        // Event listener for dropdown changes
+        $('#pageSize,#EmployeeId, #CountryId, #OrderSourceId, #GenderId,#ManufacturingCompanyId,#WorkShift,#ProductId').on('change', function () {
+            loadData();
+        });
+
+
+    });
+
+
+
+
+    // Function to load data
+    function loadData() {
+        // Extract the current query parameters from the URL
+        const urlParams = new URLSearchParams(window.location.search);
+
+        // Extract existing parameters
+        let params = {
+            startDate: urlParams.get('startDate'),
+            endDate: urlParams.get('endDate'),
+            employeeId: urlParams.get('employeeId'),
+            productId: urlParams.get('productId'),
+            storeId: urlParams.get('storeId'),
+            ordersourceId: urlParams.get('ordersourceId'),
+            workshift: urlParams.get('workshift'),
+            genderId: urlParams.get('genderId'),
+            isFixed: urlParams.get('isFixed'),
+            isOffer: urlParams.get('isOffer'),
+            isDiscount: urlParams.get('isDiscount'),
+            isEmployeebonus: urlParams.get('isEmployeebonus'),
+            isComments: urlParams.get('isComments'),
+            isMale: urlParams.get('isMale'),
+            isFemale: urlParams.get('isFemale'),
+            countryId: urlParams.get('countryId'),
+            warehouseId: urlParams.get('warehouseId'),
+            sourceId: urlParams.get('sourceId'),
+            isDeliverd: urlParams.get('isDeliverd')
+
+        };
+        // Get the selected page size from the dropdown
+        const pageSize = $('#pageSize').val();
+
+        // Update parameters based on filter changes
+        if ($('#EmployeeId').val()) {
+            params.employeeId = $('#EmployeeId').val();
+        }
+        if ($('#GenderId').val()) {
+            params.genderId = $('#GenderId').val();
+        }
+        if ($('#ProductId').val()) {
+            params.productId = $('#ProductId').val();
+        }
+        if ($('#ManufacturingCompanyId').val()) {
+            params.storeId = $('#ManufacturingCompanyId').val();
+        }
+        if ($('#OrderSourceId').val()) {
+            params.ordersourceId = $('#OrderSourceId').val();
+        }
+        if ($('#CountryId').val()) {
+            params.countryId = $('#CountryId').val();
+        }
+        if ($('#WorkShift').val()) {
+            params.workshift = $('#WorkShift').val();
+        }
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+
+        if (startDate) {
+            params.startDate = startDate;
+        }
+        if (endDate) {
+            params.endDate = endDate;
+        }
+
+      
+
+        // Make an AJAX request with the current query parameters and page size
+        $.ajax({
+            url: '/Rating/EmployeOrdersDetails',
+            type: 'GET',
+            data: {
+                page: 1, // Always load the first page when page size changes
+                pageSize: pageSize, // Add the page size here
+
+                // Use params object properties here
+                startDate: params.startDate,
+                endDate: params.endDate,
+                employeeId: params.employeeId,
+                productId: params.productId,
+                storeId: params.storeId,
+                ordersourceId: params.ordersourceId,
+                workshift: params.workshift,
+                genderId: params.genderId,
+                isFixed: params.isFixed,
+                isOffer: params.isOffer,
+                isDiscount: params.isDiscount,
+                isEmployeebonus: params.isEmployeebonus,
+                isComments: params.isComments,
+                isMale: params.isMale,
+                isFemale: params.isFemale,
+                countryId: params.countryId,
+            
+            },
+            success: function (response) {
+                // Parse the response HTML to extract the orders table and pagination link
+                var parsedHtml = $(response);
+
+                // Extract the orders table HTML
+                var ordersTableHtml = parsedHtml.find('#ordersTable').html();
+
+                // Extract the pagination link HTML
+                var paginationLinkHtml = parsedHtml.find('#pagination-link').html();
+             
+                // Update the respective elements with the extracted HTML
+                $('#ordersTable').html(ordersTableHtml);
+                $('#pagination-link').html(paginationLinkHtml);
+                $('#total').html($(response).find('#total').html());
+
+            },
+            error: function (xhr, status, error) {
+                // Handle errors
+            }
+        });
+    }
+
+    // Bind an event listener to the pagination links
+    $(document).on('click', '.pagination a.page-link', function (event) {
+        event.preventDefault(); // Still prevent the default action
+        // Extract the page number from the data-page attribute instead of the href
+        const page = $(this).data('page');
+
+        // Call the loadData function with the extracted page number
+        loadData(page);
+    });
+
+
+</script>

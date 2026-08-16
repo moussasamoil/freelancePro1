@@ -1,0 +1,100 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    @Html.Partial("_Head")
+
+
+
+</head>
+
+<body class="background-white-green" >
+    <header>
+
+        <nav class="nav-shadow navbar background-white-green navbar-expand-sm navbar-toggleable-sm navbar-light bg-white  ">
+            <div class="d-flex justify-content-between w-100 px-2">
+                <div>
+                    <img class="logo-small " src="/static/LoginIcon.svg" height="45" width="35">
+                </div>
+                <div class="text-center my-auto">
+                    <img class="small" src="/static/مفرغغ.png" height="64">
+                </div>
+                <div>
+                    <img class="logo-small" src="/static/LoginIcon2.svg" height="45" width="35">
+
+                </div>
+
+            </div>
+        </nav>
+    </header>
+    <div class="container-fluid pt-5 background-white-green">
+        <main role="main" class="pb-3  " style="direction:rtl;">
+            @RenderBody()
+        </main>
+    </div>
+
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+
+
+
+<style>
+    body {
+        font-family: 'Open Sans', sans-serif;
+    }
+
+    .form-control:focus {
+        outline: none !important;
+        outline-width: 0 !important;
+        -webkit-box-shadow: none !important;
+        border-color: #ced4da !important;
+    }
+
+
+    input {
+        color: #ffffff;
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2); /* Box shadow */
+        border-radius: 30px !important; /* Border radius for the entire <thead> */
+    }
+
+    div.input-group label.form-control {
+        background-color: #ffffff;
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2);
+        border-radius: 8px !important;
+    }
+
+
+
+    div.input-group label.form-control:hover {
+        border-radius: 8px !important;
+        box-shadow: 0px 0px 6px rgba(13, 110, 253, 1); /* Box shadow with the same color */
+    }
+
+
+
+    select {
+        color: #ffffff;
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2); /* Box shadow */
+        border-radius: 8px !important; /* Border radius for the entire <thead> */
+    }
+
+/* 
+    .icon{
+        background-color: rgba(196, 196, 215, 0.572);
+        border-radius: 30px;
+        border: 8px solid rgba(0, 0, 255, 0);
+        width: 45px;
+        height: 45px;
+    } */
+    @@media screen and (max-width: 500px) {
+        .small {
+     width:80%;
+     }
+   /*   .logo-small{
+         width:95%
+     }  */
+    }
+</style>
+

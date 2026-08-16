@@ -1,0 +1,30 @@
+﻿@model MainWarehouseViewModel
+
+@{
+    ViewData["Title"] = "إضافة مستودع جديد";
+}
+
+<div class="container">
+    <form asp-action="Create" method="post" enctype="multipart/form-data">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label asp-for="Name">الاسم</label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label asp-for="ImageUrl">صورة</label>
+                    <input name="prodtuctimage" type="file" asp-for="ImageUrl" class="form-control" />
+                </div>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <button type="submit" class="btn btn-success">موافقة</button>
+            </div>
+        </div>
+    </form>
+</div>

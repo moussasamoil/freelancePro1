@@ -1,0 +1,184 @@
+@model lotus_blue.Models.ViewModel.ManufacturingCompanyViewModel
+
+@{
+    ViewData["Title"] = "تعديل شركة مصنعة";
+
+    var selectedMainWarehouseIds = ViewBag.SelectedMainWarehouseIds as List<int> ?? new List<int>();
+
+    // fallback للمتاجر القديمة لو لسه مفيش بيانات في جدول الربط الجديد
+    if (!selectedMainWarehouseIds.Any() && Model.MainWarehouseId.HasValue)
+    {
+        selectedMainWarehouseIds.Add(Model.MainWarehouseId.Value);
+    }
+}
+
+<link rel="stylesheet" href="/css/toastify.css" />
+<script src="/js/toastify-js.js"></script>
+
+<div class="container">
+    <form id="editStoreForm" asp-action="Edit" method="post" enctype="multipart/form-data">
+        <div class="row justify-content-center">
+            <input type="hidden" asp-for="Id" />
+
+            <div class="form-group d-flex flex-column align-items-center">
+                <label for="Name">الاسم:</label>
+                <input asp-for="Name" class="form-control w-50" placeholder="أدخل اسم الشركة" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <!-- Input for Logo File Upload -->
+            <div class="form-group d-flex flex-column align-items-center mt-2">
+                <label for="logoFile">تغيير شعار الشركة:</label>
+                <input type="file" asp-for="Logo" class="form-control w-50" name="logoFile" id="logoFile" />
+                <span asp-validation-for="Logo" class="text-danger"></span>
+                @if (!string.IsNullOrEmpty(Model.Logo))
+                {
+                    <img src="/@Model.Logo" alt="@Model.Name" width="100" height="100" class="mt-2" />
+                }
+            </div>
+
+            <!-- Input for Logo File 2 Upload -->
+            <div class="form-group d-flex flex-column align-items-center mt-2">
+                <label for="LogoFile2">تغيير صورة في التقييمات :</label>
+                <input type="file" asp-for="ImageUrl2" class="form-control w-50" name="LogoFile2" id="LogoFile2" />
+                <span asp-validation-for="ImageUrl2" class="text-danger"></span>
+                @if (!string.IsNullOrEmpty(Model.ImageUrl2))
+                {
+                    <img src="/@Model.ImageUrl2" alt="@Model.Name" width="100" height="100" class="mt-2" />
+                }
+            </div>
+
+            <!-- Input for Invoice File Upload -->
+            <div class="form-group d-flex flex-column align-items-center mt-2">
+                <label for="InvoiceFile">تغيير صورة الفاتورة :</label>
+                <input type="file" asp-for="InvoiceImage" class="form-control w-50" name="InvoiceFile" id="InvoiceFile" />
+                <span asp-validation-for="InvoiceImage" class="text-danger"></span>
+                @if (!string.IsNullOrEmpty(Model.InvoiceImage))
+                {
+                    <img src="/@Model.InvoiceImage" alt="@Model.Name" width="100" height="100" class="mt-2" />
+                }
+            </div>
+
+            <!-- Input for Phone Number -->
+            <div class="form-group d-flex flex-column align-items-center mt-2">
+                <label for="PhoneNumber">رقم الهاتف:</label>
+                <input asp-for="PhoneNumber" class="form-control w-50" placeholder="أدخل رقم الهاتف" />
+                <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+            </div>
+
+            <!-- Main Warehouses -->
+            <div class="form-group d-flex flex-column align-items-center mt-2">
+                <label for="mainWarehouseId">المستودع الرئيسي:</label>
+
+                <!-- القديم: نحتفظ به للتوافق، ويتخزن فيه أول اختيار فقط -->
+                <input type="hidden" name="MainWarehouseId" id="mainWarehouseIdHidden" value="@Model.MainWarehouseId" />
+
+                <!-- الجديد: يرسل كل الاختيارات للكنترولر باسم MainWarehouseIds -->
+                <select id="mainWarehouseId" name="MainWarehouseIds" class="form-control w-50" multiple>
+                </select>
+
+                <small class="text-muted mt-1">يمكن اختيار أكثر من مستودع رئيسي لهذا المتجر</small>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="form-group mt-2 d-flex align-items-center justify-content-center">
+                <button type="submit" class="btn btn-primary mt-3">حفظ التعديلات</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    $(function () {
+    var selectedMainWarehouseIds = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(selectedMainWarehouseIds));
+
+    function normalizeSelectedIds(values) {
+    return (values || []).map(function (x) {
+    return parseInt(x);
+    }).filter(function (x) {
+    return !isNaN(x) && x > 0;
+    });
+    }
+
+    function updateMainWarehouseHiddenValue() {
+    var selectedValues = $('#mainWarehouseId').val() || [];
+    $('#mainWarehouseIdHidden').val(selectedValues.length ? selectedValues[0] : '');
+    }
+
+    $.ajax({
+    url: '/DATALIST/GetMainWarehouses',
+    type: 'GET',
+    success: function (data) {
+    var dropdown = $('#mainWarehouseId');
+    dropdown.empty();
+
+    $.each(data, function (index, warehouse) {
+    var warehouseId = parseInt(warehouse.id);
+
+    dropdown.append($('<option>', {
+    value: warehouse.id,
+    text: warehouse.name,
+    selected: selectedMainWarehouseIds.includes(warehouseId)
+    }));
+    });
+
+    dropdown.val(selectedMainWarehouseIds.map(String));
+    updateMainWarehouseHiddenValue();
+
+    if ($.fn.select2) {
+    dropdown.select2({
+    placeholder: 'اختار المستودع الرئيسي',
+    allowClear: true,
+    dir: 'rtl',
+    width: '50%'
+    });
+
+    dropdown.trigger('change.select2');
+    }
+    }
+    });
+
+    $('#mainWarehouseId').on('change', function () {
+    selectedMainWarehouseIds = normalizeSelectedIds($(this).val());
+    updateMainWarehouseHiddenValue();
+    });
+
+    $('#editStoreForm').on('submit', function (e) {
+    e.preventDefault();
+
+    updateMainWarehouseHiddenValue();
+
+    var formData = new FormData(this);
+
+    $.ajax({
+    url: $(this).attr('action'),
+    type: 'POST',
+    data: formData,
+    processData: false,
+    contentType: false,
+    success: function (result) {
+    if (result.success) {
+    window.location.href = result.redirectUrl;
+    } else {
+    Toastify({
+    text: result.message || 'حدث خطأ',
+    duration: 4000,
+    gravity: 'bottom',
+    position: 'center',
+    style: { background: '#FF0000', borderRadius: '8px', fontWeight: 'bold' }
+    }).showToast();
+    }
+    },
+    error: function () {
+    Toastify({
+    text: 'خطأ في الاتصال',
+    duration: 3000,
+    gravity: 'bottom',
+    position: 'center',
+    style: { background: '#FF0000', borderRadius: '8px', fontWeight: 'bold' }
+    }).showToast();
+    }
+    });
+    });
+    });
+</script>

@@ -1,0 +1,777 @@
+@{
+    /*
+        لو الحساب الحالي مفتوح من خلال Admin Switch فلا نطلب صورة/سؤال تسجيل حضور.
+        الموظف إذا دخل Login عادي بنفسه يظل مطلوب منه تسجيل حضور حسب طريقة البصمة المختارة له.
+    */
+    var isAdminSwitchSession =
+        User.HasClaim("IsAdminSwitchSession", "true") ||
+        User.HasClaim("IsSwitchedAccount", "true") ||
+        (Context.Request.Cookies.TryGetValue("LuxiraAdminSwitchLogin", out var adminSwitchLoginCookie)
+            && adminSwitchLoginCookie == "1");
+
+    if (isAdminSwitchSession)
+    {
+        TempData.Remove("RequireCheckInFaceCapture");
+        Context.Response.Cookies.Delete("LuxiraRequireCheckInFaceCapture");
+        Context.Response.Cookies.Delete("LuxiraAdminSwitchLogin");
+    }
+
+    var skipCheckInFaceCapture =
+        isAdminSwitchSession ||
+        User.IsInRole("Admin") ||
+        User.IsInRole("DeliveryCompany") ||
+        User.IsInRole("DeliveryRepresentative") ||
+        User.IsInRole("OrderPreparer");
+
+    var hasPendingCheckInFaceCaptureCookie =
+        Context.Request.Cookies.TryGetValue("LuxiraRequireCheckInFaceCapture", out var pendingCheckInFaceCaptureCookie)
+        && pendingCheckInFaceCaptureCookie == "1";
+
+    var requireCheckInFaceCapture =
+        (TempData["RequireCheckInFaceCapture"]?.ToString() == "1" || hasPendingCheckInFaceCaptureCookie) &&
+        !skipCheckInFaceCapture;
+
+    /*
+        مهم:
+        لو تسجيل الحضور مطلوب، نثبت علامة في Cookie قبل عرض الصفحة.
+        كده لو الموظف عمل Refresh قبل ما يصور أو يجاوب السؤال، الشاشة تظهر تاني ومش تختفي.
+        العلامة دي لا يتم حذفها إلا بعد ما السيرفر يؤكد إن الحضور اتسجل.
+    */
+    if (requireCheckInFaceCapture)
+    {
+        Context.Response.Cookies.Append(
+            "LuxiraRequireCheckInFaceCapture",
+            "1",
+            new Microsoft.AspNetCore.Http.CookieOptions
+            {
+                Path = "/",
+                HttpOnly = false,
+                IsEssential = true,
+                SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax,
+                Secure = Context.Request.IsHttps,
+                Expires = DateTimeOffset.UtcNow.AddHours(12)
+            });
+    }
+
+    var checkInIpAddress = TempData["CheckInIpAddress"]?.ToString() ?? "";
+    var checkInLocation = TempData["CheckInLocation"]?.ToString() ?? "";
+}
+
+@if (requireCheckInFaceCapture)
+{
+    <form id="postLoginAntiForgeryForm" method="post" style="display:none;">
+        @Html.AntiForgeryToken()
+    </form>
+
+    <div id="postLoginFaceBackdrop" class="post-login-face-backdrop" dir="rtl" style="display:none;">
+        <div class="post-login-face-modal">
+            <div class="post-login-face-header">
+                تسجيل حضور الموظف
+            </div>
+
+            <div class="post-login-face-body">
+                <p class="post-login-face-note">
+                    يجب التقاط صورة الوجه قبل استخدام الصفحة.
+                </p>
+
+                <div class="post-login-camera-box">
+                    <video id="postLoginFaceCamera" autoplay playsinline muted></video>
+                    <canvas id="postLoginFaceCanvas" style="display:none;"></canvas>
+                    <img id="postLoginFacePreview" src="" alt="صورة الحضور" style="display:none;" />
+
+                    <div id="postLoginFaceSuccessOverlay" class="post-login-face-success-overlay" style="display:none;">
+                        <div class="post-login-face-success-card">
+                            <div class="post-login-face-success-icon">✓</div>
+                            <div class="post-login-face-success-text">تم تسجيل الحضور</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="postLoginFaceError" class="post-login-face-error" style="display:none;"></div>
+
+                <div class="post-login-face-actions">
+                    <button type="button" id="postLoginCaptureBtn" class="post-login-capture-btn">
+                        التقاط الصورة
+                    </button>
+
+                    <button type="button" id="postLoginRetakeBtn" class="post-login-retake-btn" style="display:none;">
+                        إعادة التصوير
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="postLoginQuestionBackdrop" class="post-login-face-backdrop" dir="rtl" style="display:none;">
+        <div class="post-login-question-modal">
+            <div class="post-login-face-header">
+                تسجيل حضور الموظف
+            </div>
+
+            <div class="post-login-question-body">
+                <div class="post-login-question-icon">؟</div>
+                <div class="post-login-question-title">هل أنت جاهز لبدء الدوام؟</div>
+                <div class="post-login-question-note">
+                    يجب الضغط على نعم قبل استخدام الصفحة. لن تختفي هذه الرسالة بالريفريش إلا بعد تسجيل الإجابة.
+                </div>
+                <div id="postLoginQuestionError" class="post-login-face-error" style="display:none;"></div>
+                <button type="button" id="postLoginQuestionYesBtn" class="post-login-question-yes-btn">
+                    نعم، جاهز لبدء الدوام
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .post-login-face-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.62);
+            z-index: 999999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+        }
+
+        .post-login-face-modal,
+        .post-login-question-modal {
+            width: min(650px, 96vw);
+            background: #ffffff;
+            border-radius: 0 0 22px 22px;
+            overflow: hidden;
+            box-shadow: 0 22px 60px rgba(15, 23, 42, 0.35);
+            text-align: center;
+            direction: rtl;
+        }
+
+        .post-login-question-modal {
+            width: min(520px, 94vw);
+            border-radius: 22px;
+        }
+
+        .post-login-face-header {
+            background: #1d273b;
+            color: #ffffff;
+            padding: 18px;
+            font-size: 28px;
+            font-weight: 900;
+        }
+
+        .post-login-face-body,
+        .post-login-question-body {
+            padding: 20px 24px 26px;
+        }
+
+        .post-login-face-note {
+            color: #334155;
+            font-size: 19px;
+            font-weight: 800;
+            margin-bottom: 16px;
+        }
+
+        .post-login-camera-box {
+            position: relative;
+            width: 100%;
+            height: min(430px, 58vh);
+            border-radius: 22px;
+            border: 3px solid #1d273b;
+            overflow: hidden;
+            background: #0f172a;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+        }
+
+        #postLoginFaceCamera,
+        #postLoginFacePreview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #0f172a;
+        }
+
+        .post-login-face-success-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.38);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .post-login-face-success-card {
+            width: min(290px, 78%);
+            min-height: 230px;
+            border-radius: 18px;
+            background: rgba(48, 50, 57, 0.92);
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 18px 38px rgba(0, 0, 0, 0.24);
+        }
+
+        .post-login-face-success-icon {
+            width: 94px;
+            height: 94px;
+            border-radius: 50%;
+            border: 6px solid #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 62px;
+            line-height: 1;
+            margin-bottom: 22px;
+            font-weight: 400;
+        }
+
+        .post-login-face-success-text {
+            font-size: 27px;
+            font-weight: 900;
+        }
+
+        .post-login-face-error {
+            color: #dc2626;
+            font-size: 18px;
+            font-weight: 800;
+            margin-top: 14px;
+        }
+
+        .post-login-face-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 22px;
+        }
+
+        .post-login-capture-btn,
+        .post-login-retake-btn,
+        .post-login-question-yes-btn {
+            position: relative;
+            overflow: hidden;
+            border: 0;
+            min-width: 170px;
+            min-height: 52px;
+            border-radius: 999px;
+            color: #ffffff;
+            font-size: 19px;
+            font-weight: 900;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+        }
+
+        .post-login-capture-btn,
+        .post-login-question-yes-btn {
+            background: #f28e02 !important;
+            color: #ffffff !important;
+            cursor: pointer;
+        }
+
+        .post-login-retake-btn {
+            background: #64748b;
+        }
+
+            .post-login-capture-btn:disabled,
+            .post-login-question-yes-btn:disabled,
+            .post-login-retake-btn:disabled {
+                opacity: 0.65 !important;
+                cursor: not-allowed !important;
+                pointer-events: none !important;
+            }
+
+        .post-login-question-icon {
+            width: 84px;
+            height: 84px;
+            border-radius: 50%;
+            background: rgba(242, 142, 2, 0.14);
+            color: #f28e02;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 54px;
+            font-weight: 900;
+            margin-bottom: 14px;
+        }
+
+        .post-login-question-title {
+            color: #334155;
+            font-size: 26px;
+            font-weight: 900;
+            margin-bottom: 10px;
+        }
+
+        .post-login-question-note {
+            color: #64748b;
+            font-size: 16px;
+            font-weight: 800;
+            line-height: 1.8;
+            margin-bottom: 20px;
+        }
+    </style>
+
+    <script>
+        (function () {
+            const initialCheckInIpAddress = '@checkInIpAddress';
+            const initialCheckInLocation = '@checkInLocation';
+
+            let postLoginStream = null;
+            let postLoginFaceBase64 = "";
+            let postLoginIpAddress = initialCheckInIpAddress || "";
+            let postLoginLocation = initialCheckInLocation || "";
+            let isPostLoginSubmitting = false;
+
+            const backdrop = document.getElementById('postLoginFaceBackdrop');
+            const questionBackdrop = document.getElementById('postLoginQuestionBackdrop');
+            const video = document.getElementById('postLoginFaceCamera');
+            const canvas = document.getElementById('postLoginFaceCanvas');
+            const preview = document.getElementById('postLoginFacePreview');
+            const captureBtn = document.getElementById('postLoginCaptureBtn');
+            const retakeBtn = document.getElementById('postLoginRetakeBtn');
+            const errorBox = document.getElementById('postLoginFaceError');
+            const questionErrorBox = document.getElementById('postLoginQuestionError');
+            const questionYesBtn = document.getElementById('postLoginQuestionYesBtn');
+            const successOverlay = document.getElementById('postLoginFaceSuccessOverlay');
+
+            function showError(message) {
+                if (!errorBox) return;
+                errorBox.innerText = message;
+                errorBox.style.display = 'block';
+            }
+
+            function showQuestionError(message) {
+                if (!questionErrorBox) return;
+                questionErrorBox.innerText = message;
+                questionErrorBox.style.display = 'block';
+            }
+
+            function hideError() {
+                if (errorBox) {
+                    errorBox.innerText = '';
+                    errorBox.style.display = 'none';
+                }
+                if (questionErrorBox) {
+                    questionErrorBox.innerText = '';
+                    questionErrorBox.style.display = 'none';
+                }
+            }
+
+            function setPostLoginCaptureButtonSaving() {
+                isPostLoginSubmitting = true;
+                if (captureBtn) {
+                    captureBtn.disabled = true;
+                    captureBtn.innerText = 'جاري الحفظ...';
+                }
+                if (retakeBtn) retakeBtn.disabled = true;
+            }
+
+            function resetPostLoginCaptureButton() {
+                isPostLoginSubmitting = false;
+                if (captureBtn) {
+                    captureBtn.disabled = false;
+                    captureBtn.innerText = 'التقاط الصورة';
+                }
+                if (retakeBtn) retakeBtn.disabled = false;
+            }
+
+            function stopCamera() {
+                if (postLoginStream) {
+                    postLoginStream.getTracks().forEach(function (track) { track.stop(); });
+                    postLoginStream = null;
+                }
+            }
+
+            function buildLocationText(data) {
+                const parts = [];
+                if (data.city) parts.push(data.city);
+                if (data.region) parts.push(data.region);
+                if (data.country_name) parts.push(data.country_name);
+                return parts.join(' - ');
+            }
+
+            async function loadIpAndLocationIfNeeded() {
+                if (postLoginIpAddress) return;
+
+                try {
+                    const response = await fetch('https://ipapi.co/json/', { method: 'GET', cache: 'no-store' });
+                    if (!response.ok) throw new Error('Failed to load IP location');
+                    const data = await response.json();
+                    postLoginIpAddress = data && data.ip ? data.ip : "";
+                    postLoginLocation = data ? buildLocationText(data) : "";
+                } catch (error) {
+                    try {
+                        const fallbackResponse = await fetch('https://api.ipify.org?format=json', { method: 'GET', cache: 'no-store' });
+                        const fallbackData = await fallbackResponse.json();
+                        postLoginIpAddress = fallbackData && fallbackData.ip ? fallbackData.ip : "";
+                        postLoginLocation = "";
+                    } catch {
+                        postLoginIpAddress = "";
+                        postLoginLocation = "";
+                    }
+                }
+            }
+
+            async function startCamera() {
+                hideError();
+                if (questionBackdrop) questionBackdrop.style.display = 'none';
+                if (backdrop) backdrop.style.display = 'flex';
+
+                try {
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        showError('المتصفح لا يدعم تشغيل الكاميرا');
+                        return;
+                    }
+
+                    postLoginStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'user', width: { ideal: 900 }, height: { ideal: 650 } },
+                        audio: false
+                    });
+
+                    video.srcObject = postLoginStream;
+                    try { await video.play(); } catch (playError) { }
+                    video.style.display = 'block';
+                    preview.style.display = 'none';
+                } catch (error) {
+                    showError('يجب السماح باستخدام الكاميرا لتسجيل الحضور');
+                }
+            }
+
+            const faceValidationMessage = 'يجب أخذ صورة للوجه بشكل صحيح';
+
+            function getFaceImageQuality(canvasElement) {
+                const ctx = canvasElement.getContext('2d');
+                const width = canvasElement.width;
+                const height = canvasElement.height;
+                const imageData = ctx.getImageData(0, 0, width, height).data;
+                const step = 8;
+                let count = 0;
+                let luminanceSum = 0;
+                let luminanceSquaresSum = 0;
+                let skinLikePixels = 0;
+                let coloredPixels = 0;
+
+                for (let y = 0; y < height; y += step) {
+                    for (let x = 0; x < width; x += step) {
+                        const index = (y * width + x) * 4;
+                        const r = imageData[index];
+                        const g = imageData[index + 1];
+                        const b = imageData[index + 2];
+                        const max = Math.max(r, g, b);
+                        const min = Math.min(r, g, b);
+                        const luminance = (0.299 * r) + (0.587 * g) + (0.114 * b);
+
+                        count++;
+                        luminanceSum += luminance;
+                        luminanceSquaresSum += luminance * luminance;
+
+                        if (max - min > 18) {
+                            coloredPixels++;
+                        }
+
+                        const isSkinLike =
+                            r > 70 && g > 35 && b > 20 &&
+                            r > g * 1.03 && r > b * 1.12 &&
+                            (max - min) > 15;
+
+                        if (isSkinLike) {
+                            skinLikePixels++;
+                        }
+                    }
+                }
+
+                const averageLuminance = count ? luminanceSum / count : 0;
+                const variance = count ? (luminanceSquaresSum / count) - (averageLuminance * averageLuminance) : 0;
+
+                return {
+                    averageLuminance: averageLuminance,
+                    variance: variance,
+                    skinRatio: count ? skinLikePixels / count : 0,
+                    colorRatio: count ? coloredPixels / count : 0
+                };
+            }
+
+            function hasLikelyHumanFaceFallback(canvasElement, quality) {
+                const ctx = canvasElement.getContext('2d');
+                const width = canvasElement.width;
+                const height = canvasElement.height;
+
+                if (!ctx || !width || !height) {
+                    return false;
+                }
+
+                const imageData = ctx.getImageData(0, 0, width, height).data;
+                const step = 6;
+                let skinPixels = 0;
+                let upperSkinPixels = 0;
+                let lowerSkinPixels = 0;
+                let rightSkinPixels = 0;
+                let leftSkinPixels = 0;
+                let minX = width;
+                let maxX = 0;
+                let minY = height;
+                let maxY = 0;
+
+                for (let y = 0; y < height; y += step) {
+                    for (let x = 0; x < width; x += step) {
+                        const index = (y * width + x) * 4;
+                        const r = imageData[index];
+                        const g = imageData[index + 1];
+                        const b = imageData[index + 2];
+                        const max = Math.max(r, g, b);
+                        const min = Math.min(r, g, b);
+
+                        const isSkinLike =
+                            r > 55 && g > 28 && b > 18 &&
+                            r > g * 0.95 && r > b * 1.08 &&
+                            max - min > 12 &&
+                            !(r > 220 && g > 220 && b > 220) &&
+                            !(Math.abs(r - g) < 10 && Math.abs(g - b) < 10);
+
+                        if (isSkinLike) {
+                            skinPixels++;
+                            if (y < height * 0.70) upperSkinPixels++;
+                            else lowerSkinPixels++;
+                            if (x > width * 0.55) rightSkinPixels++;
+                            if (x < width * 0.45) leftSkinPixels++;
+                            minX = Math.min(minX, x);
+                            maxX = Math.max(maxX, x);
+                            minY = Math.min(minY, y);
+                            maxY = Math.max(maxY, y);
+                        }
+                    }
+                }
+
+                if (skinPixels < 18) {
+                    return false;
+                }
+
+                const skinWidth = maxX - minX;
+                const skinHeight = maxY - minY;
+                const hasFaceSizedSkinPatch = skinWidth >= 32 && skinHeight >= 32;
+                const hasSkinInFaceArea = upperSkinPixels >= 10 || rightSkinPixels >= 10 || leftSkinPixels >= 10;
+
+                return hasFaceSizedSkinPatch && hasSkinInFaceArea && quality.skinRatio >= 0.003;
+            }
+
+            async function validateFaceImage(canvasElement) {
+                const quality = getFaceImageQuality(canvasElement);
+
+                // نرفض الصورة الفاضية/السوداء/الرمادي، لكن نسمح بصورة وجه بعيدة أو فيها حركة بسيطة.
+                if (quality.averageLuminance < 28 || quality.averageLuminance > 248 || quality.variance < 55 || quality.colorRatio < 0.006) {
+                    return false;
+                }
+
+                // الأفضل استخدام FaceDetector لو متاح، مع قبول الوجه حتى لو بعيد أو في طرف الصورة.
+                if ('FaceDetector' in window) {
+                    try {
+                        const detector = new FaceDetector({ fastMode: true, maxDetectedFaces: 5 });
+                        const faces = await detector.detect(canvasElement);
+
+                        if (faces && faces.length > 0) {
+                            const imageArea = canvasElement.width * canvasElement.height;
+                            const hasValidDetectedFace = faces.some(function (face) {
+                                const box = face.boundingBox || {};
+                                const faceWidth = box.width || 0;
+                                const faceHeight = box.height || 0;
+                                const faceArea = faceWidth * faceHeight;
+
+                                return faceWidth >= 28 && faceHeight >= 28 && imageArea > 0 && (faceArea / imageArea) >= 0.0035;
+                            });
+
+                            if (hasValidDetectedFace) {
+                                return true;
+                            }
+                        }
+                    } catch (error) {
+                        // نستخدم الفحص الاحتياطي بالأسفل لأن بعض المتصفحات تفشل في FaceDetector مع الإضاءة أو الحركة.
+                    }
+                }
+
+                return hasLikelyHumanFaceFallback(canvasElement, quality);
+            }
+
+            async function capturePhoto() {
+                if (!video || !video.videoWidth || !video.videoHeight) {
+                    showError('الكاميرا لم تعمل بعد، انتظر لحظة ثم حاول مرة أخرى');
+                    return false;
+                }
+
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                const isValidFaceImage = await validateFaceImage(canvas);
+
+                if (!isValidFaceImage) {
+                    postLoginFaceBase64 = '';
+                    preview.src = '';
+                    preview.style.display = 'none';
+                    video.style.display = 'block';
+                    showError(faceValidationMessage);
+                    return false;
+                }
+
+                postLoginFaceBase64 = canvas.toDataURL('image/jpeg', 0.78);
+                preview.src = postLoginFaceBase64;
+                preview.style.display = 'block';
+                video.style.display = 'none';
+                stopCamera();
+                hideError();
+                return true;
+            }
+
+            function clearPendingCheckInFaceCaptureCookie() {
+                document.cookie = 'LuxiraRequireCheckInFaceCapture=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+            }
+
+            function closePostLoginCaptureModal() {
+                clearPendingCheckInFaceCaptureCookie();
+                stopCamera();
+                if (backdrop) backdrop.remove();
+                if (questionBackdrop) questionBackdrop.remove();
+            }
+
+            function showQuestionModal() {
+                stopCamera();
+                hideError();
+                if (backdrop) backdrop.style.display = 'none';
+                if (questionBackdrop) questionBackdrop.style.display = 'flex';
+            }
+
+            async function checkCaptureStatusBeforeStartingCamera() {
+                try {
+                    const response = await fetch('/EmployeeAttendance/GetCheckInCaptureStatus', {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' },
+                        cache: 'no-store'
+                    });
+
+                    const result = await response.json();
+
+                    if (result && result.success && result.checkInMethod === 'Question' && result.shouldAskQuestion === true) {
+                        showQuestionModal();
+                        await loadIpAndLocationIfNeeded();
+                        return;
+                    }
+
+                    if (result && result.success && result.shouldCapture === false) {
+                        closePostLoginCaptureModal();
+                        return;
+                    }
+                } catch (error) {
+                    // If status check fails, continue with the normal capture flow for safety.
+                }
+
+                await loadIpAndLocationIfNeeded();
+                startCamera();
+            }
+
+            async function submitCheckInPhoto() {
+                if (isPostLoginSubmitting || (captureBtn && captureBtn.disabled)) return;
+                if (!await capturePhoto()) return;
+
+                setPostLoginCaptureButtonSaving();
+
+                try {
+                    await loadIpAndLocationIfNeeded();
+                    const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+                    const token = tokenInput ? tokenInput.value : "";
+
+                    const response = await fetch('/EmployeeAttendance/RegisterCheckIn', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+                        body: JSON.stringify({
+                            faceImageBase64: postLoginFaceBase64,
+                            checkInIpAddress: postLoginIpAddress,
+                            checkInLocation: postLoginLocation
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result && result.success && result.skipFaceCapture) {
+                        closePostLoginCaptureModal();
+                        return;
+                    }
+
+                    if (result && result.success) {
+                        successOverlay.style.display = 'flex';
+                        setTimeout(closePostLoginCaptureModal, 1600);
+                        return;
+                    }
+
+                    showError(result && result.message ? result.message : 'حصل خطأ أثناء تسجيل صورة الحضور، حاول مرة أخرى');
+                    resetPostLoginCaptureButton();
+                    retakeBtn.style.display = 'inline-block';
+                } catch (error) {
+                    showError('حصل خطأ أثناء تسجيل صورة الحضور، حاول مرة أخرى');
+                    resetPostLoginCaptureButton();
+                    retakeBtn.style.display = 'inline-block';
+                }
+            }
+
+            async function submitQuestionCheckIn() {
+                if (!questionYesBtn || questionYesBtn.disabled) return;
+
+                questionYesBtn.disabled = true;
+                questionYesBtn.innerText = 'جاري التسجيل...';
+                hideError();
+
+                try {
+                    await loadIpAndLocationIfNeeded();
+                    const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+                    const token = tokenInput ? tokenInput.value : "";
+
+                    const response = await fetch('/EmployeeAttendance/RegisterQuestionCheckIn', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+                        body: JSON.stringify({
+                            isReady: true,
+                            checkInIpAddress: postLoginIpAddress,
+                            checkInLocation: postLoginLocation
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result && result.success) {
+                        closePostLoginCaptureModal();
+                        return;
+                    }
+
+                    showQuestionError(result && result.message ? result.message : 'حصل خطأ أثناء تسجيل الحضور، حاول مرة أخرى');
+                    questionYesBtn.disabled = false;
+                    questionYesBtn.innerText = 'نعم، جاهز لبدء الدوام';
+                } catch (error) {
+                    showQuestionError('حصل خطأ أثناء تسجيل الحضور، حاول مرة أخرى');
+                    questionYesBtn.disabled = false;
+                    questionYesBtn.innerText = 'نعم، جاهز لبدء الدوام';
+                }
+            }
+
+            function retakePhoto() {
+                postLoginFaceBase64 = "";
+                preview.src = "";
+                preview.style.display = "none";
+                video.style.display = "block";
+                successOverlay.style.display = "none";
+                resetPostLoginCaptureButton();
+                retakeBtn.style.display = 'none';
+                startCamera();
+            }
+
+            if (captureBtn) captureBtn.addEventListener('click', submitCheckInPhoto);
+            if (retakeBtn) retakeBtn.addEventListener('click', retakePhoto);
+            if (questionYesBtn) questionYesBtn.addEventListener('click', submitQuestionCheckIn);
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+            }, true);
+
+            checkCaptureStatusBeforeStartingCamera();
+        })();
+    </script>
+}

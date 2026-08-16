@@ -1,0 +1,372 @@
+@model lotus_blue.Models.ViewModel.LeadListViewModel;
+@using lotus_blue.Models;
+
+@{
+    Layout = "AllOrdersLayout";
+    ViewData["Title"] = "الطلبات المحتملة";
+}
+
+<div class="w-sm-100 mt-3 mt-md-3 container">
+
+    <div class="row mb-2 justify-content-center">
+        <div class="col-lg px-2 ms-0 col-sm-12 text-nowrap open custom-inpage-dropdown d-flex justify-content-start align-items-center custom-width" id="openCreateLead" style="cursor:pointer;">
+            <img src="/mainicons/file-circle-plus-regular.svg" width="25" height="25" />
+            <span class="pe-2 flex-grow-1">إنشاء طلب محتمل</span>
+            <i class="fa-duotone ps-0 fa-chevron-down"></i>
+        </div>
+
+        <div class="col-lg px-0 me-lg-1 mt-2 me-0 mt-lg-0 col-sm-12 text-nowrap custom-width">
+            <select id="OrderSourceId" name="OrderSource" class="form-control drop-down-design">
+                <option value="">كل أنواع الصفحات</option>
+                @foreach (OrderSourceEnum source in Enum.GetValues(typeof(OrderSourceEnum)))
+                {
+                    <option value="@((int)source)">@source</option>
+                }
+            </select>
+        </div>
+    </div>
+</div>
+
+
+<div class="d-flex mb-3 mt-3 justify-content-between mx-auto align-items-center width-99" style="position: relative;">
+
+    <div class="form-group d-flex align-items-center">
+        <label for="pageSize" class="me-2">أظهر:</label>
+        <select id="pageSize" name="pageSize" class="form-control me-2">
+            @foreach (var size in new int?[] { 10, 20, 35, 50, 100, 200, 300, 500, 1000, 2000 })
+            {
+                if (Model.PaginationViewModel.PageSize == size)
+                {
+                    <option value="@size" selected>@size</option>
+                }
+                else
+                {
+                    <option value="@size">@size</option>
+                }
+            }
+        </select>
+        <label for="pageSize">مدخلات</label>
+    </div>
+
+    <div class="custom-width-search-input pb-5 w-sm-100" style="position: absolute; left: 50%; transform: translateX(-50%);">
+        <div class="input-group flex-grow-1 input_with_icon">
+            <input type="text" id="searchInput" name="search" class="pe-5 w-100 text-dark custom-box-shadow
+            Search search-input" placeholder="ابحث عن الطلبات المحتملة...">
+
+            <span class="icon search-icon">
+                <i class="fa-solid text-green fa-magnifying-glass fa-rotate-90"></i>
+            </span>
+            <span id="searchingshow" class="icon clear-search-icon cursor-pointer">
+                <i class="fa-solid text-green text-green fa-circle-xmark "></i>
+            </span>
+        </div>
+    </div>
+
+    <div class="d-none d-md-block">
+        <input id="lead-datepicker" class="form-control custom-datepicker" placeholder="فلتر حسب التاريخ" readonly>
+        <script src="/js/datepicker.min.js"></script>
+    </div>
+
+</div>
+
+
+@if (Model != null)
+{
+    <table class="table mt-2 mb-0 mb-lg-2 mx-auto width-99">
+        <thead>
+            <tr>
+                <th>رقم الوصل</th>
+                @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+                {
+                    <th class="d-none d-xl-table-cell">اسم الموظف</th>
+                }
+                <th>اسم الصفحة</th>
+                <th class="d-none d-md-table-cell">نوع الصفحة</th>
+                <th class="d-none d-md-table-cell">رقم الهاتف / رابط الصفحة</th>
+                <th class="d-none d-md-table-cell">تاريخ الإنشاء</th>
+                <th class="d-none d-md-table-cell">مراسلة</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.PaginationViewModel.Items)
+            {
+                var isWhatsApp = item.OrderSource == OrderSourceEnum.واتساب;
+                var waUrl = !string.IsNullOrEmpty(item.PhoneNumber) ? $"https://wa.me/{item.PhoneNumber}" : "";
+                <tr class="background-white-green">
+                    <td class="text-green text-nowrap">
+                        <i class="fa-solid f-s-14 text-green fa-cube me-1"></i> @item.Id
+                    </td>
+                    @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+                    {
+                        <td class="text-nowrap d-none d-xl-table-cell text-end">
+                            @if (!string.IsNullOrEmpty(item.EmployeeImage))
+                            {
+                                <img src="/@item.EmployeeImage" width="14" class="b-r-50">
+                            }
+                            @item.EmployeeName
+                        </td>
+                    }
+                    <td class="text-nowrap">@item.SourceName</td>
+                    <td class="text-end d-none d-md-table-cell text-nowrap">
+                        <img loading="lazy" class="pb-1" style="width:16px; height:16px;" src="@Common.GetSocialMediaIconUrl(item.OrderSource)" />
+                        @item.OrderSource
+                    </td>
+                    <td class="d-none d-md-table-cell text-nowrap">
+                        @if (isWhatsApp)
+                        {
+                            @item.PhoneNumber
+                        }
+                        else
+                        {
+                            @item.ChatUrl
+                        }
+                    </td>
+                    <td class="d-none d-md-table-cell">@item.CreatedDate.ToString("yyyy-MM-dd")</td>
+                    <td class="d-none d-md-table-cell">
+                        <div class="d-flex justify-content-center">
+                            @if (!isWhatsApp && !string.IsNullOrEmpty(item.ChatUrl) && item.OrderSource == OrderSourceEnum.انستغرام)
+                            {
+                                <a target="_blank" href="@item.ChatUrl" class="btn text-white me-2 text-nowrap instagram-btn">
+                                    <span><i class="fa-brands fa-instagram"></i></span>
+                                    انستغرام
+                                </a>
+                            }
+                            else if (!isWhatsApp && !string.IsNullOrEmpty(item.ChatUrl))
+                            {
+                                <a target="_blank" href="@item.ChatUrl" class="btn text-white background-whiteblue me-2 text-nowrap">
+                                    <span><i class="fa-light fa-comment"></i></span>
+                                    ميتا
+                                </a>
+                            }
+                            @if (isWhatsApp && !string.IsNullOrEmpty(item.PhoneNumber))
+                            {
+                                <a target="_blank" href="@waUrl" class="btn text-white me-2 text-nowrap" style="background-color:#2ab149;">
+                                    <span><i class="fa-light fa-comment"></i></span>
+                                    واتساب
+                                </a>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<div id="pagination-link" class="mt-0 container-fluid">
+    <div class="d-flex justify-content-center align-items-center flex-wrap">
+
+        <p class="text-start pt-2 total-items-display">@Model.PaginationViewModel.TotalItems عدد الطلبات المحتملة</p>
+
+        <nav aria-label="Page navigation" class="mx-auto nav-nav">
+            <div class="d-flex justify-content-start">
+                <ul class="pagination p-0">
+                    <li class="page-item @(Model.PaginationViewModel.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link pointer" data-page="1">
+                            <i class="fa-solid fa-chevron-double-right text-green"></i>
+                        </a>
+                    </li>
+                    <li class="page-item @(Model.PaginationViewModel.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.PaginationViewModel.CurrentPage - 1)">
+                            <i class="fa-solid fa-chevron-right text-green"></i>
+                        </a>
+                    </li>
+
+                    @{
+                        int startPage = Model.PaginationViewModel.CurrentPage;
+                        int endPage = startPage + 2;
+                        if (endPage > Model.PaginationViewModel.TotalPages)
+                        {
+                            endPage = Model.PaginationViewModel.TotalPages;
+                        }
+                    }
+
+                    @for (int i = startPage; i <= endPage; i++)
+                    {
+                        <li class="numbers d-none d-md-block page-item @(Model.PaginationViewModel.CurrentPage == i ? "active" : "")">
+                            <a class="page-link" data-page="@i">@i</a>
+                        </li>
+                    }
+
+                    @if (Model.PaginationViewModel.TotalPages > endPage)
+                    {
+                        <li class="page-item d-none d-md-block disabled">
+                            <span class="page-link">...</span>
+                        </li>
+
+                        @for (int i = Model.PaginationViewModel.TotalPages - 2; i <= Model.PaginationViewModel.TotalPages; i++)
+                        {
+                            <li class="numbers d-none d-md-block page-item @(Model.PaginationViewModel.CurrentPage == i ? "active" : "")">
+                                <a class="page-link" data-page="@i">@i</a>
+                            </li>
+                        }
+                    }
+
+                    <li class="numbers d-block d-md-none page-item active">
+                        <a class="page-link" data-page="@Model.PaginationViewModel.CurrentPage">@Model.PaginationViewModel.CurrentPage</a>
+                    </li>
+
+                    <li class="page-item @(Model.PaginationViewModel.CurrentPage == Model.PaginationViewModel.TotalPages ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.PaginationViewModel.CurrentPage + 1)">
+                            <i class="fa-solid fa-chevron-left text-green f-s-18"></i>
+                        </a>
+                    </li>
+                    <li class="page-item @(Model.PaginationViewModel.CurrentPage == Model.PaginationViewModel.TotalPages ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.PaginationViewModel.TotalPages)">
+                            <i class="fa-solid fa-chevron-double-left text-green"></i>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+    </div>
+</div>
+
+
+@await Html.PartialAsync("_Notification")
+
+<div id="modal-container"></div>
+
+
+<style>
+    .input-group {
+        position: relative;
+    }
+
+    .search-input {
+        height: 2rem !important;
+    }
+
+    .icon {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .clear-search-icon {
+        left: 10px;
+        cursor: pointer;
+    }
+
+    .search-icon {
+        right: 15px;
+        z-index: 1;
+    }
+
+    .icon.search-icon {
+        z-index: 10 !important;
+    }
+
+    #searchingshow {
+        visibility: hidden;
+        z-index: 9;
+    }
+
+    .instagram-btn {
+        background: linear-gradient(
+            45deg,
+            #f09433 0%,
+            #e6683c 25%,
+            #dc2743 50%,
+            #cc2366 75%,
+            #bc1888 100%
+        );
+    }
+
+    .custom-inpage-dropdown {
+        background-color: #ffffff;
+        box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+        border-radius: 8px !important;
+        padding: 6px;
+        font-size: 18px;
+        font-weight: bold;
+    }
+
+    .custom-width {
+        max-width: 327px;
+        width: 327px;
+    }
+</style>
+
+
+<input type="hidden" id="startDate" />
+<input type="hidden" id="endDate" />
+
+<script>
+    $(document).ready(function () {
+
+        initializeLitepicker('#lead-datepicker', function() { loadData(1); });
+
+        $('#openCreateLead').click(function () {
+            $.ajax({
+                url: '/Home/CreateLead',
+                type: 'GET',
+                success: function (data) {
+                    $('#modal-container').html(data);
+                    $('#CreateLead').modal('show');
+                },
+                error: function (xhr, status, error) {
+                    console.error('AJAX Error: ' + status + ' - ' + error);
+                }
+            });
+        });
+
+        const searchInput = $("#searchInput");
+        const clearSearchIcon = $("#searchingshow");
+
+        function toggleClearIconVisibility() {
+            clearSearchIcon.css('visibility', searchInput.val().length > 0 ? 'visible' : 'hidden');
+        }
+
+        searchInput.on("input", function () {
+            toggleClearIconVisibility();
+            loadData(1);
+        });
+
+        clearSearchIcon.on("click", function () {
+            searchInput.val("");
+            toggleClearIconVisibility();
+            loadData(1);
+        });
+
+        toggleClearIconVisibility();
+
+        $('#OrderSourceId, #pageSize').change(function () {
+            loadData(1);
+        });
+
+        function loadData(page) {
+            var data = {
+                page: page,
+                pageSize: $('#pageSize').val(),
+                search: $('#searchInput').val(),
+                orderSourceId: $('#OrderSourceId').val(),
+                startDate: $('#startDate').val(),
+                endDate: $('#endDate').val()
+            };
+
+            $.ajax({
+                url: '/Lead/Index',
+                type: 'GET',
+                data: data,
+                success: function (result) {
+                    var $result = $('<div>').html(result);
+                    $('.table').replaceWith($result.find('.table'));
+                    $('.pagination').replaceWith($result.find('.pagination'));
+                    $('.total-items-display').text($result.find('.total-items-display').text());
+                },
+                error: function (xhr, status, error) {
+                    console.error("AJAX error:", status, error);
+                }
+            });
+        }
+
+        $(document).on('click', '.pagination a.page-link', function (event) {
+            event.preventDefault();
+            const page = $(this).data('page');
+            loadData(page);
+        });
+
+    });
+</script>

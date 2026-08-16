@@ -1,0 +1,109 @@
+@model lotus_blue.Models.ViewModel.EmployeeBonusArchiveViewModel
+@{
+    ViewData["Title"] = "أرشيف العمولات";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="d-flex mb-3 mt-3 justify-content-between mx-auto align-items-center width-99">
+    <h1 class="m-0" style="font-size: 1.5rem;">@ViewData["Title"]</h1>
+    <a asp-action="Index" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> العودة للعمولات
+    </a>
+</div>
+
+<div class="width-99 mx-auto">
+    @* ----- Filters (auto-apply on change — same pattern as /Rating/EmployeList) ----- *@
+    <div class="row mb-3 g-2">
+        <div class="col-md-6">
+            <input id="custom-datepicker" class="form-control custom-datepicker"
+                   placeholder="فلتر حسب التاريخ" readonly />
+            <script src="/js/datepicker.min.js"></script>
+        </div>
+        <div class="col-md-6">
+            <select id="EmployeeId" name="EmployeeId" class="form-control drop-down-design">
+                <option value="">كل الموظفين</option>
+                @foreach (var opt in Model.EmployeeOptions)
+                {
+                    if (opt.Id == Model.SelectedEmployeeId)
+                    {
+                        <option value="@opt.Id" selected>@opt.Name</option>
+                    }
+                    else
+                    {
+                        <option value="@opt.Id">@opt.Name</option>
+                    }
+                }
+            </select>
+        </div>
+    </div>
+
+    <input type="hidden" id="startDate" value="@(Model.FilterStart?.ToString("yyyy-MM-dd"))" />
+    <input type="hidden" id="endDate" value="@(Model.FilterEnd?.ToString("yyyy-MM-dd"))" />
+
+    @* ----- Archive table — same skeleton as Home/Index ordersTable ----- *@
+    <div class="table-responsive">
+        <table class="table mt-2 mb-0 mb-lg-2 mx-auto width-99" id="bonusArchiveTable">
+            <thead>
+                <tr>
+                    <th>الموظف</th>
+                    <th>تاريخ الدفع</th>
+                    <th>المبلغ المدفوع</th>
+                    <th>زيادة البرو</th>
+                    <th>إجمالي الطلبات</th>
+                    <th>طلبات البرو</th>
+                    <th>طلبات تم التسليم</th>
+                    <th>طلبات المعالجة</th>
+                    <th>مبلغ المعالجة</th>
+                    <th>مبلغ تم التسليم</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        <td>@row.EmployeeName</td>
+                        <td>@row.DatePaid.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td class="fw-bold text-green">$@row.AmountPaid.ToString("0.##")</td>
+                        <td>$@row.ProExtraAmount.ToString("0.##")</td>
+                        <td>@row.TotalOrderCount</td>
+                        <td>@row.ProOrderCount</td>
+                        <td>@row.SuccessOrderCount</td>
+                        <td>@row.ProcessingOrderCount</td>
+                        <td>$@row.ProcessingAmount.ToString("0.##")</td>
+                        <td>$@row.SuccessAmount.ToString("0.##")</td>
+                    </tr>
+                }
+                @if (Model.Rows.Count == 0)
+                {
+                    <tr>
+                        <td colspan="10" class="text-center text-muted py-4">
+                            لا يوجد مدفوعات لعرضها.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Auto-apply filters on change — mirrors /Rating/EmployeList.
+            function applyFilters() {
+                var s = $('#startDate').val();
+                var e = $('#endDate').val();
+                var emp = $('#EmployeeId').val();
+                var parts = [];
+                if (s) parts.push('startDate=' + encodeURIComponent(s));
+                if (e) parts.push('endDate=' + encodeURIComponent(e));
+                if (emp) parts.push('employeeId=' + encodeURIComponent(emp));
+                window.location.href = '/EmployeeBonus/Archive' + (parts.length ? '?' + parts.join('&') : '');
+            }
+
+            initializeLitepicker('.custom-datepicker', applyFilters);
+
+            $('#EmployeeId').on('change', applyFilters);
+        });
+    </script>
+}

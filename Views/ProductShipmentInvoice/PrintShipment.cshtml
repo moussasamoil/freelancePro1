@@ -1,0 +1,166 @@
+﻿@model lotus_blue.Models.ViewModel.ProductShipmentInvoiceDetailsViewModel
+
+<!------ Include the above in your HEAD tag ---------->
+@{
+    decimal total = 0;
+    Layout = "_EmptyLayout";
+    ViewData["Title"] = " فاتورة الأخراجات";
+
+
+}
+<div id="Print" class="container-fluid" style="direction:rtl !important;">
+    <div class="row">
+        <div class="col">
+            <div class="invoice-title d-flex justify-content-between">
+                <h3 class="text-right  my-auto">طلب # @Model.InvoiceId</h3>
+                <img src="/static/ShipmentLogoLuxira.svg" width="120" height="60" />
+
+            </div>
+            <hr>
+            <div class="row">
+                <div class="col-6">
+                    <address>
+                        <strong>الشركة المرسلة :</strong><br>
+                        شركة Luxira التركية <br>
+                        اسطنبول , تركيا <br>
+                        <div style="direction:ltr !important;" class="d-flex justify-content-end">
+                            <span> 0 531 285 52 86</span>
+                        </div>
+                        Luxiraholding@gmail.com
+                    </address>
+                </div>
+                <div class="col-6 d-flex justify-content-end">
+                    <address>
+                        <strong>الشركة المستلمة :</strong><br>
+                        @Model.DeliveryCompanyName <br>
+                        @Model.DeliveryCompanyAddress<br>
+                        @Model.DeliveryCompanyPhoneNumber<br>
+                        @Model.DeliveryCompanyEmail
+                    </address>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-6">
+                    <address>
+                        <strong>تاريخ الأرسال:</strong><br>
+                        @Model.CreatedDate.ToString("yyyy:M:dd")
+                    </address>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div style="background-color:#f3f2f7" class="card-header">
+                    <h6 class="card-title"><strong> تفاصيل الشحنة</strong></h6>
+                </div>
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <td><strong> اسم المنتج</strong></td>
+                            <td class="text-center"><strong>سعر القطعة</strong></td>
+                            <td class="text-center"><strong>الكمية</strong></td>
+                            <td class="text-right"><strong>المجموع</strong></td>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        @foreach (var Warehouse in Model.WarehouseDetails)
+                        {
+                            <tr>
+                                <td>@Warehouse.WarehouseName</td>
+                                <td class="text-center">@Warehouse.WarehousePrice</td>
+                                <td class="text-center">@Warehouse.Quantity</td>
+                                <td class="text-right">
+                                    @{
+                                        decimal subtotal = Warehouse.Quantity * Warehouse.WarehousePrice;
+                                        total += subtotal;
+                                    }@subtotal
+                                </td>
+                            </tr>
+                        }
+                        <tr class="total-row">
+                            <td class=""><strong>السعر الأجمالي</strong></td>
+                            <td class=""></td>
+                            <td class=""></td>
+                            <td class="text-right">@total.ToString("0.00")</td>
+                        </tr>
+                    </tbody>
+
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+<style>
+
+
+
+    .table > tbody > tr > .no-line {
+        border-top: none;
+    }
+
+    .table > thead > tr > .no-line {
+        border-bottom: none;
+    }
+
+    .table > tbody > tr > .thick-line {
+    }
+
+    tr:not(:last-of-type) {
+        border-color: #dee2e6 !important;
+    }
+
+    .table > :not(:last-child) > :last-child > * {
+        border-bottom-color: #dee2e6 !important;
+    }
+
+
+    .total-row {
+        border-top: 2px solid black !important;
+    }
+
+    /* Show the Print div when printing */
+    @@media print {
+        body {
+            -webkit-print-color-adjust: exact; /* Chrome, Safari */
+            color-adjust: exact; /* Firefox */
+            background-color: #f3f2f7 !important;
+        }
+
+        #Print {
+            display: block;
+            transform: scale(0.98); /* Adjust the scale factor as needed */
+            transform: scaleY(0.87); /* Adjust the vertical scale factor as needed */
+            transform-origin: top !important; /* Set the transformation origin to the top */
+        }
+
+        hr {
+            display: block;
+            height: 1px;
+            background: transparent;
+            width: 100%;
+            border: none;
+            border-top: solid 1px #aaa;
+        }
+
+        .card-header {
+            background-color: #f3f2f7 !important;
+        }
+    }
+</style>
+
+<script>
+    // Function to open the print dialog when the page is loaded
+    window.onload = function () {
+        window.print();
+    };
+</script>

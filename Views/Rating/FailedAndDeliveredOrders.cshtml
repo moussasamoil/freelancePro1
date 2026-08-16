@@ -1,0 +1,500 @@
+@model lotus_blue.Models.ViewModel.FailedAndDeliveredOrdersViewModel
+
+@{
+    ViewData["Title"] = "Failed and Delivered Orders";
+}
+
+
+<div class="width-99 my-2 me-0 mx-auto ">
+
+    <div class="row me-0 text-end mx-auto d-flex justify-content-between">
+
+
+
+
+        <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap custom-shadow-inpage">
+
+            <div>
+                <input id="custom-datepicker" class="form-control custom-datepicker" placeholder=" فلتر حسب التاريخ " readonly>
+                <script src="/js/datepicker.min.js"></script>
+            </div>
+
+        </div>
+
+
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="EmployeeId" name="Employee" class="form-control drop-down-design">
+            </select>
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="GenderId" name="Gender" class="form-control drop-down-design">
+             
+            </select>
+        </div>
+
+
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="ProductId" name="ProductId" class="form-control drop-down-design">
+
+            </select>
+
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="ManufacturingCompanyId" name="ManufacturingCompanyId" class="form-control drop-down-design">
+            </select>
+        </div>
+
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="OrderSourceId" name="OrderSource" class="form-control drop-down-design" >
+             
+            </select>
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="CountryId" name="Country" class="form-control drop-down-design" >
+             
+            </select>
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="WorkShift" name="WorkShift" class="form-control drop-down-design">
+              
+            </select>
+        </div>
+
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+            <select id="isFixed" name="isFixed" class="form-control drop-down-design" >
+            
+            </select>
+        </div>
+
+
+    </div>
+
+</div>
+
+
+
+<div class="container-fluid country-3 mt-4" >
+    <div class="row">
+        <h4>الأجمالي</h4>
+
+        <div class="col-lg-6 background-white custom-shadow pt-2 pb-2 custom-hover-red filter-orderstotal" data-delivered="true" style="width:48%;">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <p class="title text-start mt-0 mb-0 ">النسبة المئوية</p>
+                    <p style="color:#1d273b" class="text-start fw-bold h3"> @Model.DeliveredPercentage%</p>
+                    <p class="mb-0 fw-bold h3 mt-4 text-start ">@Model.TotalDeliveredOrders</p>
+                    <p class="title text-start mt-0">عدد الطلبات</p>
+                </div>
+                <div>
+                    <p class="title text-start mt-0 mb-0 ">السعر ما يقابله بالدولار</p>
+                    <div style="direction: ltr;">
+                        <p style="color:#1d273b" class="text-start fw-bold h3">@Model.TotalDeliveredOrdersPriceUSD USD</p>
+                    </div>
+                    <p class="title text-start mt-0 mb-0">التحويلات</p>
+                    <div style="direction: ltr;">
+                        <p style="color: red;" class="mb-0 fw-bold h3 text-start">@Model.TotalDeliveredOrdersPriceTL TRY</p>
+                    </div>
+                    <span class="d-block text-start">ما يقابله بالليرة التركية</span>
+                </div>
+            </div>
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: @(Model.DeliveredPercentage )%; background-color:#1d273b;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+        </div>
+
+
+        <div class="col-lg-6 background-white custom-shadow pt-2 pb-2 filter-orderstotal custom-hover-#1d273b me-4" data-delivered="false" style="width:48%;">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <p class="title text-start mt-0 mb-0 ">النسبة المئوية</p>
+                    <p style="color:red" class="text-start fw-bold h3">@Model.FailedPercentage%</p>
+                    <p class="mb-0 fw-bold h3 mt-4 text-start ">@Model.TotalFailedOrders</p>
+                    <p class="title text-start mt-0">عدد الطلبات</p>
+                </div>
+                <div>
+                    <p class="title text-start mt-0 mb-0 ">السعر ما يقابله بالدولار</p>
+                    <div style="direction: ltr;">
+                        <p style="color:#1d273b" class="text-start fw-bold h3">@Model.TotalFailedOrdersPriceUSD USD</p>
+                    </div>
+                    <p class="title text-start mt-0 mb-0">التحويلات</p>
+                    <div style="direction: ltr;">
+                        <p style="color: red;" class="mb-0 fw-bold h3 text-start">@Model.TotalFailedOrdersPriceTL TRY</p>
+                    </div>
+                    <span class="d-block text-start">ما يقابله بالليرة التركية</span>
+                </div>
+            </div>
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: @(Model.FailedPercentage)%; background-color:red;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+
+<h3>الدول</h3>
+<div class="country-section">
+
+    @foreach (var country in Model.DeliveredOrdersByCountry)
+    {
+        <div class="container-fluid country-1 mt-4" data-country-name="@country.Country" data-country-id="@country.CountryId">
+            <div class="row">
+                <h4>الدولة: @country.Country</h4>
+
+                <div class="col-lg-6 custom-shadow pt-2 pb-2 custom-hover-red filter-orders" data-delivered="true" style="width:48%;">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <p class="title text-start mt-0 mb-0">النسبة المئوية</p>
+                            <p style="color:#1d273b" class="text-start fw-bold h3">@country.Rating%</p>
+                            <p class="mb-0 fw-bold h3 mt-4 text-start">@country.OrderCount</p>
+                            <p class="title text-start mt-0">عدد الطلبات</p>
+                        </div>
+                        <div>
+                            <p class="title text-start mt-0 mb-0">السعر ما يقابله بالدولار</p>
+                            <div style="direction: ltr;">
+                                <p style="color:#1d273b" class="text-start fw-bold h3">@country.TotalPriceWithoutDeliveryUSD USD</p>
+                            </div>
+                            <p class="title text-start mt-0 mb-0">التحويلات</p>
+                            <div style="direction: ltr;">
+                                <p style="color: red;" class="mb-0 fw-bold h3 text-start">@country.TotalPriceWithoutDeliverylocal TRY</p>
+                            </div>
+                            <span class="d-block text-start">ما يقابله بالليرة التركية</span>
+                        </div>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width:@(country.Rating)%; background-color:#1d273b;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+
+                @foreach (var failedCountry in Model.FailedOrdersByCountry.Where(fc => fc.CountryId == country.CountryId))
+                {
+                    <div class="col-lg-6 custom-shadow pt-2 pb-2 filter-orders custom-hover-#1d273b me-4" data-delivered="false" style="width:48%;">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <p class="title text-start mt-0 mb-0">النسبة المئوية</p>
+                                <p style="color:red" class="text-start fw-bold h3">@failedCountry.Rating%</p>
+                                <p class="mb-0 fw-bold h3 mt-4 text-start">@failedCountry.OrderCount</p>
+                                <p class="title text-start mt-0">عدد الطلبات</p>
+                            </div>
+                            <div>
+                                <p class="title text-start mt-0 mb-0">السعر ما يقابله بالدولار</p>
+                                <div style="direction: ltr;">
+                                    <p style="color:#1d273b" class="text-start fw-bold h3">@failedCountry.TotalPriceWithoutDeliveryUSD USD</p>
+                                </div>
+                                <p class="title text-start mt-0 mb-0">التحويلات</p>
+                                <div style="direction: ltr;">
+                                    <p style="color: red;" class="mb-0 fw-bold h3 text-start">@failedCountry.TotalPriceWithoutDeliverylocal TRY</p>
+                                </div>
+                                <span class="d-block text-start">ما يقابله بالليرة التركية</span>
+                            </div>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" style="width:@(failedCountry.Rating)%; background-color:red;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+
+
+
+</div>
+
+
+
+
+
+
+<h3>المتاجر</h3>
+<div class="store-section">
+
+@foreach (var store in Model.DeliveredOrdersByStore)
+{
+        <div class="container-fluid store-1 mt-4" data-store-name="@store.Name" data-store-Id="@store.StoreId">
+        <div class="row">
+            <h4>Store: @store.Name</h4>
+
+                <div class="col-lg-6 custom-shadow pt-2 pb-2 custom-hover-red filter-ordersbystore" data-delivered="true" style="width:48%;">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <p class="title text-start mt-0 mb-0 ">النسبة المئوية</p>
+                        <p style="color:#1d273b" class="text-start fw-bold h3">@store.Rating%</p>
+                        <p class="mb-0 fw-bold h3 mt-4 text-start ">@store.OrderCount</p>
+                        <p class="title text-start mt-0">عدد الطلبات</p>
+                    </div>
+                    <div>
+                        <p class="title text-start mt-0 mb-0 ">السعر ما يقابله بالدولار</p>
+                        <div style="direction: ltr;">
+                            <p style="color:#1d273b" class="text-start fw-bold h3">@store.TotalPriceWithoutDeliveryUSD USD</p>
+                        </div>
+                        <p class="title text-start mt-0 mb-0">التحويلات</p>
+                        <div style="direction: ltr;">
+                            <p style="color: red;" class="mb-0 fw-bold h3 text-start">@store.TotalPriceWithoutDeliveryTl TRY</p>
+                        </div>
+                        <span class="d-block text-start">ما يقابله بالليرة التركية</span>
+                    </div>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" style="width: @(store.Rating )%; background-color:#1d273b;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+
+            @foreach (var failedStore in Model.FailedOrdersByStore.Where(fs => fs.StoreId == store.StoreId))
+            {
+                    <div class="col-lg-6 custom-shadow pt-2 pb-2 filter-ordersbystore custom-hover-#1d273b me-4" data-delivered="false" style="width:48%;">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <p class="title text-start mt-0 mb-0 ">النسبة المئوية</p>
+                            <p style="color:red" class="text-start fw-bold h3">@failedStore.Rating%</p>
+                            <p class="mb-0 fw-bold h3 mt-4 text-start ">@failedStore.OrderCount</p>
+                            <p class="title text-start mt-0">عدد الطلبات</p>
+                        </div>
+                        <div>
+                            <p class="title text-start mt-0 mb-0 ">السعر ما يقابله بالدولار</p>
+                            <div style="direction: ltr;">
+                                <p style="color:#1d273b" class="text-start fw-bold h3">@failedStore.TotalPriceWithoutDeliveryUSD USD</p>
+                            </div>
+                            <p class="title text-start mt-0 mb-0">التحويلات</p>
+                            <div style="direction: ltr;">
+                                <p style="color: red;" class="mb-0 fw-bold h3 text-start">@failedStore.TotalPriceWithoutDeliveryTl TRY</p>
+                            </div>
+                            <span class="d-block text-start">ما يقابله بالليرة التركية</span>
+                        </div>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: @(failedStore.Rating)%; background-color:red;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+</div>
+
+<input type="hidden" id="startDate" />
+<input type="hidden" id="endDate" />
+
+
+<style>
+    .country-box, .store-box {
+        border: 1px solid #ccc;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .orders-box {
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+
+        .orders-box.delivered-orders {
+            background-color: #e0ffe0; /* Light #1d273b background for delivered orders */
+        }
+
+        .orders-box.failed-orders {
+            background-color: #ffe0e0; /* Light red background for failed orders */
+        }
+</style>
+
+
+<script>
+
+
+
+
+
+
+
+
+    $(document).ready(function () {
+
+
+
+
+
+        initializeLitepicker('.custom-datepicker', updateOrdersData);
+
+    
+
+
+
+
+
+
+
+        // Event listener for dropdown changes
+        $('#EmployeeId, #CountryId, #OrderSourceId, #GenderId,#ManufacturingCompanyId,#WorkShift,#ProductId,#isFixed').on('change', function () {
+            updateOrdersData();
+        });
+
+
+    });
+
+
+
+   
+
+    // Function to handle the AJAX request
+    function updateOrdersData() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const employeeId = $('#EmployeeId').val(); // Get selected employee Id
+        const selectedCountry = $('#CountryId').val(); // Get selected countryId
+        const currentSource = $('#OrderSourceId').val(); // Get selected order source
+        const selectedGender = $('#GenderId').val(); // Get selected genderId
+        const selectedStore = $('#ManufacturingCompanyId').val(); // Get selected genderId
+        const workshift = $('#WorkShift').val(); // Get selected genderId
+        const warehouseId = $('#ProductId').val(); // Get selected employee Id
+        const isFixed = $('#isFixed').val();
+
+        var countryId = $('#CountryId').val();
+
+
+        $.ajax({
+            url: '/Rating/FailedAndDeliveredOrders',
+            type: 'GET',
+            data: {
+                employeeId: employeeId,
+                countryId: selectedCountry,
+                orderSourceId: currentSource,
+                genderId: selectedGender,
+                storeId: selectedStore,
+                startDay: startDate,
+                endDay: endDate,
+                workshift: workshift,
+                isFixed:isFixed,
+                mainwarehouseId: warehouseId  // Corrected syntax
+            },
+            success: function (result) {
+                // Update the table and rating section with the result
+                $('.country-section').html($(result).find('.country-section').html());
+                $('.store-section').html($(result).find('.store-section').html());
+                $('.country-3').html($(result).find('.country-3').html());
+
+            }
+        });
+    }
+
+   
+
+
+    function navigateToPage(isFixed, isOffer, isDiscount, isEmployeebonus, isComments, isMale, isFemale, employeeId, employeeName, countryId, countryName, storeId, storeName, delivered) {
+        employeeId = $('#EmployeeId').val() || employeeId || "";
+        const ordersourceId = $('#SourceId').val();
+        const genderId = $('#GenderId').val();
+        storeId = $('#ManufacturingCompanyId').val() || storeId || "";
+        const workshift = $('#WorkShift').val();
+        const warehouseId = $('#ProductId').val(); // Get selected employee Id
+        isFixed = $('#isFixed').val() === "true"; // Convert to boolean
+         startDate = document.getElementById('startDate').value;
+         endDate = document.getElementById('endDate').value;
+        console.log(isFixed);
+        // Construct the query string
+        let queryString = `?startDate=${startDate}&endDate=${endDate}&employeeId=${employeeId}&ordersourceId=${ordersourceId}&genderId=${genderId}&storeId=${storeId}&workshift=${workshift}&workshift=${workshift}`;
+
+
+        console.log("Navigating to page with parameters:");
+        console.log("Store ID:", storeId);
+        console.log("Store Name:", storeName);
+        console.log("Delivered:", delivered);
+
+        if (warehouseId) {
+            queryString += `&mainwarehouseId=${warehouseId}`;
+        }
+        if (isFixed) {
+            queryString += '&isFixed=true';
+        }
+        if (employeeName) {
+            queryString += `&employeeName=${employeeName}`;
+        }
+        if (storeName) {
+            queryString += `&storeName=${storeName}`;
+        }
+        if (countryName) {
+            queryString += `&countryName=${countryName}`;
+        }
+        if (isOffer) {
+            queryString += '&IsOffer=true';
+        }
+        if (isDiscount) {
+            queryString += '&isDiscount=true';
+        }
+        if (isEmployeebonus) {
+            queryString += '&isEmployeebonus=true';
+        }
+        if (isComments) {
+            queryString += '&isComments=true';
+        }
+        if (isMale) {
+            queryString += `&isMale=true`;
+        }
+        if (isFemale) {
+            queryString += `&isFemale=true`;
+        }
+        if (countryId) {
+            queryString += `&countryId=${countryId}`;
+        }
+        if (delivered !== undefined) {
+            queryString += `&isDeliverd=${delivered}`;
+        }
+
+        // Redirect to the desired page with the query string
+        window.open('/Rating/EmployeOrdersDetails' + queryString, '_blank');
+    }
+
+    $(document).on('click', '.filter-orders', function (event) {
+        // Prevent the click event from propagating to its children
+        event.stopPropagation();
+
+        // Retrieve the countryId and countryName from the data attributes
+        var countryId = $(this).closest('.container-fluid').data('country-id');
+        var countryName = $(this).closest('.container-fluid').data('country-name');
+        var delivered = $(this).data('delivered');
+
+        // Call navigateToPage function with the countryId and countryName parameters
+        navigateToPage(null, false, false, false, false, false, false, null, null, countryId, countryName, null, null, delivered);
+    });
+
+    $(document).on('click', '.filter-ordersbystore', function (event) {
+        // Prevent the click event from propagating to its children
+        event.stopPropagation();
+
+        // Retrieve the countryId and countryName from the data attributes
+        var storeId = $(this).closest('.container-fluid').data('store-id');
+        var storeName = $(this).closest('.container-fluid').data('store-name');
+        var delivered = $(this).data('delivered'); // Retrieve the delivered attribute
+
+        console.log("Delivered:", delivered);
+
+
+        // Call navigateToPage function with the countryId and countryName parameters
+        navigateToPage(null, false, false, false, false, false, false, null, null, null, null, storeId, storeName, delivered);
+    });
+
+    $(document).on('click', '.filter-orderstotal', function (event) {
+        // Prevent the click event from propagating to its children
+        event.stopPropagation();
+
+        // Retrieve the countryId and countryName from the data attributes
+        var delivered = $(this).data('delivered');
+
+        // Call navigateToPage function with the countryId and countryName parameters
+        navigateToPage(null, false, false, false, false, false, false, null, null, null, null, null, null, delivered);
+    });
+
+   
+
+
+</script>

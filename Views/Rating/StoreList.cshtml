@@ -1,0 +1,746 @@
+@model lotus_blue.Models.ViewModel.EmployeeRatingCompositeViewModel
+@using lotus_blue.Services
+@inject GetCurrentTimeInIstanbul Currenttime
+@{
+    ViewData["Title"] = "تقييم المتاجر";
+
+}
+@{
+    DateTime now = Currenttime.GetIstanbulTimeWithOffset();
+
+    // Check if the current time is before 11 AM
+    if (now.Hour < 11)
+    {
+        // If before 11 AM, consider it as the previous day
+        now = now.AddDays(-1);
+    }
+
+    // Set the start time to 11 AM of the determined date
+    DateTime startDateTime = new DateTime(now.Year, now.Month, now.Day, 11, 0, 0);
+    // Calculate end time which is exactly 1 day after start time
+    DateTime endDateTime = startDateTime.AddDays(1);
+
+   @functions {
+    private string GetRandomColor()
+    {
+        Random rand = new Random();
+        int r = rand.Next(256);
+        int g = rand.Next(256);
+        int b = rand.Next(256);
+        return $"rgb({r}, {g}, {b})";
+    }
+}
+
+}
+
+<style>
+    @@media (min-width: 992px) {
+    .col-lg-3 {
+        flex: 0 0 auto;
+        width: 24%;
+    }
+}
+
+    .hover-box:hover{
+        background-color:#f0f0f0
+
+    }
+
+     .width-120px{
+      width:120px !important;
+  }
+    .shadow-border:hover{
+        background-color: #F0F0F0; /* Background color on hover for the entire row */
+    }
+
+
+    .shadow-border {
+        background-color: #ffffff;
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2);
+        border-radius: 8px !important;
+        padding: 6px;
+        font-size: 18px;
+    }
+
+
+  
+
+      .custom-shadow-inpage:hover {
+        box-shadow: 0px 0px 6px #1d273b;
+   
+    }
+
+
+    .width-99 {
+        width: 99% !important;
+    }
+
+    .col-lg {
+        border-radius: 8px !important;
+        padding: 6px;
+        font-size: 18px;
+        box-shadow: none !important;
+
+    }
+   
+</style>
+
+
+<div id="total" class="main-hover">
+    <div class="row align-items-center background-white custom-shadow-inpage py-0">
+        <div class="col-md-auto text-md-end mb-3 mb-md-0">
+            <div id="navigateButton" class="fw-bold text-white btn background-gold" onclick="navigateToPage()">
+                يحصل الأن
+            </div>
+        </div>
+
+        @if (User.IsInRole("Admin"))
+        {
+            <div class="col-lg col-6 col-md">
+                <div class="text-muted text-nowrap mb-2">
+                    إجمالي المبلغ الذي تم انفاقه
+                </div>
+                <div class="d-flex text-green align-items-center">
+                    <div class="fw-bold">
+                        TRY
+                    </div>
+                    <div class="fw-bold ms-2">
+                        @Model.TotalOrdersPriceInTL
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg col-6 col-md">
+                <div class="text-muted text-nowrap mb-2">
+                    إجمالي المبلغ الذي تم انفاقه
+                </div>
+                <div class="d-flex text-green align-items-center">
+                    <div class="fw-bold">
+                        USD
+                    </div>
+                    <div class="fw-bold ms-2">
+                        @Model.TotalOrdersPriceInDollar
+                    </div>
+                </div>
+            </div>
+        }
+
+
+        <div class="col-lg col-6 col-md ordersDiv">
+            <div class="text-muted mb-2">
+                عدد الطلبات
+            </div>
+            <div class="fw-bold text-green">
+                @Model.TotalNumberOfOrders
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md processedDiv">
+            <div class="text-muted mb-2">
+                تم المعالجة
+            </div>
+            <div class="fw-bold text-green">
+                @Model.FixedOrdersCount
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md offersDiv">
+            <div class="text-muted mb-2">
+                العروض
+            </div>
+            <div class="fw-bold text-green">
+                @Model.OrderFromOffersCount
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md discountdiv">
+            <div class="text-muted mb-2">
+                التخفضيفات
+            </div>
+            <div class="fw-bold text-green">
+                @Model.OrderFromOfferDiscountsCount
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md employeebonusdiv">
+            <div class="text-muted mb-2">
+                عمولة المبيعات
+            </div>
+            <div class="fw-bold text-green">
+                @Model.NumberOfBouneses
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md productcountdiv">
+            <div class="text-muted mb-2">
+                عدد القطع
+            </div>
+            <div class="fw-bold text-green">
+                @Model.TotalProductsCount
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md commentsdiv">
+            <div class="text-muted mb-2">
+                التعليقات
+            </div>
+            <div class="fw-bold text-green">
+                @Model.OrderFromCommentsCount
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md femalediv">
+            <div class="text-muted mb-2 text-green">
+                أنثى
+            </div>
+            <div class="fw-bold text-green">
+                @Model.OrderFromFemalesCount
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md malediv">
+            <div class="text-muted mb-2 text-green">
+                ذكر
+            </div>
+            <div class="fw-bold text-green">
+                @Model.OrderFromMalesCount
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md potentialordersdiv">
+            <div class="text-muted mb-2">
+                البيانات المدخلة
+            </div>
+            <div class="fw-bold text-green">
+                @Model.PotentialOrdersCount
+            </div>
+        </div>
+
+        <div class="col-12 col-md-auto text-md-start pe-3">
+            <div class="fw-bold">
+                <span class="text-green b-r-8 px-2" style="background-color:f0fffc;">Management</span>
+            </div>
+            <div class="fw-bold">
+                MAJESTA GROUP
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+<div class="width-99 my-2 me-0 mx-auto ">
+
+    <div class="row me-0 text-end mx-auto d-flex justify-content-between">
+
+
+          
+          <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap custom-shadow-inpage" >
+
+            <div>
+                    <input id="custom-datepicker" class="form-control custom-datepicker" placeholder=" فلتر حسب التاريخ " readonly>
+                    <script src="/js/datepicker.min.js"></script>
+               </div>
+
+        </div>
+
+
+
+        <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="EmployeeId" name="Employee" class="form-control drop-down-design" >
+            </select>
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="GenderId" name="Gender" class="form-control drop-down-design" >
+          
+            </select>
+        </div>
+
+
+
+            <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+                <select id="ProductId" name="Product" class="form-control drop-down-design" >
+
+                </select>
+
+            </div>
+
+            <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+                <select id="ManufacturingCompanyId" name="ManufacturingCompany" class="form-control drop-down-design" >
+                </select>
+            </div>
+
+           
+            <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+                <select id="OrderSourceId" name="OrderSource" class="form-control drop-down-design" >
+                  
+                </select>
+            </div>
+
+            <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+                <select id="CountryId" name="Country" class="form-control drop-down-design" >
+                 
+                </select>
+            </div>
+
+              <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+                <select id="WorkShift" name="workshift" class="form-control drop-down-design">
+                 
+                </select>
+            </div>
+
+
+    </div>
+
+</div>
+
+
+
+
+
+<input type="hidden" id="startDate" />
+<input type="hidden" id="endDate" />
+
+
+<h1 class="f-s-16 text-green">المتاجر</h1>
+
+<div id="storedata">
+    <div class="mb-2">
+        <div class="row">
+            @foreach (var store in Model.OrdersByStore)
+            {
+                var randomColor = GetRandomColor();
+                <div  data-store-name="@store.Name" data-store-Id="@store.StoreId" class="shadow-border col-lg-3  col-12 store-data my-2 mx-lg-2 p-3">
+                    <style>
+                        .progress-bar-circle-store-@store.StoreId {
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            width: 100px;
+                            height: 100px;
+                            border-radius: 50%;
+                            background: radial-gradient(closest-side, white 79%, transparent 80% 100%), 
+                                        conic-gradient(@randomColor @store.Rating%, #f0f0f0 0);
+                        }
+
+                        .progress-bar-circle-store-@store.StoreId::before {
+                            content: "@store.Rating%";
+                            color: black;
+                        }
+                    </style>
+                    <div class="row">
+                        <div class="col-6 pt-3">
+                            <p class="mb-0 fw-bold">@store.OrderCount</p>
+                            <p class="text-nowrap f-s-14">
+                                <img width="18" height="18" src="/@store.StoreImage" /> @store.Name
+                            </p>
+                            <div class="row">
+                                <div class="col-lg-6">
+                                    <div class="discountdivstore">التخفيضات @store.OrderFromOffersCount</div>
+                                    <div class="employeebonusdivstore">العمولات @store.NumberOfBonuses</div>
+                                    <div class="employeeCommentsdivstore">التعليقات @store.OrderFromCommentsCount</div>
+                                    <div class="potentialordersdivstore">عملاء @store.PotentialOrdersCount</div>
+                                </div>
+                                <div class="col-lg-6">
+                                    <div class="fixeddivstore">تم المعالجة @store.FixedOrderCount</div>
+                                    <div class="offerdivstore">العروض @store.OrderFromOffersCount</div>
+                                    <div class="femaledivstore">ذكر @store.OrderFromMalesCount</div>
+                                    <div class="maledivstore">أنثى @store.OrderFromFemalesCount</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 d-flex justify-content-end">
+                            <div class="progress-bar-circle-store-@store.StoreId"></div>
+                        </div>
+                        <div class="d-flex text-green justify-content-between pt-3">
+                            <p class="text-nowrap f-s-14 fw-bolder">TRY @store.TotalPriceWithoutDeliveryTl</p>
+                            <p class="text-nowrap f-s-14 fw-bolder me-5">USD @store.TotalPriceWithoutDeliveryUSD</p>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+ 
+    $(document).ready(function () {
+         
+        
+         initializeLitepicker('.custom-datepicker', updateEmployeeData);
+
+
+        // Event listener for dropdown changes
+        $('#EmployeeId, #CountryId, #OrderSourceId, #GenderId,#ManufacturingCompanyId,#WorkShift,#ProductId').on('change', function () {
+            updateEmployeeData();
+        });
+
+
+        // Function to handle the AJAX request
+        function navigateToPage(isFixed, isOffer , isDiscount , isEmployeebonus ,isComments, isMale, isFemale,employeeId,employeeName ,countryId,countryName,storeId,storeName) {
+
+               startDate = document.getElementById('startDate').value;
+               endDate = document.getElementById('endDate').value;
+
+                employeeId = $('#EmployeeId').val() || employeeId ||""  ;
+                const ordersourceId = $('#OrderSourceId').val();
+                const genderId = $('#GenderId').val();
+                 storeId = $('#ManufacturingCompanyId').val() || storeId  ||"" ;
+                const workshift = $('#WorkShift').val();
+
+                // Construct the query string
+                let queryString = `?startDate=${startDate}&endDate=${endDate}&employeeId=${employeeId}&ordersourceId=${ordersourceId}&genderId=${genderId}&storeId=${storeId}&workshift=${workshift}`;
+
+                // Add the isFixed parameter if it's true
+                if (isFixed) {
+                    queryString += '&isFixed=true';
+                }
+              if (employeeName) {
+                  queryString += `&employeeName=${employeeName}`;
+                }
+                 if(storeName){
+                 queryString += `&storeName=${storeName}`;
+                }
+                if(countryName){
+                 queryString += `&countryName=${countryName}`;
+                }
+                // Add the isOffers parameter if it's true
+                if (isOffer) {
+                    queryString += '&IsOffer=true';
+                }
+                 if (isDiscount) {
+                    queryString += '&isDiscount=true';
+                }
+                 if (isEmployeebonus) {
+                    queryString += '&isEmployeebonus=true';
+                }
+                   if (isComments) {
+                    queryString += '&isComments=true';
+                }
+                 if (isMale) {
+                        queryString += `&isMale=true`;
+                    }
+                     if (isFemale) {
+                        queryString += `&isFemale=true`;
+                    }
+                         if (countryId) {
+                        queryString += `&countryId=${countryId}`;
+                    }
+                  
+
+
+                // Redirect to the desired page with the query string
+                window.open('/Rating/EmployeOrdersDetails' + queryString, '_blank');
+            }
+
+         
+            // coutnry 
+            $(document).on('click', '.orderdata', function(event) {
+                // Prevent the click event from propagating to its children
+                event.stopPropagation();
+
+                // Retrieve the countryId and countryName from the data attributes
+                var countryId = $(this).data('country-id');
+                var countryName = $(this).data('country-name');
+
+                // Call navigateToPage function with the countryId and countryName parameters
+                navigateToPage(false, false, false, false, false, false, false, null, null, countryId, countryName);
+            });
+
+
+            $(document).on('click', '.discountdivorder', function(event) {
+                event.stopPropagation();
+
+                // Retrieve the countryId and countryName from the parent orderdata element
+                var countryId = $(this).closest('.orderdata').data('country-id');
+                var countryName = $(this).closest('.orderdata').data('country-name');
+
+                // Call navigateToPage function with the countryId, countryName, and isDiscount parameter
+                navigateToPage(false, false, true, false, false, false, false, null, null, countryId, countryName);
+            });
+
+            $(document).on('click', '.employeebonusdivorder', function(event) {
+                event.stopPropagation();
+
+                // Retrieve the countryId and countryName from the parent orderdata element
+                var countryId = $(this).closest('.orderdata').data('country-id');
+                var countryName = $(this).closest('.orderdata').data('country-name');
+
+                // Call navigateToPage function with the countryId, countryName, and isEmployeebonus parameter
+                navigateToPage(false, false, false, true, false, false, false, null, null, countryId, countryName);
+            });
+
+            $(document).on('click', '.employeeCommentsdivorder', function(event) {
+                event.stopPropagation();
+
+                // Retrieve the countryId and countryName from the parent orderdata element
+                var countryId = $(this).closest('.orderdata').data('country-id');
+                var countryName = $(this).closest('.orderdata').data('country-name');
+
+                // Call navigateToPage function with the countryId, countryName, and isEmployeebonus parameter
+                navigateToPage(false, false, false, false, true, false, false, null, null, countryId, countryName);
+            });
+
+            //store 
+            $(document).on('click', '.store-data', function(event) {
+                event.stopPropagation();
+
+                // Retrieve the storeId from the data attribute
+                var storeId = $(this).data('store-id');
+                    var storeName = $(this).data('store-name');
+
+                // Call navigateToPage function with the storeId parameter
+                navigateToPage(false, false, false, false, false, false, false, null, null,null,null, storeId,storeName);
+            });
+
+            $(document).on('click', '.discountdivstore', function(event) {
+                event.stopPropagation();
+
+                // Retrieve the storeId and storeName from the parent store-data element
+                var storeId = $(this).closest('.store-data').data('store-id');
+                var storeName = $(this).closest('.store-data').data('store-name');
+
+                // Call navigateToPage function with the storeId, storeName, and isDiscount parameter
+                navigateToPage(false, false, true, false, false, false, false, null, null, null, null, storeId, storeName);
+            });
+
+            $(document).on('click', '.employeebonusdivstore', function(event) {
+                event.stopPropagation();
+
+                // Retrieve the storeId and storeName from the parent store-data element
+                var storeId = $(this).closest('.store-data').data('store-id');
+                var storeName = $(this).closest('.store-data').data('store-name');
+
+                // Call navigateToPage function with the storeId, storeName, and isEmployeebonus parameter
+                navigateToPage(false, false, false, true, false, false, false, null, null, null, null, storeId, storeName);
+            });
+
+            $(document).on('click', '.employeeCommentsdivstore', function(event) {
+                event.stopPropagation();
+
+                // Retrieve the storeId and storeName from the parent store-data element
+                var storeId = $(this).closest('.store-data').data('store-id');
+                var storeName = $(this).closest('.store-data').data('store-name');
+
+                // Call navigateToPage function with the storeId, storeName, and isEmployeebonus parameter
+                navigateToPage(false, false, false, false, true, false, false, null, null, null, null, storeId, storeName);
+            });
+
+
+            // employee
+       
+            $(document).on('click', '.employee-info', function(event) {
+                // Prevent the click event from propagating to its parent elements
+                event.stopPropagation();
+
+                // Retrieve the employeeId from the data attribute
+                var employeeId = $(this).data('employee-id');
+                var employeeName = $(this).data('employee-name');
+
+                // Call navigateToPage function with the employeeId parameter
+                navigateToPage(false, false, false, false, false, false, false, employeeId,employeeName);
+            });
+
+            $(document).on('click', '.ordersDiv', function(event) {
+                // Prevent the click event from propagating to its parent elements
+                event.stopPropagation();
+
+              // Retrieve the employeeId from the employee-info element
+                var employeeId = $(this).closest('.employee-info').data('employee-id');
+                console.log('Employee ID:', employeeId);
+                  var employeeName = $(this).closest('.employee-info').data('employee-name');
+                // Call navigateToPage function with the employeeId parameter
+                navigateToPage(false, false, false, false, false, false, false, employeeId,employeeName);
+            });
+ 
+
+            $(document).on('click', '.processedDiv', function(event) {
+                // Prevent the click event from propagating to the parent element
+                event.stopPropagation();
+
+                // Retrieve the employeeId from the employee-info element
+                var employeeId = $(this).closest('.employee-info').data('employee-id');
+                console.log('Employee ID:', employeeId);
+                  var employeeName = $(this).closest('.employee-info').data('employee-name');
+
+                // Call navigateToPage function with the employeeId and isFixed parameter
+                navigateToPage(true, false, false, false, false, false, false, employeeId,employeeName);
+            });
+
+
+            $(document).on('click', '.offersDiv', function(event) {
+                // Prevent the click event from propagating to the parent element
+                event.stopPropagation();
+
+                // Retrieve the employeeId from the employee-info element
+                var employeeId = $(this).closest('.employee-info').data('employee-id');
+                console.log('Employee ID:', employeeId);
+                     var employeeName = $(this).closest('.employee-info').data('employee-name');
+
+                // Call navigateToPage function with the employeeId and isOffer parameter
+                navigateToPage(false, true, false, false, false, false, false, employeeId,employeeName);
+            })
+
+            $(document).on('click', '.discountdiv', function(event) {
+                event.stopPropagation();
+
+                // Retrieve the employeeId from the employee-info element
+                var employeeId = $(this).closest('.employee-info').data('employee-id');
+                console.log('Employee ID:', employeeId);
+                     var employeeName = $(this).closest('.employee-info').data('employee-name');
+
+                // Call navigateToPage function with the employeeId and isFixed parameter
+                navigateToPage(false, false, true, false, false, false, false, employeeId,employeeName);  
+            });
+
+
+            $(document).on('click', '.employeebonusdiv', function(event) {
+                event.stopPropagation();
+
+                // Retrieve the employeeId from the employee-info element
+                var employeeId = $(this).closest('.employee-info').data('employee-id');
+                console.log('Employee ID:', employeeId);
+                     var employeeName = $(this).closest('.employee-info').data('employee-name');
+
+                // Call navigateToPage function with the employeeId and isFixed parameter
+                navigateToPage(false, false, false, true, false, false, false, employeeId,employeeName);
+            });
+
+            $(document).on('click', '.productcountdiv', function(event) {
+                event.stopPropagation();
+
+                // Retrieve the employeeId from the employee-info element
+                var employeeId = $(this).closest('.employee-info').data('employee-id');
+                console.log('Employee ID:', employeeId);
+                     var employeeName = $(this).closest('.employee-info').data('employee-name');
+
+                // Call navigateToPage function with the employeeId and isFixed parameter
+                navigateToPage(false, false, false, false, false, false, false, employeeId,employeeName);
+            });
+
+
+            $(document).on('click', '.commentsdiv', function(event) {
+                event.stopPropagation();
+
+                // Retrieve the employeeId from the employee-info element
+                var employeeId = $(this).closest('.employee-info').data('employee-id');
+                console.log('Employee ID:', employeeId);
+                     var employeeName = $(this).closest('.employee-info').data('employee-name');
+
+                // Call navigateToPage function with the employeeId and isFixed parameter
+                navigateToPage(false, false, false, false, true, false, false, employeeId,employeeName);
+            });
+
+            $(document).on('click', '.malediv', function(event) {
+                event.stopPropagation();
+
+                // Retrieve the employeeId from the employee-info element
+                var employeeId = $(this).closest('.employee-info').data('employee-id');
+                console.log('Employee ID:', employeeId);
+                     var employeeName = $(this).closest('.employee-info').data('employee-name');
+
+                // Call navigateToPage function with the employeeId and isFixed parameter
+                navigateToPage(false, false, false, false, false, true, false, employeeId,employeeName);
+            });
+
+            $(document).on('click', '.femalediv', function(event) {
+                event.stopPropagation();
+
+                // Retrieve the employeeId from the employee-info element
+                var employeeId = $(this).closest('.employee-info').data('employee-id');
+                 var employeeName = $(this).closest('.employee-info').data('employee-name');
+
+                console.log('Employee ID:', employeeId);
+
+                // Call navigateToPage function with the employeeId and isFixed parameter
+                navigateToPage(false, false, false, false, false, false, true, employeeId,employeeName);
+            });
+
+                 // Function to handle the AJAX request
+              function updateEmployeeData() {
+
+                  const startDate = document.getElementById('startDate').value;
+                  const endDate = document.getElementById('endDate').value;
+
+                    console.log("Sending AJAX request with dates:", startDate, endDate);
+
+                        const selectedDateRange = $('#selectedDateRange').text();
+                        const employeeId = $('#EmployeeId').val(); // Get selected employee Id
+                        const selectedCountry = $('#CountryId').val(); // Get selected countryId
+                        const currentSource = $('#OrderSourceId').val(); // Get selected order source
+                        const selectedGender = $('#GenderId').val(); // Get selected genderId
+                        const selectedStore = $('#ManufacturingCompanyId').val(); // Get selected genderId
+                        const workshift=$('#WorkShift').val(); // Get selected genderId
+                        const warehouseId = $('#ProductId').val(); // Get selected employee Id
+
+                       
+                        var countryId = $('#CountryId').val();
+
+
+                        $.ajax({
+                            url: '/Rating/storelist',
+                            type: 'GET',
+                            data: {
+                                employeeId: employeeId,
+                                countryId: selectedCountry,
+                                orderSourceId: currentSource,
+                                genderId: selectedGender,
+                                storeId: selectedStore,
+                                startDay: startDate,
+                                endDay: endDate,
+                                workshift:workshift,
+                                mainwarehouseId: warehouseId  // Corrected syntax
+                            },
+                            success: function (result) {
+                                // Update the table and rating section with the result
+                                $('#employeeTableBody').html($(result).find('#employeeTableBody').html());
+                                $('#Rating').html($(result).find('#Rating').html());
+                                $('#total').html($(result).find('#total').html());
+                                $('#employeedata').html($(result).find('#employeedata').html());
+                                $('#countrydata').html($(result).find('#countrydata').html());
+                                $('#storedata').html($(result).find('#storedata').html());
+
+                            }
+                        });
+                    }
+
+
+
+                $('div').on('click', '.filter-orders', function () {
+                    var selectedDateRangeText = $('#selectedDateRange').text();
+                    var orderStatusGroup = $(this).data('orderstatusgroup'); // Retrieve the orderStatusGroup from the clicked div
+
+                    // Retrieve selected countryId and order source values from dropdowns
+                    var selectedCountry = $('#CountryId').val(); // Make sure this is correctly set up
+                    var orderSource = $('#OrderSourceId').val();
+
+                    var url = `/Rating/EmployeOrdersDetails?selectedDateRange=${encodeURIComponent(selectedDateRangeText)}&selectedCountry=${encodeURIComponent(selectedCountry)}&orderStatusGroup=${encodeURIComponent(orderStatusGroup)}&ordersource=${encodeURIComponent(orderSource)}`;
+                    window.location.href = url;
+                });
+
+
+                $('#employeeTableBody').on('click', '.employee-order-row', function () {
+                    var employeeId = $(this).data('employee-id');
+                    var selectedDateRangeText = $('#selectedDateRange').text();
+                    var selectedGender = $('#GenderId').val(); // Corrected to get value from the genderId dropdown
+
+                    // Retrieve selected countryId and order source values from dropdowns
+                    var selectedCountry = $('#CountryId').val(); // Make sure this is correctly set up
+                    var orderSource = $('#OrderSourceId').val(); // Ensure the ID matches the dropdown element
+
+                    // Construct the URL with all parameters
+                    var url = `/Rating/EmployeOrdersDetails?employeeId=${encodeURIComponent(employeeId)}&selectedDateRange=${encodeURIComponent(selectedDateRangeText)}&selectedCountry=${encodeURIComponent(selectedCountry)}&ordersource=${encodeURIComponent(orderSource)}&genderId=${encodeURIComponent(selectedGender)}`; // Include genderId parameter
+
+                    // Navigate to the URL
+                    window.location.href = url;
+                });
+
+    });
+
+               
+</script>

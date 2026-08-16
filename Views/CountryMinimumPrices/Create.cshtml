@@ -1,0 +1,77 @@
+@model lotus_blue.ViewModels.CountryMinimumPriceViewModel
+@{
+    ViewData["Title"] = "إنشاء الحد الأدنى للأسعار حسب البلد";
+    var stores = ViewBag.Stores as List<lotus_blue.Models.ManufacturingCompany> ?? new List<lotus_blue.Models.ManufacturingCompany>();
+}
+
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create" id="createMinPriceForm">
+            <div class="form-group">
+                <label asp-for="Country" class="control-label">البلد</label>
+                <select asp-for="Country" class="form-control" asp-items="@(Html.GetEnumSelectList<lotus_blue.Models.Common.Countries>())"></select>
+                <span asp-validation-for="Country" class="text-danger"></span>
+            </div>
+            <div class="form-group mt-3">
+                <label asp-for="ManufacturingCompanyId" class="control-label">المتجر</label>
+                <select asp-for="ManufacturingCompanyId" class="form-control" id="manufacturingCompanyDropdown">
+                    <option data-image="/static/building-regular.svg" value="" disabled selected>اسم المتجر</option>
+                    @foreach (var store in stores)
+                    {
+                        <option value="@store.Id" data-image="@store.ImageUrl">@store.Name</option>
+                    }
+                </select>
+                <span asp-validation-for="ManufacturingCompanyId" class="text-danger"></span>
+            </div>
+            <div class="form-group mt-3">
+                <label asp-for="MinimumPriceForOffers" class="control-label">الحد الأدنى للعروض</label>
+                <input asp-for="MinimumPriceForOffers" class="form-control" />
+                <span asp-validation-for="MinimumPriceForOffers" class="text-danger"></span>
+            </div>
+            <div class="form-group mt-3">
+                <label asp-for="MaximumPriceForOffers" class="control-label">الحد الأقصى للعروض</label>
+                <input asp-for="MaximumPriceForOffers" class="form-control" />
+                <span asp-validation-for="MaximumPriceForOffers" class="text-danger"></span>
+            </div>
+            <div class="form-group mt-3 d-inline-flex">
+                <input type="submit" value="موافقة" class="btn btn-success" />
+                <a class="btn me-2 btn-secondary" asp-action="Index">العودة إلى القائمة</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        $(function () {
+            function formatOption(option) {
+                var imageUrl = $(option.element).data('image');
+                var imageTag = imageUrl ? '<img src="' + imageUrl + '" class="img-flag" style="margin-right: 5px; width: 14px; height: 14px;" />' : '';
+                return $('<span>' + imageTag + option.text + '</span>');
+            }
+
+            $('#manufacturingCompanyDropdown').select2({
+                templateResult: formatOption,
+                templateSelection: formatOption,
+                dir: 'rtl',
+                minimumResultsForSearch: 1
+            });
+
+            $('#createMinPriceForm').on('submit', function (e) {
+                if (!$('#manufacturingCompanyDropdown').val()) {
+                    e.preventDefault();
+                    if (!$('#manufacturingCompanyDropdown ~ .store-error').length) {
+                        $('#manufacturingCompanyDropdown').closest('.form-group').append('<span class="text-danger store-error">يرجى اختيار متجر.</span>');
+                    }
+                }
+            });
+
+            $('#manufacturingCompanyDropdown').on('change', function () {
+                $('#manufacturingCompanyDropdown ~ .store-error').remove();
+            });
+        });
+    </script>
+}

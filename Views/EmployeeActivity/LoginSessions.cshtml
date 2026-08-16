@@ -1,0 +1,1065 @@
+@model Crm_LotusBlue.Controllers.EmployeeLoginActivityPageViewModel
+
+@{
+    ViewData["Title"] = "سجل نشاط الموظفين";
+    ViewBag.Title = "سجل نشاط الموظفين";
+    ViewBag.PageTitle = "سجل نشاط الموظفين";
+    ViewBag.HeaderTitle = "سجل نشاط الموظفين";
+}
+
+
+@functions {
+    static string NormalizeActivityPageText(string currentPage)
+    {
+        if (string.IsNullOrWhiteSpace(currentPage))
+        {
+            return "-";
+        }
+
+        var value = currentPage.Trim();
+        var lowerValue = value.ToLowerInvariant();
+
+        // Normalize common Home/Index values, localhost URLs, and root urls.
+        string NormalizePathFromText(string rawText)
+        {
+            if (string.IsNullOrWhiteSpace(rawText))
+            {
+                return string.Empty;
+            }
+
+            var urlValue = rawText.Trim();
+
+            if (!urlValue.StartsWith("http://", System.StringComparison.OrdinalIgnoreCase)
+                && !urlValue.StartsWith("https://", System.StringComparison.OrdinalIgnoreCase)
+                && (urlValue.Contains("localhost")
+                    || urlValue.Contains("127.0.0.1")
+                    || urlValue.Contains("[::1]")
+                    || urlValue.Contains(":")))
+            {
+                urlValue = "http://" + urlValue.TrimStart('/');
+            }
+
+            if (System.Uri.TryCreate(urlValue, System.UriKind.Absolute, out var uri))
+            {
+                return (uri.AbsolutePath ?? string.Empty).Trim().TrimEnd('/').ToLowerInvariant();
+            }
+
+            return rawText.Trim().TrimEnd('/').ToLowerInvariant();
+        }
+
+        var normalizedPath = NormalizePathFromText(value);
+
+        if (lowerValue == "/"
+            || lowerValue == "\\"
+            || lowerValue == "home"
+            || lowerValue == "home/index"
+            || lowerValue == "/home"
+            || lowerValue == "/home/"
+            || lowerValue == "/home/index"
+            || lowerValue == "/home/index/"
+            || lowerValue == "local:port"
+            || normalizedPath == ""
+            || normalizedPath == "/"
+            || normalizedPath == "home"
+            || normalizedPath == "home/index"
+            || normalizedPath == "/home"
+            || normalizedPath == "/home/index")
+        {
+            return "الصفحة الرئيسية";
+        }
+
+        // Some tracking scripts save the full browser URL as a raw string.
+        if ((lowerValue.Contains("localhost")
+                || lowerValue.Contains("127.0.0.1")
+                || lowerValue.Contains("[::1]")
+                || lowerValue.Contains("local:port"))
+            && (normalizedPath == ""
+                || normalizedPath == "/"
+                || normalizedPath == "/home"
+                || normalizedPath == "/home/index"))
+        {
+            return "الصفحة الرئيسية";
+        }
+
+        if ((lowerValue.Contains("/home") || lowerValue.Contains("home/index"))
+            && !lowerValue.Contains("employeeactivity"))
+        {
+            return "الصفحة الرئيسية";
+        }
+
+        return value;
+    }
+}
+
+<div class="login-sessions-page" dir="rtl">
+    <style>
+        .login-sessions-page {
+            width: 100%;
+            max-width: 100%;
+            padding: 16px;
+            box-sizing: border-box;
+        }
+
+        .login-sessions-filter-card,
+        .login-sessions-card-wrapper {
+            background: #ffffff;
+            border: 1px solid #e9eaec;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+            border-radius: 18px;
+        }
+
+        .login-sessions-filter-card {
+            padding: 16px;
+            margin-bottom: 18px;
+        }
+
+        .login-sessions-title {
+            background: #F5F5F5;
+            color: #f28e02;
+            border-radius: 14px;
+            padding: 14px 18px;
+            font-size: 21px;
+            font-weight: 900;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #94a3b8;
+        }
+
+        .form-label {
+            font-weight: 800;
+            color: #334155;
+            margin-bottom: 8px;
+        }
+
+        .login-filter-input {
+            min-height: 44px;
+            height: 44px;
+            border-radius: 8px !important;
+            border: 0 !important;
+            background-color: #ffffff !important;
+            box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2) !important;
+            color: #111827 !important;
+            font-size: 16px;
+            font-weight: 700;
+            padding-right: 14px;
+            padding-left: 14px;
+            outline: none !important;
+        }
+
+        .filter-btn,
+        .reset-btn {
+            border: 0;
+            border-radius: 999px;
+            min-height: 44px;
+            padding: 7px 22px;
+            color: #ffffff;
+            font-weight: 800;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+            white-space: nowrap;
+        }
+
+        .filter-btn {
+            background: #1d273b;
+        }
+
+        .reset-btn {
+            background: #64748b;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        .login-sessions-card-wrapper {
+            padding: 16px;
+        }
+
+            .login-sessions-card-wrapper.hour-filter-mode {
+                background: #ffffff;
+            }
+
+        .login-sessions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(430px, 1fr));
+            gap: 18px;
+        }
+
+        @@media (max-width: 700px) {
+            .login-sessions-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .employee-activity-card {
+            position: relative;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            padding: 16px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+            overflow: hidden;
+        }
+
+            .employee-activity-card::before {
+                content: "";
+                position: absolute;
+                top: 0;
+                right: 0;
+                left: 0;
+                height: 6px;
+                background: #94a3b8;
+            }
+
+            .employee-activity-card.online::before {
+                background: #16a34a;
+            }
+
+            .employee-activity-card.idle::before {
+                background: #f28e02;
+            }
+
+            .employee-activity-card.offline::before {
+                background: #dc2626;
+            }
+
+        .employee-card-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .employee-image {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid rgba(24, 160, 136, 0.20);
+            background: #f8fafc;
+        }
+
+        .employee-main-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .employee-name {
+            color: #334155;
+            font-size: 18px;
+            font-weight: 900;
+            margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .employee-email {
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 700;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: 14px;
+            font-weight: 900;
+            margin-bottom: 12px;
+        }
+
+            .status-pill .dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+            }
+
+            .status-pill.online {
+                color: #16a34a;
+                background: rgba(22, 163, 74, 0.12);
+            }
+
+                .status-pill.online .dot {
+                    background: #16a34a;
+                }
+
+            .status-pill.idle {
+                color: #f28e02;
+                background: rgba(242, 142, 2, 0.14);
+            }
+
+                .status-pill.idle .dot {
+                    background: #f28e02;
+                }
+
+            .status-pill.offline {
+                color: #dc2626;
+                background: rgba(220, 38, 38, 0.12);
+            }
+
+                .status-pill.offline .dot {
+                    background: #dc2626;
+                }
+
+        .activity-details {
+            display: grid;
+            gap: 8px;
+        }
+
+        .activity-detail-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 8px 10px;
+            background: #f8fafc;
+            border-radius: 12px;
+            color: #334155;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+            .activity-detail-row span:first-child {
+                color: #64748b;
+                white-space: nowrap;
+            }
+
+            .activity-detail-row span:last-child {
+                text-align: left;
+                direction: ltr;
+                overflow-wrap: anywhere;
+            }
+
+        .empty-login-sessions {
+            text-align: center;
+            color: #64748b;
+            font-size: 18px;
+            font-weight: 800;
+            padding: 35px 10px;
+        }
+
+        .hour-history-box {
+            margin-top: 12px;
+            padding: 10px;
+            border-radius: 14px;
+            background: #fff7ed;
+            border: 1px solid rgba(242, 142, 2, 0.25);
+        }
+
+        .hour-history-title {
+            color: #334155;
+            font-size: 14px;
+            font-weight: 900;
+            margin-bottom: 8px;
+        }
+
+        .hour-history-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .hour-history-input {
+            flex: 1;
+            min-width: 120px;
+            height: 38px;
+            border: 0 !important;
+            border-radius: 10px !important;
+            background: #ffffff !important;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.18) !important;
+            color: #111827 !important;
+            font-size: 14px;
+            font-weight: 800;
+            padding: 6px 10px;
+            direction: ltr;
+        }
+
+        .hour-history-btn {
+            height: 38px;
+            border: 0;
+            border-radius: 999px;
+            padding: 6px 14px;
+            background: #f28e02;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 900;
+            cursor: pointer;
+        }
+
+        .hour-history-result {
+            display: none;
+            margin-top: 9px;
+            border-radius: 12px;
+            padding: 9px 10px;
+            font-size: 13px;
+            font-weight: 900;
+            line-height: 1.8;
+        }
+
+            .hour-history-result.online {
+                display: block;
+                color: #16a34a;
+                background: rgba(22, 163, 74, 0.12);
+            }
+
+            .hour-history-result.idle {
+                display: block;
+                color: #f28e02;
+                background: rgba(242, 142, 2, 0.14);
+            }
+
+            .hour-history-result.offline {
+                display: block;
+                color: #dc2626;
+                background: rgba(220, 38, 38, 0.12);
+            }
+
+            .hour-history-result.out-shift {
+                display: block;
+                color: #64748b;
+                background: #f1f5f9;
+            }
+
+
+        .employee-activity-card.hour-filtered {
+            border-color: rgba(242, 142, 2, 0.45);
+            box-shadow: 0 12px 28px rgba(242, 142, 2, 0.13);
+        }
+
+            .employee-activity-card.hour-filtered::after {
+                content: "فلتر ساعة مفعل";
+                position: absolute;
+                top: 10px;
+                left: 12px;
+                background: #f28e02;
+                color: #ffffff;
+                border-radius: 999px;
+                padding: 3px 9px;
+                font-size: 11px;
+                font-weight: 900;
+                z-index: 2;
+            }
+
+        .hour-history-box {
+            margin-top: 0;
+            margin-bottom: 12px;
+            padding: 10px;
+            border-radius: 14px;
+            background: #ffffff;
+            border: 1px solid rgba(242, 142, 2, 0.25);
+            box-shadow: 0 5px 13px rgba(15, 23, 42, 0.05);
+        }
+
+        .hour-history-cancel-btn {
+            height: 38px;
+            border: 0;
+            border-radius: 999px;
+            padding: 6px 14px;
+            background: #64748b;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 900;
+            cursor: pointer;
+            display: none;
+        }
+
+        .employee-activity-card.hour-filtered .hour-history-cancel-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hour-history-inline-message {
+            margin-top: 8px;
+            color: #64748b;
+            background: #ffffff;
+            border: 1px dashed #e2e8f0;
+            border-radius: 10px;
+            padding: 7px 9px;
+            font-size: 12px;
+            font-weight: 800;
+            display: none;
+        }
+
+            .hour-history-inline-message.show {
+                display: block;
+            }
+
+
+        .live-status-note {
+            margin-top: 10px;
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 800;
+            text-align: left;
+            direction: rtl;
+        }
+
+    </style>
+
+    <div class="login-sessions-filter-card">
+        <div class="login-sessions-title">سجل نشاط الموظفين</div>
+        <div id="liveStatusLastUpdate" class="live-status-note">يتم تحديث حالة الكروت تلقائيًا كل 5 ثواني بدون إعادة تحميل الصفحة</div>
+
+        <form method="get" asp-controller="EmployeeActivity" asp-action="LoginSessions">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="form-label">من تاريخ</label>
+                    <input type="date"
+                           name="fromDate"
+                           value="@Model.FromDate.ToString("yyyy-MM-dd")"
+                           class="form-control login-filter-input" />
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <label class="form-label">إلى تاريخ</label>
+                    <input type="date"
+                           name="toDate"
+                           value="@Model.ToDate.ToString("yyyy-MM-dd")"
+                           class="form-control login-filter-input" />
+                </div>
+
+                <div class="col-12 col-md-4 d-flex gap-2 flex-wrap">
+                    <button type="submit" class="filter-btn">فلترة</button>
+                    <a href="/EmployeeActivity/LoginSessions" class="reset-btn">إلغاء الفلتر</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="login-sessions-card-wrapper">
+        @if (Model.Cards.Any())
+        {
+            <div class="login-sessions-grid">
+                @foreach (var item in Model.Cards)
+                {
+                    <div class="employee-activity-card @item.StatusClass" data-log-id="@item.Id" data-employee-id="@(item.EmployeeId.HasValue ? item.EmployeeId.Value.ToString() : "")">
+                        <div class="employee-card-top">
+                            <img src="@item.EmployeeImageUrl"
+                                 class="employee-image"
+                                 alt="@item.EmployeeName"
+                                 onerror="this.src='/static/circle-user-solid.svg';" />
+
+                            <div class="employee-main-info">
+                                <div class="employee-name">@item.EmployeeName</div>
+                                <div class="employee-email">@item.EmployeeEmail</div>
+                            </div>
+                        </div>
+
+                        <div class="status-pill @item.StatusClass" data-role="status-pill">
+                            <span class="dot"></span>
+                            <span data-live-field="statusText">@item.StatusText</span>
+                        </div>
+
+
+                        <div class="hour-history-box"
+                             data-employee-id="@(item.EmployeeId.HasValue ? item.EmployeeId.Value.ToString() : "")"
+                             data-activity-date="@item.ActivityDate.ToString("yyyy-MM-dd")">
+                            <div class="hour-history-title">فلتر حالة ساعة داخل الدوام</div>
+
+                            <div class="hour-history-controls">
+                                <input type="time"
+                                       class="hour-history-input"
+                                       value="@item.ShiftStartValue"
+                                       step="3600" />
+
+                                <button type="button" class="hour-history-btn">
+                                    عرض الحالة
+                                </button>
+
+                                <button type="button" class="hour-history-cancel-btn">
+                                    إلغاء فلتر الساعة
+                                </button>
+                            </div>
+
+                            <div class="hour-history-inline-message"></div>
+                        </div>
+
+                        <div class="activity-details">
+                            <div class="activity-detail-row">
+                                <span>آخر نشاط</span>
+                                <span data-live-field="lastActivityText">@item.LastActivityText</span>
+                            </div>
+
+                            <div class="activity-detail-row">
+                                <span>آخر ظهور</span>
+                                <span data-live-field="lastSeenText">@item.LastSeenText</span>
+                            </div>
+
+                            <div class="activity-detail-row">
+                                <span>اليوم</span>
+                                <span>@item.ActivityDate.ToString("yyyy/MM/dd")</span>
+                            </div>
+
+                            <div class="activity-detail-row">
+                                <span>وقت تسجيل الدخول</span>
+                                <span data-live-field="checkInTimeText">@item.CheckInTimeText</span>
+                            </div>
+
+                            <div class="activity-detail-row">
+                                <span>وقت تسجيل الخروج</span>
+                                <span data-live-field="checkOutTimeText">@item.CheckOutTimeText</span>
+                            </div>
+
+                            <div class="activity-detail-row">
+                                <span>الصفحة الحالية</span>
+                                <span data-live-field="currentPage">@NormalizeActivityPageText(item.CurrentPage)</span>
+                            </div>
+
+                            <div class="activity-detail-row">
+                                <span>IP</span>
+                                <span data-live-field="ipAddress">@item.IpAddress</span>
+                            </div>
+
+                            <div class="activity-detail-row">
+                                <span>بداية الشيفت</span>
+                                <span>@item.ShiftText</span>
+                            </div>
+
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-login-sessions">
+                لا توجد تسجيلات دخول في الفترة المحددة
+            </div>
+        }
+    </div>
+
+    <script>
+        setInterval(function () {
+            window.location.reload();
+        }, 24 * 60 * 60 * 1000);
+    </script>
+
+
+    <script>
+        (function () {
+            const fromDate = '@Model.FromDate.ToString("yyyy-MM-dd")';
+            const toDate = '@Model.ToDate.ToString("yyyy-MM-dd")';
+            const liveStatusLastUpdate = document.getElementById('liveStatusLastUpdate');
+
+            function normalizeActivityPageText(value) {
+                if (value === undefined || value === null) {
+                    return '-';
+                }
+
+                let text = String(value).trim();
+                if (!text) {
+                    return '-';
+                }
+
+                const lower = text.toLowerCase();
+
+                function pathFromText(raw) {
+                    let urlText = String(raw || '').trim();
+
+                    try {
+                        if (!/^https?:\/\//i.test(urlText)
+                            && (urlText.includes('localhost')
+                                || urlText.includes('127.0.0.1')
+                                || urlText.includes('[::1]')
+                                || urlText.includes(':'))) {
+                            urlText = 'http://' + urlText.replace(/^\/+/, '');
+                        }
+
+                        const parsed = new URL(urlText);
+                        return (parsed.pathname || '').replace(/\/+$/, '').toLowerCase();
+                    } catch (e) {
+                        return String(raw || '').trim().replace(/\/+$/, '').toLowerCase();
+                    }
+                }
+
+                const normalizedPath = pathFromText(text);
+
+                if (lower === '/'
+                    || lower === '\\'
+                    || lower === 'home'
+                    || lower === 'home/index'
+                    || lower === '/home'
+                    || lower === '/home/'
+                    || lower === '/home/index'
+                    || lower === '/home/index/'
+                    || lower === 'local:port'
+                    || normalizedPath === ''
+                    || normalizedPath === '/'
+                    || normalizedPath === 'home'
+                    || normalizedPath === 'home/index'
+                    || normalizedPath === '/home'
+                    || normalizedPath === '/home/index') {
+                    return 'الصفحة الرئيسية';
+                }
+
+                if ((lower.includes('localhost')
+                    || lower.includes('127.0.0.1')
+                    || lower.includes('[::1]')
+                    || lower.includes('local:port'))
+                    && (normalizedPath === ''
+                        || normalizedPath === '/'
+                        || normalizedPath === '/home'
+                        || normalizedPath === '/home/index')) {
+                    return 'الصفحة الرئيسية';
+                }
+
+                if ((lower.includes('/home') || lower.includes('home/index')) && !lower.includes('employeeactivity')) {
+                    return 'الصفحة الرئيسية';
+                }
+
+                return text;
+            }
+            window.normalizeActivityPageText = normalizeActivityPageText;
+
+            function setText(card, fieldName, value) {
+                const element = card.querySelector('[data-live-field="' + fieldName + '"]');
+
+                if (element) {
+                    const finalValue = fieldName === 'currentPage'
+                        ? normalizeActivityPageText(value)
+                        : (value || '-');
+
+                    element.textContent = finalValue;
+                }
+            }
+
+            function snapshotCard(card) {
+                if (!card || card.dataset.originalSnapshotSaved === 'true') {
+                    return;
+                }
+
+                const fields = {};
+                card.querySelectorAll('[data-live-field]').forEach(function (element) {
+                    fields[element.dataset.liveField] = element.textContent || '-';
+                });
+
+                card.dataset.originalSnapshot = JSON.stringify({
+                    statusClass: card.classList.contains('online') ? 'online' : (card.classList.contains('idle') ? 'idle' : (card.classList.contains('out-shift') ? 'out-shift' : 'offline')),
+                    fields: fields
+                });
+                card.dataset.originalSnapshotSaved = 'true';
+            }
+
+            document.querySelectorAll('.employee-activity-card').forEach(snapshotCard);
+
+            function updateCardVisualStatus(card, statusClass) {
+                const safeStatusClass = statusClass || 'offline';
+                card.classList.remove('online', 'idle', 'offline', 'out-shift');
+                card.classList.add(safeStatusClass);
+
+                const statusPill = card.querySelector('[data-role="status-pill"]');
+
+                if (statusPill) {
+                    statusPill.classList.remove('online', 'idle', 'offline', 'out-shift');
+                    statusPill.classList.add(safeStatusClass);
+                }
+            }
+
+            function getLiveValue(item, camelName, pascalName, fallbackValue) {
+                if (!item) {
+                    return fallbackValue;
+                }
+
+                if (item[camelName] !== undefined && item[camelName] !== null) {
+                    return item[camelName];
+                }
+
+                if (pascalName && item[pascalName] !== undefined && item[pascalName] !== null) {
+                    return item[pascalName];
+                }
+
+                return fallbackValue;
+            }
+
+            function findLiveCard(item) {
+                if (!item) {
+                    return null;
+                }
+
+                const id = getLiveValue(item, 'id', 'Id', '');
+                const employeeId = getLiveValue(item, 'employeeId', 'EmployeeId', '');
+
+                let card = null;
+
+                if (id !== undefined && id !== null && String(id).length > 0) {
+                    card = document.querySelector('.employee-activity-card[data-log-id="' + id + '"]');
+                }
+
+                // Important: when a new attendance/log row is created, the log id can change.
+                // In that case the card already on screen is still the same employee card,
+                // so fallback by employee id and then refresh the card log id.
+                if (!card && employeeId !== undefined && employeeId !== null && String(employeeId).length > 0) {
+                    card = document.querySelector('.employee-activity-card[data-employee-id="' + employeeId + '"]');
+                    if (card && id !== undefined && id !== null && String(id).length > 0) {
+                        card.dataset.logId = String(id);
+                    }
+                }
+
+                return card;
+            }
+
+            function updateCard(item) {
+                const card = findLiveCard(item);
+
+                if (!card || card.dataset.hourFilterActive === 'true') {
+                    return;
+                }
+
+                updateCardVisualStatus(card, getLiveValue(item, 'statusClass', 'StatusClass', 'offline'));
+
+                setText(card, 'statusText', getLiveValue(item, 'statusText', 'StatusText', '-'));
+                setText(card, 'lastActivityText', getLiveValue(item, 'lastActivityText', 'LastActivityText', '-'));
+                setText(card, 'lastSeenText', getLiveValue(item, 'lastSeenText', 'LastSeenText', '-'));
+                setText(card, 'checkInTimeText', getLiveValue(item, 'checkInTimeText', 'CheckInTimeText', '-'));
+                setText(card, 'checkOutTimeText', getLiveValue(item, 'checkOutTimeText', 'CheckOutTimeText', '-'));
+
+                const currentPageValue =
+                    getLiveValue(item, 'currentPage', 'CurrentPage',
+                        getLiveValue(item, 'pageUrl', 'PageUrl',
+                            getLiveValue(item, 'url', 'Url',
+                                getLiveValue(item, 'path', 'Path', '-'))));
+
+                setText(card, 'currentPage', currentPageValue);
+                setText(card, 'ipAddress', getLiveValue(item, 'ipAddress', 'IpAddress', '-'));
+                setText(card, 'totalOnlineText', getLiveValue(item, 'totalOnlineText', 'TotalOnlineText', '-'));
+                setText(card, 'totalActiveText', getLiveValue(item, 'totalActiveText', 'TotalActiveText', '-'));
+
+                const workWindowText = getLiveValue(item, 'workWindowText', 'WorkWindowText', '00:00 ساعة');
+                const workWindowUntilText = getLiveValue(item, 'workWindowUntilText', 'WorkWindowUntilText', 'حتى الآن');
+                setText(card, 'workWindowText', workWindowText + ' - ' + workWindowUntilText);
+
+                snapshotCard(card);
+            }
+
+            function refreshLiveStatuses() {
+                if (document.hidden) {
+                    return;
+                }
+
+                const params = new URLSearchParams();
+                params.append('fromDate', fromDate);
+                params.append('toDate', toDate);
+
+                fetch('/EmployeeActivity/LiveStatuses?' + params.toString(), {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                })
+                    .then(function (response) {
+                        return response.json();
+                    })
+                    .then(function (data) {
+                        if (!data || data.success === false || !Array.isArray(data.items)) {
+                            return;
+                        }
+
+                        data.items.forEach(updateCard);
+
+                        if (liveStatusLastUpdate) {
+                            const activeFiltersCount = document.querySelectorAll('.employee-activity-card[data-hour-filter-active="true"]').length;
+                            liveStatusLastUpdate.textContent = activeFiltersCount > 0
+                                ? 'آخر تحديث مباشر: ' + (data.now || '') + ' — يوجد فلتر ساعة مفعل، الكروت المفلترة ثابتة حتى إلغاء الفلتر'
+                                : 'آخر تحديث مباشر: ' + (data.now || '');
+                        }
+                    })
+                    .catch(function () { });
+            }
+
+            setTimeout(refreshLiveStatuses, 1000);
+            setInterval(refreshLiveStatuses, 5000);
+
+            document.addEventListener('visibilitychange', function () {
+                if (!document.hidden) {
+                    setTimeout(refreshLiveStatuses, 1000);
+                }
+            });
+        })();
+    </script>
+
+    <script>
+        (function () {
+            function setMessage(box, text, isError) {
+                const message = box ? box.querySelector('.hour-history-inline-message') : null;
+                if (!message) return;
+
+                if (!text) {
+                    message.className = 'hour-history-inline-message';
+                    message.textContent = '';
+                    return;
+                }
+
+                message.className = 'hour-history-inline-message show';
+                message.style.color = isError ? '#dc2626' : '#64748b';
+                message.textContent = text;
+            }
+
+            function setText(card, fieldName, value) {
+                const element = card.querySelector('[data-live-field="' + fieldName + '"]');
+                if (!element) return;
+
+                element.textContent = fieldName === 'currentPage'
+                    ? (window.normalizeActivityPageText ? window.normalizeActivityPageText(value) : (value || '-'))
+                    : (value || '-');
+            }
+
+            function getCurrentStatusClass(card) {
+                if (card.classList.contains('online')) return 'online';
+                if (card.classList.contains('idle')) return 'idle';
+                if (card.classList.contains('out-shift')) return 'out-shift';
+                return 'offline';
+            }
+
+            function ensureSnapshot(card) {
+                if (!card || card.dataset.originalSnapshotSaved === 'true') return;
+
+                const fields = {};
+                card.querySelectorAll('[data-live-field]').forEach(function (element) {
+                    fields[element.dataset.liveField] = element.textContent || '-';
+                });
+
+                card.dataset.originalSnapshot = JSON.stringify({
+                    statusClass: getCurrentStatusClass(card),
+                    fields: fields
+                });
+                card.dataset.originalSnapshotSaved = 'true';
+            }
+
+            function updateVisualStatus(card, statusClass) {
+                const safeStatusClass = statusClass || 'offline';
+                card.classList.remove('online', 'idle', 'offline', 'out-shift');
+                card.classList.add(safeStatusClass);
+
+                const statusPill = card.querySelector('[data-role="status-pill"]');
+                if (statusPill) {
+                    statusPill.classList.remove('online', 'idle', 'offline', 'out-shift');
+                    statusPill.classList.add(safeStatusClass);
+                }
+            }
+
+            function applyHourData(card, data, selectedTime) {
+                ensureSnapshot(card);
+
+                updateVisualStatus(card, data.statusClass || 'offline');
+                setText(card, 'statusText', data.statusText);
+                setText(card, 'lastActivityText', data.lastActivityText);
+                setText(card, 'lastSeenText', data.lastSeenText);
+                setText(card, 'checkInTimeText', data.firstSeenText || data.checkInTimeText || '-');
+                setText(card, 'checkOutTimeText', data.checkOutTimeText || '-');
+                setText(card, 'currentPage', data.currentPage || data.CurrentPage || data.pageUrl || data.PageUrl || data.url || data.Url || data.path || data.Path || '-');
+
+                if (data.ipAddress) {
+                    setText(card, 'ipAddress', data.ipAddress);
+                }
+
+                card.dataset.hourFilterActive = 'true';
+                card.classList.add('hour-filtered');
+
+                const wrapper = document.querySelector('.login-sessions-card-wrapper');
+                if (wrapper) {
+                    wrapper.classList.add('hour-filter-mode');
+                }
+
+                const box = card.querySelector('.hour-history-box');
+                setMessage(box, 'تم عرض بيانات الساعة ' + (data.hour || selectedTime) + ' مكان البيانات الأساسية. اضغطي إلغاء فلتر الساعة للرجوع.', false);
+            }
+
+            function clearHourFilter(card) {
+                if (!card || !card.dataset.originalSnapshot) return;
+
+                let snapshot = null;
+                try {
+                    snapshot = JSON.parse(card.dataset.originalSnapshot);
+                } catch (e) {
+                    snapshot = null;
+                }
+
+                if (!snapshot) return;
+
+                updateVisualStatus(card, snapshot.statusClass || 'offline');
+
+                Object.keys(snapshot.fields || {}).forEach(function (fieldName) {
+                    setText(card, fieldName, snapshot.fields[fieldName]);
+                });
+
+                card.dataset.hourFilterActive = 'false';
+                card.classList.remove('hour-filtered');
+                setMessage(card.querySelector('.hour-history-box'), '', false);
+
+                if (!document.querySelector('.employee-activity-card[data-hour-filter-active="true"]')) {
+                    const wrapper = document.querySelector('.login-sessions-card-wrapper');
+                    if (wrapper) {
+                        wrapper.classList.remove('hour-filter-mode');
+                    }
+                }
+            }
+
+            document.addEventListener('click', function (event) {
+                const cancelButton = event.target.closest('.hour-history-cancel-btn');
+                if (cancelButton) {
+                    const card = cancelButton.closest('.employee-activity-card');
+                    clearHourFilter(card);
+                    return;
+                }
+
+                const button = event.target.closest('.hour-history-btn');
+
+                if (!button) {
+                    return;
+                }
+
+                const box = button.closest('.hour-history-box');
+                const card = button.closest('.employee-activity-card');
+                const input = box ? box.querySelector('.hour-history-input') : null;
+
+                if (!box || !card || !input) {
+                    return;
+                }
+
+                const employeeId = box.dataset.employeeId;
+                const activityDate = box.dataset.activityDate;
+                const selectedTime = input.value;
+
+                setMessage(box, 'جاري فحص الساعة...', false);
+
+                if (!employeeId) {
+                    setMessage(box, 'لا يوجد EmployeeId لهذا الموظف', true);
+                    return;
+                }
+
+                if (!selectedTime) {
+                    setMessage(box, 'اختاري الساعة أولًا', true);
+                    return;
+                }
+
+                const params = new URLSearchParams();
+                params.append('employeeId', employeeId);
+                params.append('activityDate', activityDate);
+                params.append('time', selectedTime);
+
+                fetch('/EmployeeActivity/HourlyStatus?' + params.toString(), {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                })
+                    .then(function (response) {
+                        return response.json();
+                    })
+                    .then(function (data) {
+                        if (!data || data.success === false) {
+                            setMessage(box, data && data.message ? data.message : 'تعذر قراءة حالة الساعة', true);
+                            return;
+                        }
+
+                        applyHourData(card, data, selectedTime);
+                    })
+                    .catch(function () {
+                        setMessage(box, 'حصل خطأ أثناء فحص الساعة', true);
+                    });
+            });
+        })();
+    </script>
+
+</div>

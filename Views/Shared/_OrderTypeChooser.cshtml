@@ -1,0 +1,25 @@
+<div class="modal rtl modal-dialog-centered" id="OrderTypeChooser" data-bs-keyboard="false" data-bs-backdrop="static" tabindex="-1" aria-labelledby="OrderTypeChooserLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content background-white-green" style="position: relative;">
+            <div class="modal-header">
+                <button type="button" class="btn head-16 text-green" data-bs-dismiss="modal" aria-label="Close">تراجع</button>
+                <h5 class="modal-title head text-center" id="OrderTypeChooserLabel">إنشاء الطلبات</h5>
+                <button type="button" class="btn head-16 text-green" data-bs-dismiss="modal" aria-label="Close">انتهى</button>
+            </div>
+            <div class="modal-body d-flex flex-column gap-3 p-4">
+                <button id="chooser-new-order" type="button" class="btn custom-shadow p-4 text-center" style="border: 2px solid transparent; transition: border-color 0.2s;" onmouseover="this.style.borderColor='#1d273b'" onmouseout="this.style.borderColor='transparent'">
+                    <div class="fw-bold fs-5">طلب جديد</div>
+                    <div class="text-muted mt-1" style="font-size: 0.85rem;">إنشاء طلب جديد لعميل مع تحديد المنتجات وتفاصيل الشحن</div>
+                </button>
+                <button id="chooser-potential-order" type="button" class="btn custom-shadow p-4 text-center" style="border: 2px solid transparent; transition: border-color 0.2s;" onmouseover="this.style.borderColor='#1d273b'" onmouseout="this.style.borderColor='transparent'">
+                    <div class="fw-bold fs-5">إدخال البيانات</div>
+                    <div class="text-muted mt-1" style="font-size: 0.85rem;">تسجيل عميل محتمل من وسائل التواصل لمتابعته لاحقاً</div>
+                </button>
+                <button id="chooser-lead" type="button" class="btn custom-shadow p-4 text-center" style="border: 2px solid transparent; transition: border-color 0.2s;" onmouseover="this.style.borderColor='#1d273b'" onmouseout="this.style.borderColor='transparent'">
+                    <div class="fw-bold fs-5">طلب محتمل</div>
+                    <div class="text-muted mt-1" style="font-size: 0.85rem;">تسجيل صفحة محتملة برقم الهاتف أو رابط الصفحة لمتابعتها لاحقاً</div>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

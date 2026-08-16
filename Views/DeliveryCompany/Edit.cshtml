@@ -1,0 +1,175 @@
+﻿@model lotus_blue.Models.ViewModel.DeliveryCompanyViewModel
+
+@{
+    ViewData["Title"] = "تعديل شركة التوصيل";
+}
+
+<div class="container-fluid px-4 mt-4">
+    <form asp-action="Edit" method="post" enctype="multipart/form-data">
+        <input type="hidden" asp-for="Id" />
+        <div class="row">
+            <div class="col-xl-4">
+                <div class="card mb-4 mb-xl-0">
+                    <div class="card-header">صورة الشخصية  </div>
+                    <div class="card-body text-center d-flex flex-column align-items-center">
+                        @if (Model.Logo != null)
+                        {
+                            <img loading="lazy" src="@Model.Logo" alt="Company Logo" class="mb-3">
+                        }
+                        else
+                        {
+                            <img loading="lazy" src="/static/userlogindetails.png" alt="Company Logo" class="mb-3">
+                        }
+
+                        <button class="btn btn-primary" type="button" onclick="document.getElementById('LogoUrl').click();">تحميل صورة جديدة</button>
+
+                        <input type="file" id="LogoUrl" name="logoFile" class="form-control-file" accept="image/*" onchange="displayImage('LogoUrl', 'logoImage')" style="display: none;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-8">
+                <!-- Account details card-->
+                <div class="card mb-4">
+                    <div class="card-header"> تفاصيل الشركة </div>
+                    <div class="card-body">
+                        <!-- Form Group (username)-->
+                        <div class="mb-3">
+                            <label class="form-label" for="Name">اسم الشركة</label>
+                            <input value="@Model.Name" name="Name" class="form-control" id="inputUsername" type="text">
+                        </div>
+                        <div class="row gx-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="Address">عنوان الشركة </label>
+                                <input value="@Model.Address" name="Address" class="form-control" id="Address" type="text">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="TaxRegistrationNumber">رقم السجل التجاري </label>
+                                <input value="@Model.TaxRegistrationNumber" name="TaxRegistrationNumber" class="form-control" id="inputLastName" type="text" placeholder="لايوجد رقم سجل تجاري">
+                            </div>
+                        </div>
+                        <!-- Form Row-->
+                        <div class="row gx-3 mb-3">
+                            <!-- Form Group (organization name)-->
+                            <div class="col-md-6">
+                                <label class="form-label" for="PhoneNumber"> رقم الهاتف </label>
+                                <input value="@Model.PhoneNumber" name="PhoneNumber" class="form-control" id="inputOrgName" type="text">
+                            </div>
+                            <!-- Form Group (location)-->
+                            <div class="col-md-6">
+                                <label class="form-label" for="inputLocation">رقم الهوية</label>
+                                <input value="@Model.IdNumber" name="IdNumber" class="form-control" id="inputLocation" type="text">
+                            </div>
+                        </div>
+                        <!-- Form Group (email address)-->
+                        <div class="mb-3">
+                            <label class="form-label" for="Website"> الموقع الالكتروني</label>
+                            <input value="@Model.Website" name="Website" class="form-control" id="inputEmailAddress" type="text" placeholder="لايوجد موقع الكتروني">
+                        </div>
+                        <!-- Form Row-->
+                        <div class="row gx-3 mb-3">
+                            <!-- Form Group (phone number)-->
+                            <div class="col-md-6">
+                                <label class="form-label" for="specialty">اختصاص الشركة </label>
+                                <input value="@Model.Specialty" name="specialty" class="form-control" id="inputPhone" type="text" placeholder="لايوجد اختصاص للشركة" />
+                            </div>
+                            <!-- Form Group (birthday)-->
+                            <div class="col-md-6">
+                                <label class="form-label" for="Notes">الملاحظات</label>
+                                <input value="@Model.Notes" class="form-control" id="inputBirthday" type="text" name="Notes" placeholder="لايوجد ملاحظات">
+                            </div>
+                        </div>
+                        <div class="row gx-3 mb-3">
+                            <!-- Form Group (phone number)-->
+                            <div class="col-md-6">
+                                <label name="newEmail" class="form-label" for="Email">البريد الالكتروني</label>
+                                <input name="newEmail" value="@Model.Email" class="form-control">
+                            </div>
+
+                            <!-- Form Group (birthday)-->
+                            <div class="col-md-6">
+                                <div class="form-group mt-2">
+                                    <label asp-for="Country" class="control-label"> ألبلد</label>
+                                    <select asp-for="Country" class="form-control" id="countryDropdown">
+                                        <option value="">اختار البلد</option>
+                                        @foreach (var country in Enum.GetValues(typeof(Common.Countries)))
+                                        {
+                                            if (country.Equals(Model.Country))
+                                            {
+                                                <option value="@country" selected>@country</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@country">@country</option>
+                                            }
+                                        }
+                                    </select>
+                                    <span asp-validation-for="Country" class="text-danger"></span>
+                                </div>
+                                @* <label class="form-label" for="inputBirthday">الدولة</label>
+                                <input value="@Model.SelectedCountry" class="form-control" id="inputBirthday" type="text" name="birthday" placeholder="Enter your birthday" value="06/10/1988"> *@
+                            </div>
+                        </div>
+                        <div class="row gx-3 mb-3">
+                            <!-- Form Group (phone number)-->
+                            <div class="col-md-6">
+                                <label asp-for="NewPassword" class="form-label" for="NewPassword">كلمة مرور جديدة  </label>
+                                <input asp-for="NewPassword"  class="form-control" >
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="ConfirmNewPassword" class="form-label" for="ConfirmNewPassword"> تأكيد كلمة المرور    </label>
+                                <input asp-for="ConfirmNewPassword" class="form-control" >
+                            </div>
+
+                        </div>
+
+                        <div class="row gx-3 mb-3">
+                            <!-- Form Group (IsShown dropdown)-->
+                            <div class="col-md-6">
+                                <label asp-for="IsShown" class="form-label">اخفاء من السستم</label>
+                                <select asp-for="IsShown" class="form-select">
+                                    <option value="true">نعم</option>
+                                    <option value="false">لا</option>
+                                </select>
+                            </div>
+
+                            <!-- Form Group (IsActive dropdown)-->
+                            <div class="col-md-6">
+                                <label asp-for="IsActive" class="form-label">تفعيل الحساب</label>
+                                <select asp-for="IsActive" class="form-select">
+                                    <option value="true">نعم</option>
+                                    <option value="false">لا</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="Name">اسم العرض</label>
+                            <input value="@Model.DisplayName" name="DisplayName" class="form-control" id="displayname" type="text">
+                        </div>
+
+                        <!-- Save changes button-->
+                        <button type="submit" class="btn btn-primary">تاكيد التعديل  </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
+</div>
+
+
+<style>
+    .card-body {
+        background-color: #ffffff;
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2); /* Box shadow */
+        border-radius: 8px !important; /* Border radius for the entire <thead> */
+    }
+
+    .card {
+        background-color: #ffffff;
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2); /* Box shadow */
+        border-radius: 8px !important; /* Border radius for the entire <thead> */
+    }
+</style>

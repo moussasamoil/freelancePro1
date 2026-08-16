@@ -1,0 +1,749 @@
+﻿@model lotus_blue.Models.ViewModel.CitiesWithoutDeliveryPricesViewModel
+@using lotus_blue.Models
+
+@{
+    // يستخدم نفس الـ Layout الافتراضي للصفحات التي يظهر بها الـ Sidebar.
+    ViewData["Title"] = "مدن ليس لديها سعر توصيل";
+
+    var rows = Model.Rows ?? new List<lotus_blue.Models.ViewModel.CityWithoutDeliveryPriceRowViewModel>();
+}
+
+<div class="container-fluid rtl px-4 py-4 cities-missing-shell" dir="rtl">
+    <div class="cities-missing-prices-page">
+        <div class="cities-missing-page-card-header">
+            <div class="cities-missing-title-area">
+                <h5 class="cities-missing-title mb-0">مدن ليس لديها سعر توصيل</h5>
+             @*    <div class="cities-missing-subtitle">عرض المدن التي لا يوجد لها شركة توصيل مفعّل لها سعر داخل كل دولة</div> *@
+            </div>
+
+            <div class="cities-missing-header-actions">
+@*                 <a href="javascript:history.back()" class="cities-missing-back-btn">رجوع</a> *@
+                <div class="cities-missing-count">
+                    <span id="citiesMissingTotalCount">@rows.Count</span>
+                    <small>مدينة</small>
+                </div>
+            </div>
+        </div>
+
+        <form method="get" id="citiesMissingFiltersForm" class="cities-missing-filter-card">
+            <div class="row g-3 align-items-end">
+                <div class="col-lg-5 col-md-6">
+                    <label class="cities-missing-label">فلترة حسب الدولة</label>
+                    <select name="country"
+                            id="missingPriceCountryFilter"
+                            class="form-control drop-down-design custom-shadow-small cities-missing-select cities-missing-select2"
+                            data-placeholder="كل الدول">
+                        <option value="" data-image="">كل الدول</option>
+                        @foreach (var country in Model.CountryList)
+                        {
+                            var countryImageUrl = Common.GetImageUrlByCountryName(country.Value);
+                            <option value="@country.Value"
+                                    data-image="@countryImageUrl"
+                                    selected="@(country.Selected ? "selected" : null)">
+                                @country.Text
+                            </option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-lg-5 col-md-6">
+                    <label class="cities-missing-label">فلترة حسب شركة التوصيل</label>
+                    <select name="deliveryCompanyId"
+                            id="missingPriceCompanyFilter"
+                            class="form-control drop-down-design custom-shadow-small cities-missing-select cities-missing-select2"
+                            data-placeholder="كل شركات التوصيل الفعالة">
+                        <option value="">كل شركات التوصيل الفعالة</option>
+                        @foreach (var company in Model.DeliveryCompanyList)
+                        {
+                            <option value="@company.Value" selected="@(company.Selected ? "selected" : null)">
+                                @company.Text
+                            </option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-lg-2 col-md-12 d-flex gap-2">
+                    <a href="/CitiesWithoutDeliveryPrices" class="cities-missing-reset-btn">مسح</a>
+                </div>
+            </div>
+        </form>
+
+        <div class="cities-missing-table-card">
+            <div class="table-responsive">
+                <table class="table cities-missing-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>الدولة</th>
+                            <th>شركة التوصيل</th>
+                            <th>المدينة</th>
+                            <th>الحالة</th>
+                        </tr>
+                    </thead>
+                    <tbody id="citiesMissingTableBody">
+                        @if (rows.Any())
+                        {
+                            foreach (var row in rows)
+                            {
+                                <tr class="cities-missing-row">
+                                    <td>
+                                        <span class="cities-country-cell">
+                                            <img src="@row.CountryImageUrl"
+                                                 alt="@row.CountryName"
+                                                 loading="lazy"
+                                                 width="22"
+                                                 height="22"
+                                                 style="width:22px !important;height:22px !important;min-width:22px !important;max-width:22px !important;min-height:22px !important;max-height:22px !important;object-fit:contain !important;border-radius:50% !important;display:inline-block !important;" />
+                                            <span>@row.CountryName</span>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="cities-company-cell">
+                                            @if (!string.IsNullOrWhiteSpace(row.DeliveryCompanyLogo))
+                                            {
+                                                <img src="/@row.DeliveryCompanyLogo"
+                                                     alt="@row.DeliveryCompanyName"
+                                                     loading="lazy"
+                                                     width="22"
+                                                     height="22"
+                                                     style="width:22px !important;height:22px !important;min-width:22px !important;max-width:22px !important;min-height:22px !important;max-height:22px !important;object-fit:contain !important;border-radius:50% !important;display:inline-block !important;" />
+                                            }
+                                            <span>@row.DeliveryCompanyName</span>
+                                        </span>
+                                    </td>
+                                    <td>@row.CityName</td>
+                                    <td>
+                                        <span class="cities-missing-badge">لا يوجد سعر توصيل</span>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr class="cities-missing-empty-row">
+                                <td colspan="4" class="cities-missing-empty">لا توجد مدن بدون أسعار توصيل حسب الفلترة الحالية</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="citiesMissingPaginationLink" class="mt-3 container-fluid">
+                <div class="d-flex justify-content-center align-items-center flex-wrap gap-3">
+                    <p class="text-start pt-2 total-items-display mb-0">
+                        <span id="citiesMissingVisibleCount">@rows.Count</span>
+                        عدد المدن
+                    </p>
+
+                    <nav aria-label="Page navigation" class="mx-auto nav-nav">
+                        <div class="d-flex justify-content-center">
+                            <ul id="citiesMissingPagination" class="pagination p-0 mb-0"></ul>
+                        </div>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* تأكيد ظهور السايد بار لو موجود في الـ Layout */
+    .sidebar,
+    #sidebar,
+    .side-bar,
+    .main-sidebar,
+    .app-sidebar,
+    .sidebar-wrapper {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+
+    /* توافق مع الـ Sidebar في الـ Layout الافتراضي */
+    body,
+    .page-wrapper,
+    .content-wrapper,
+    .main-content {
+        overflow-x: hidden;
+    }
+
+    .cities-missing-shell {
+        position: relative;
+        z-index: 1;
+    }
+
+    .cities-missing-shell {
+        overflow-x: hidden;
+        min-height: calc(100vh - 40px);
+    }
+
+    .cities-missing-prices-page {
+        width: min(1180px, 100%);
+        margin: 0 auto;
+        color: #111827;
+    }
+
+    .cities-missing-page-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+        flex-wrap: wrap;
+        min-height: 58px;
+        padding: 12px 18px;
+        border-radius: 0 0 18px 18px;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.10);
+    }
+
+    .cities-missing-title-area {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .cities-missing-title {
+        margin: 0;
+        color: #111827;
+        font-size: 18px;
+        font-weight: 900;
+    }
+
+    .cities-missing-subtitle {
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .cities-missing-header-actions {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .cities-missing-back-btn {
+        min-height: 40px;
+        padding: 0 20px;
+        border-radius: 999px;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        color: #18a088;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none !important;
+        font-size: 14px;
+        font-weight: 900;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.10);
+    }
+
+        .cities-missing-back-btn:hover {
+            background: #e9fbe9;
+            color: #159447;
+        }
+
+    .cities-missing-count {
+        min-width: 112px;
+        min-height: 70px;
+        border-radius: 18px;
+        background: #ecfdf5;
+        color: #18a088;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+    }
+
+        .cities-missing-count span {
+            font-size: 26px;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .cities-missing-count small {
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+    .cities-missing-filter-card,
+    .cities-missing-table-card {
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.10);
+        border: 1px solid #e5e7eb;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .cities-missing-label {
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 800;
+        margin-bottom: 8px;
+    }
+
+    .cities-missing-select {
+        min-height: 42px;
+        border-radius: 10px !important;
+        border: 1px solid #d1d5db !important;
+        box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.14) !important;
+        text-align: right;
+        background: #ffffff !important;
+        color: #111827 !important;
+    }
+
+    .cities-missing-reset-btn {
+        flex: 1 1 0;
+        min-height: 42px;
+        border-radius: 999px;
+        border: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none !important;
+        font-size: 14px;
+        font-weight: 900;
+        white-space: nowrap;
+        background: #f1f5f9;
+        color: #64748b;
+        box-shadow: 0 2px 7px rgba(15, 23, 42, 0.08);
+    }
+
+        .cities-missing-reset-btn:hover {
+            background: #e2e8f0;
+            color: #334155;
+        }
+
+    .cities-missing-table {
+        text-align: center;
+        vertical-align: middle;
+        table-layout: fixed;
+        width: 100%;
+    }
+
+        .cities-missing-table thead th {
+            color: #64748b;
+            background: #f8fafc;
+            font-size: 13px;
+            font-weight: 900;
+            border-bottom: 1px solid #e5e7eb;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        .cities-missing-table tbody td {
+            color: #334155;
+            font-size: 14px;
+            vertical-align: middle;
+            border-bottom: 1px solid #eef2f7;
+            height: 48px;
+            max-height: 48px;
+            overflow: hidden;
+        }
+
+    .cities-country-cell,
+    .cities-company-cell {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        white-space: nowrap;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+        .cities-country-cell img,
+        .cities-company-cell img,
+        .cities-missing-table img {
+            width: 22px !important;
+            height: 22px !important;
+            min-width: 22px !important;
+            max-width: 22px !important;
+            min-height: 22px !important;
+            max-height: 22px !important;
+            object-fit: contain !important;
+            border-radius: 50% !important;
+            display: inline-block !important;
+        }
+
+    .cities-missing-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 26px;
+        padding: 3px 14px;
+        border-radius: 999px;
+        background: #fee2e2;
+        color: #dc2626;
+        font-size: 12px;
+        font-weight: 900;
+        white-space: nowrap;
+    }
+
+    .cities-missing-empty {
+        color: #64748b !important;
+        font-size: 15px !important;
+        padding: 24px !important;
+    }
+
+    /* Select2 شكل قريب من السيلكت في الاندكس */
+    .cities-missing-filter-card .select2-container {
+        width: 100% !important;
+        direction: rtl !important;
+    }
+
+    .cities-missing-filter-card .select2-container--default .select2-selection--single {
+        min-height: 42px !important;
+        height: 42px !important;
+        border-radius: 10px !important;
+        border: 1px solid #d1d5db !important;
+        box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.14) !important;
+        display: flex !important;
+        align-items: center !important;
+        background: #ffffff !important;
+        color: #111827 !important;
+    }
+
+        .cities-missing-filter-card .select2-container--default .select2-selection--single .select2-selection__rendered {
+            width: 100%;
+            color: #111827 !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            line-height: 42px !important;
+            padding-right: 14px !important;
+            padding-left: 34px !important;
+            text-align: right !important;
+        }
+
+        .cities-missing-filter-card .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 42px !important;
+            left: 10px !important;
+            right: auto !important;
+        }
+
+    .cities-missing-select-option {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+        direction: rtl;
+        width: 100%;
+    }
+
+        .cities-missing-select-option img {
+            width: 20px !important;
+            height: 20px !important;
+            max-width: 20px !important;
+            max-height: 20px !important;
+            object-fit: contain !important;
+            border-radius: 50% !important;
+            display: inline-block !important;
+        }
+
+    /* Pagination بنفس فكرة الاندكس */
+    #citiesMissingPaginationLink .nav-nav {
+        width: auto !important;
+    }
+
+    #citiesMissingPaginationLink .pagination {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        direction: rtl !important;
+    }
+
+    #citiesMissingPaginationLink .page-item {
+        margin: 0 !important;
+    }
+
+    #citiesMissingPaginationLink .page-link {
+        min-width: 39px !important;
+        height: 36px !important;
+        padding: 0 10px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 8px !important;
+        border: 1px solid #e5e7eb !important;
+        background: #ffffff !important;
+        color: #64748b !important;
+        font-size: 14px !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08) !important;
+        cursor: pointer !important;
+        user-select: none !important;
+        text-decoration: none !important;
+        transition: background .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease !important;
+    }
+
+    #citiesMissingPaginationLink .pagination-arrow-svg {
+        width: 17px !important;
+        height: 17px !important;
+        display: block !important;
+        fill: none !important;
+        stroke: #18a088 !important;
+        stroke-width: 2.4 !important;
+        stroke-linecap: round !important;
+        stroke-linejoin: round !important;
+    }
+
+    #citiesMissingPaginationLink .page-item:not(.active):not(.disabled) .page-link:hover,
+    #citiesMissingPaginationLink .page-item:not(.active):not(.disabled) .page-link:focus {
+        background: #e9fbe9 !important;
+        border-color: #bff0bf !important;
+        color: #159447 !important;
+        box-shadow: 0 2px 7px rgba(21, 148, 71, 0.14) !important;
+    }
+
+    #citiesMissingPaginationLink .page-item.active .page-link {
+        background: #18a088 !important;
+        border-color: #18a088 !important;
+        color: #ffffff !important;
+        box-shadow: 0 3px 9px rgba(24, 160, 136, 0.22) !important;
+    }
+
+    #citiesMissingPaginationLink .page-item.disabled .page-link {
+        opacity: .55 !important;
+        cursor: default !important;
+        pointer-events: none !important;
+        background: #ffffff !important;
+        color: #94a3b8 !important;
+    }
+
+    #citiesMissingPaginationLink .pagination-ellipsis .page-link {
+        cursor: default !important;
+        pointer-events: none !important;
+        box-shadow: none !important;
+        background: #ffffff !important;
+        color: #64748b !important;
+    }
+
+    @@media (max-width: 576px) {
+        .cities-missing-prices-page {
+            width: 100%;
+        }
+
+        .cities-missing-table {
+            table-layout: auto;
+        }
+
+        #citiesMissingPaginationLink .pagination {
+            gap: 5px !important;
+        }
+
+        #citiesMissingPaginationLink .page-link {
+            min-width: 34px !important;
+            height: 33px !important;
+            padding: 0 7px !important;
+            font-size: 12px !important;
+        }
+    }
+</style>
+
+<script>
+    (function () {
+        const pageSize = 10;
+        let currentPage = 1;
+
+        const form = document.getElementById('citiesMissingFiltersForm');
+        const countrySelect = document.getElementById('missingPriceCountryFilter');
+        const companySelect = document.getElementById('missingPriceCompanyFilter');
+        const pagination = document.getElementById('citiesMissingPagination');
+        const paginationWrapper = document.getElementById('citiesMissingPaginationLink');
+        const rows = Array.prototype.slice.call(document.querySelectorAll('#citiesMissingTableBody tr.cities-missing-row'));
+        const visibleCount = document.getElementById('citiesMissingVisibleCount');
+        const totalCount = document.getElementById('citiesMissingTotalCount');
+
+        function submitFilters() {
+            if (!form) return;
+            form.submit();
+        }
+
+        function getPagesToShow(current, total) {
+            const pages = new Set();
+
+            if (total <= 7) {
+                for (let i = 1; i <= total; i++) pages.add(i);
+            } else {
+                let windowStart;
+                let windowEnd;
+
+                if (current <= 2) {
+                    windowStart = 1;
+                    windowEnd = 3;
+                } else if (current >= total - 1) {
+                    windowStart = total - 2;
+                    windowEnd = total;
+                } else {
+                    windowStart = current - 1;
+                    windowEnd = current + 1;
+                }
+
+                for (let i = Math.max(1, windowStart); i <= Math.min(total, windowEnd); i++) {
+                    pages.add(i);
+                }
+
+                if (current >= total - 1) {
+                    for (let i = 1; i <= Math.min(3, total); i++) pages.add(i);
+                } else {
+                    for (let i = Math.max(1, total - 2); i <= total; i++) pages.add(i);
+                }
+            }
+
+            return Array.from(pages).sort(function (a, b) { return a - b; });
+        }
+
+        function arrowSvg(type) {
+            if (type === 'first') {
+                return '<svg class="pagination-arrow-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M13 6 L19 12 L13 18"></path><path d="M5 6 L11 12 L5 18"></path></svg>';
+            }
+
+            if (type === 'prev') {
+                return '<svg class="pagination-arrow-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6 L15 12 L9 18"></path></svg>';
+            }
+
+            if (type === 'next') {
+                return '<svg class="pagination-arrow-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 6 L9 12 L15 18"></path></svg>';
+            }
+
+            return '<svg class="pagination-arrow-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 6 L5 12 L11 18"></path><path d="M19 6 L13 12 L19 18"></path></svg>';
+        }
+
+        function buildPageItem(page, content, cssClass, title) {
+            return '<li class="page-item ' + (cssClass || '') + '">' +
+                '<a class="page-link" href="#" data-page="' + page + '" title="' + (title || '') + '" aria-label="' + (title || '') + '">' +
+                content +
+                '</a>' +
+                '</li>';
+        }
+
+        function renderPagination(totalPages) {
+            if (!pagination || !paginationWrapper) return;
+
+            pagination.innerHTML = '';
+            paginationWrapper.style.display = rows.length > 0 ? 'block' : 'none';
+
+            if (totalPages < 1) {
+                return;
+            }
+
+            const previousPage = currentPage > 1 ? currentPage - 1 : 1;
+            const nextPage = currentPage < totalPages ? currentPage + 1 : totalPages;
+
+            let html = '';
+            html += buildPageItem(1, arrowSvg('first'), currentPage === 1 ? 'disabled' : '', 'أول صفحة');
+            html += buildPageItem(previousPage, arrowSvg('prev'), currentPage === 1 ? 'disabled' : '', 'الصفحة السابقة');
+
+            const pagesToShow = getPagesToShow(currentPage, totalPages);
+            let lastRenderedPage = 0;
+
+            pagesToShow.forEach(function (pageNumber) {
+                if (lastRenderedPage > 0 && pageNumber - lastRenderedPage > 1) {
+                    html += '<li class="page-item pagination-ellipsis disabled"><span class="page-link">...</span></li>';
+                }
+
+                html += buildPageItem(pageNumber, pageNumber, currentPage === pageNumber ? 'active' : '', 'صفحة ' + pageNumber);
+                lastRenderedPage = pageNumber;
+            });
+
+            html += buildPageItem(nextPage, arrowSvg('next'), currentPage === totalPages ? 'disabled' : '', 'الصفحة التالية');
+            html += buildPageItem(totalPages, arrowSvg('last'), currentPage === totalPages ? 'disabled' : '', 'آخر صفحة');
+
+            pagination.innerHTML = html;
+        }
+
+        function renderPage(page) {
+            const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+
+            currentPage = parseInt(page, 10);
+            if (isNaN(currentPage) || currentPage < 1) currentPage = 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+
+            rows.forEach(function (row, index) {
+                row.style.display = (index >= start && index < end) ? '' : 'none';
+            });
+
+            if (visibleCount) visibleCount.textContent = rows.length;
+            if (totalCount) totalCount.textContent = rows.length;
+
+            renderPagination(totalPages);
+        }
+
+        function formatSelectOption(option) {
+            if (!option.id && !option.element) {
+                return option.text;
+            }
+
+            const image = option.element ? option.element.getAttribute('data-image') : '';
+            const text = option.text || '';
+
+            if (!image) {
+                return $('<span class="cities-missing-select-option"><span>' + text + '</span></span>');
+            }
+
+            return $('<span class="cities-missing-select-option"><img src="' + image + '" alt="" /><span>' + text + '</span></span>');
+        }
+
+        if (window.jQuery && $.fn && $.fn.select2) {
+            $('.cities-missing-select2').each(function () {
+                const $select = $(this);
+
+                $select.select2({
+                    dir: 'rtl',
+                    width: '100%',
+                    allowClear: false,
+                    minimumResultsForSearch: 1,
+                    placeholder: $select.data('placeholder') || '',
+                    templateResult: formatSelectOption,
+                    templateSelection: formatSelectOption
+                });
+            });
+
+            $('#missingPriceCountryFilter, #missingPriceCompanyFilter').on('change', function () {
+                submitFilters();
+            });
+        } else {
+            if (countrySelect) countrySelect.addEventListener('change', submitFilters);
+            if (companySelect) companySelect.addEventListener('change', submitFilters);
+        }
+
+        if (pagination) {
+            pagination.addEventListener('click', function (event) {
+                const link = event.target.closest && event.target.closest('a.page-link[data-page]');
+                if (!link) return;
+
+                event.preventDefault();
+
+                const item = link.closest('.page-item');
+                if (item && (item.classList.contains('disabled') || item.classList.contains('active'))) {
+                    return;
+                }
+
+                const page = parseInt(link.getAttribute('data-page'), 10);
+                if (!page || page < 1) return;
+
+                renderPage(page);
+            });
+        }
+
+        window.addEventListener('load', function () {
+            renderPage(1);
+        });
+
+        renderPage(1);
+    })();
+</script>

@@ -1,0 +1,157 @@
+@model List<lotus_blue.Models.ViewModel.OrderViewModel>
+@{
+    Layout = "_EmptyLayout";
+    ViewData["Title"] = "     فاتورة الطلب  ";
+
+}
+@foreach (var Model in Model)
+{
+    <!-- Invoice 1 - Bootstrap Brain Component -->
+    <section class="py-3 py-md-5 rtl print">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-12 col-lg-9 col-xl-8 col-xxl-7">
+                    <div class="row gy-3 mb-3">
+                        <div class="col-6">
+                            <h4 class="text-uppercase text-endx m-0">فاتورة</h4>
+                        </div>
+                        <div class="col-6">
+                            <a class="d-block text-start ltr" href="#!">
+                                <img src="/static/finestblacksvg.png" class="img-fluid" alt="BootstrapBrain Logo" width="100" height="44">
+                            </a>
+                        </div>
+                        <div class="col-12">
+                            <h4>المرسل</h4>
+                            <address>
+                                <strong>شركة Finest الصينية</strong><br>
+                                الصين<br>
+                                @Model.State<br>
+                                +90536466764<br>
+                                finestglobal.f@gmail.com
+                            </address>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-12 col-sm-6 col-md-8">
+                            <h4>المستلم</h4>
+                            <address>
+                                <strong>@Model.CustomerName</strong><br>
+                                @Model.Country.ToString()<br>
+                                @Model.State<br>
+                                @Model.Address<br>
+                                @Model.TelephoneNumber<br>
+                                @if (Model.IsPaid == true)
+                                {
+                                    <span class="fw-bold">تم التحويل حوالة بنكية</span>
+                                }
+                                else
+                                {
+                                    <span class="fw-bold">غير مدفوع</span>
+                                }
+                            </address>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <h4 class="row">
+                                <span class="col-6">Invoice #</span>
+                                <span class="col-6 text-sm-end">@Model.Id</span>
+                            </h4>
+                            <div class="row">
+                               
+                                <span class="col-6">تاريخ  الطلب  </span>
+                                <span class="col-6 text-sm-end">
+                                    @Model.CreatedDate.ToString("yyyy-MM-dd")</span>
+                                <span class="col-6">تاريخ التوصيل </span>
+                                <span class="col-6 text-sm-end">@Model.CreatedDate.AddDays(3).ToString("yyyy-MM-dd")</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col" class="text-uppercase pb-2">القطع</th>
+                                            <th scope="col" class="text-uppercase pb-2">اسم المنتج</th>
+
+
+                                        </tr>
+                                    </thead>
+
+                                    <tbody class="table-group-divider">
+                                        @foreach (var warehouse in Model.SelectedWarehouses)
+                                        {
+                                            <tr>
+                                                <th scope="row">@warehouse.Amount</th>
+                                                <td>@warehouse.WarehouseName</td>
+                                                <td class="text-end"></td>
+                                                <td class="text-end"></td>
+                                            </tr>
+
+
+
+
+
+
+                                            <tr>
+                                                <th scope="row" colspan="1" class="text-uppercase">الأجمالي</th>
+                                                <td></td>
+                                                <td class="text-end"></td>
+                                                <td class="text-start" colspan="4">@Model.TotalPrice @Common.GetCurrencyByCountryName(Model.Country.ToString())</td>
+                                            </tr>
+
+                                          
+                                        }
+                                    </tbody>
+
+
+                                    <tbody class="table-group-divider">
+                                      
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                   
+                </div>
+            </div>
+        </div>
+    </section>
+}
+
+
+ <style>
+    .table-group-divider {
+        border-top: 2px solid #000000; /* Black border */
+    }
+
+  
+
+    li, p, span, address {
+        font-size: 13px;
+    }
+
+    h5, th, td, h4, strong {
+        font-size: 16px
+    }
+
+    @@media print {
+        .print {
+            display: block;
+            transform: scale(0.90) scaleY(0.90); /* Set scale to 75% */
+            page-break-after: always !important; /* Force break after each invoice */
+            transform-origin: top !important;
+        }
+    }
+
+
+</style>
+ 
+
+<script>
+    // Function to open the print dialog when the page is loaded
+    window.onload = function () {
+        window.print();
+    };
+
+</script>

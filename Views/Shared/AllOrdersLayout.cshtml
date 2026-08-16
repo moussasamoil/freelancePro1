@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    @Html.Partial("_Head")
+</head>
+<body >
+    <header>
+        <nav class="nav-shadow background-white-green navbar fixed-top navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom ">
+            <div class="container-fluid">
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                  
+                    <div class="header-actions">
+                        @if (ViewData["HeaderLeft"] != null)
+                        {
+                            @Html.Raw(ViewData["HeaderLeft"].ToString())
+                        }
+                        else
+                        {
+                            <i style="color:#1d273b!important" class="fa-light fa-book"></i>
+                        }
+                    </div>
+                    <div>
+                         @ViewData["Title"]
+                    </div>
+                    <div class="p-0 " style="direction: rtl;">
+                        <a class="px-1 py-1 text-black text-decoration-none d-inline-block" href="/">
+                            <i class="fa-regular pt-1 fa-chevron-right" style="font-size: 12px;"></i>
+                            <span style="font-size: 12px;">رجوع</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container-fluid background-white-green ">
+        <main role="main" class="@ViewData["MainClass"]" style="direction:rtl;">
+            @RenderBody()
+        </main>
+    </div>
+
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+
+
+
+<style>
+    @@font-face {
+        font-family: 'NotoNaskhArabic-Regular';
+        src: url('/Fonts/NotoNaskhArabic-Regular.ttf') format('truetype');
+        font-display: swap; /* This ensures text is displayed with a system font until the web font is available */
+        font-style: normal;
+    }
+
+    body {
+        font-family: 'NotoNaskhArabic-Regular', sans-serif !important;
+        padding-top: 37px;
+    }
+
+    .form-control:focus {
+        outline: none !important;
+        outline-width: 0 !important;
+        -webkit-box-shadow: none !important;
+        border-color: #ced4da !important;
+    }
+
+    .nav-shadow {
+        box-shadow: 0 0.7px 0.7px rgb(0 0 0 / 10%);
+        height: 35px;
+    }
+    .header-actions { display:flex; gap: 32px; color: #1d273b; font-weight:bold;}
+    .header-actions > span {cursor:pointer;}
+    input {
+        color: #ffffff;
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2); /* Box shadow */
+        border-radius: 8px !important; /* Border radius for the entire <thead> */
+    }
+
+    div.input-group label.form-control {
+        background-color: #ffffff;
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2);
+        border-radius: 8px !important;
+    }
+
+
+    div.input-group label.form-control:hover {
+        border-radius: 8px !important;
+        box-shadow: 0px 0px 6px rgba(13, 110, 253, 1); /* Box shadow with the same color */
+    }
+
+
+
+    select {
+        color: #ffffff;
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2); /* Box shadow */
+        border-radius: 8px !important; /* Border radius for the entire <thead> */
+    }
+
+    .btn-outline-warning:hover {
+        color: white;
+    }
+
+
+    .btn {
+        border-radius: 8px;
+    }
+
+    .btn-outline-primary {
+        border-color: #0d6efd; /* Bootstrap 5 primary color */
+        background-color: #0d6efd; /* Bootstrap 5 primary color */
+        color: white;
+        border-radius: 8px;
+        box-shadow: 0px 0px 6px rgba(13, 110, 253, 1); /* Box shadow with the same color */
+    }
+
+    .btn-primary {
+        border-color: #0d6efd; /* Bootstrap 5 primary color */
+        color: white; /* Bootstrap 5 primary color */
+        border-radius: 8px;
+        box-shadow: 0px 0px 6px rgba(13, 110, 253, 1); /* Box shadow with the same color */
+    }
+
+    .btn-outline-warning {
+        border-color: #fc9512; /* Outline (border) color */
+        background-color: #fc9512; /* Text color */
+        color: white;
+        border-radius: 8px;
+        box-shadow: 0px 0px 6px rgba(252, 149, 18, 1); /* Box shadow with the same color */
+    }
+
+    .btn-outline-danger {
+        background-color: red; /* Text color */
+        border-color: red; /* Outline (border) color */
+        color: white;
+        border-radius: 8px;
+        box-shadow: 0px 0px 6px red; /* Box shadow with the same color */
+    }
+
+    .btn-outline-success {
+        border-color: #2ab149; /* Outline (border) color */
+
+        background-color: #2ab149; /* Text color */
+        color: white; /* Outline (border) color */
+        border-radius: 8px;
+        box-shadow: 0px 0px 6px rgba(42, 177, 73, 1); /* Box shadow with the same color */
+    }
+
+    .btn-success {
+        background-color: #2ab149 !important; /* Text color */
+        border-color: #2ab149 !important; /* Outline (border) color */
+        border-radius: 8px;
+        box-shadow: 0px 0px 6px rgba(42, 177, 73, 1); /* Box shadow with the same color */
+    }
+
+
+    .btn-outline-success:hover {
+        background-color: #2ab149 !important;
+        border-color: #2ab149; /* Outline (border) color */
+    }
+
+    .btn-outline-warning:hover {
+        background-color: #fc9512 !important;
+        border-color: #fc9512; /* Outline (border) color */
+        text-decoration: none;
+    }
+
+    .btn-warning {
+        border-color: #fc9512; /* Bootstrap 5 primary color */
+        color: white; /* Bootstrap 5 primary color */
+        border-radius: 8px;
+        box-shadow: 0px 0px 6px #fc9512; /* Updated box shadow color */
+    }
+    
+
+    .btn-danger {
+        border-color: red; /* Bootstrap 5 primary color */
+        border-radius: 8px;
+        box-shadow: 0px 0px 6px red; /* Add a red border */
+    }
+    .btn-outline-danger:hover {
+        background-color: red !important;
+        border-color: red; /* Outline (border) color */
+    }
+
+    .btn-outline-primaryhover {
+        background-color: #198754 !important; /* Bootstrap 5 success color */
+        border-color: #198754 !important; /* Bootstrap 5 success color */
+    }
+
+    /* Style for the dropdown */
+    .dropdown-content {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        display: none;
+        position: absolute;
+        background-color: white;
+        border: 1px solid #ccc;
+        padding: 10px;
+        top: 29px;
+        left: 0px;
+        color: red !important;
+        border-bottom: 1px solid #ccc; /* Add this line to make the border-bottom full width */
+        max-height: 200px; /* Set the maximum height to 200px */
+        overflow-y: hidden; /* Add a vertical scrollbar when content exceeds the height */
+        /* Style the scrollbar */
+        direction: rtl; /* Reverse the direction to make it appear on the left */
+    }
+
+
+        .dropdown-content a {
+            color: red !important;
+            padding-left: 10px;
+            padding-right: 10px
+        }
+
+        .dropdown-content div {
+            border-bottom: 1px solid #f0f0f0 !important;
+        }
+
+    /* Show the dropdown */
+    .show {
+        display: block;
+    }
+
+    .order-count {
+        position: absolute;
+        top: -1px;
+        left: 17px;
+        background-color: red;
+        color: white;
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        line-height: 18px; /* Adjusted line-height to match height */
+        text-align: center;
+        font-size: 6px; /* Adjusted font-size to fit text */
+        overflow: hidden; /* Hide any overflow */
+        white-space: nowrap; /* Prevent text wrapping */
+        font-weight: bold;
+    }
+
+    @@media (max-width: 991.98px) { /* Adjust this value based on when you want the styles to kick in */
+        .navbar-collapse {
+            display: flex !important;
+            flex-basis: auto;
+        }
+
+        .navbar .navbar-brand,
+        .navbar .navbar-nav .nav-item,
+        .navbar .navbar-nav .nav-link,
+        .navbar .dropdown-content,
+        .navbar #notificationBell,
+        .navbar #orderCount {
+            margin-top: 0 !important; /* Remove top margin */
+        }
+
+        .nav-item {
+            display: flex;
+        }
+
+        .navbar-nav {
+            flex-direction: row;
+        }
+
+        .navbar-toggler {
+            display: none; /* Hide toggler if it's not removed from the HTML */
+        }
+
+
+        .navbar {
+            padding-top: 0px;
+            margin-top: 0px;
+        }
+
+        .navbar-collapse {
+        }
+    }
+
+    main {
+        overflow-y: auto; /* Enable vertical scroll on main content */
+        height: 100vh; /* Set to the height of the viewport */
+    }
+    main.no-overflow {
+        overflow-y:unset;
+    }
+    /* Assuming your sidebar CSS looks something like this */
+
+    /* Add a class to body to prevent scrolling when sidebar is open (optional) */
+    .body-no-scroll {
+        overflow: hidden;
+    }
+</style>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        var images = document.querySelectorAll('img:not([src])');
+        images.forEach(function (img) {
+            img.src = 'static/DefaultImage.svg'; // Your default image path
+            img.setAttribute('width', '18'); // Set the width to 20px
+            img.setAttribute('height', '18'); // Set the height to 20px
+        });
+
+        var notificationBell = document.getElementById("notificationBell");
+        var notificationDropdown = document.getElementById("notificationDropdown");
+        var orderCount = document.getElementById("orderCount");
+
+        function fetchFailedOrders() {
+            // Clear the previous orders in the dropdown
+            notificationDropdown.innerHTML = "";
+
+            // Fetch the failed orders using AJAX
+            fetch("/Home/GetFailedOrders")
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error("Network response was not ok");
+                    }
+                    return response.json();
+                })
+                .then(function (data) {
+                    console.log("Fetched data:", data); // Check the data in the console
+
+                    // Display the number of failed orders in the red circle
+                    orderCount.textContent = data.length;
+
+                    // Display the failed orders in the dropdown
+                    data.forEach(function (order) {
+                        var orderElement = document.createElement("div");
+
+                        var orderLink = document.createElement("a");
+                        orderLink.textContent = "فشل تسليم الطلب #" + order.id;
+                        orderLink.href = '/order/details/' + order.id;
+
+                        orderElement.appendChild(orderLink);
+
+                        notificationDropdown.appendChild(orderElement);
+                    });
+
+                })
+                .catch(function (error) {
+                    console.error("Error fetching orders: " + error);
+                });
+        }
+
+        if (notificationBell && notificationDropdown && orderCount) {
+            // Fetch failed orders when the page loads
+            fetchFailedOrders();
+
+            notificationBell.addEventListener("click", function () {
+                // Show the dropdown
+                notificationDropdown.classList.toggle("show");
+            });
+        }
+
+        window.onclick = function (event) {
+            if (!event.target.matches("#notificationBell")) {
+                var dropdowns = document.getElementsByClassName("dropdown-content");
+                for (var i = 0; i < dropdowns.length; i++) {
+                    var openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains("show")) {
+                        openDropdown.classList.remove("show");
+                    }
+                }
+            }
+        };
+
+      
+      
+
+
+
+
+   
+
+    });
+</script>

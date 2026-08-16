@@ -1,0 +1,134 @@
+@model lotus_blue.Models.ViewModel.ManufacturingCompanyViewModel
+
+@{
+    ViewData["Title"] = "إنشاء شركة مصنعة";
+}
+
+<link rel="stylesheet" href="/css/toastify.css" />
+<script src="/js/toastify-js.js"></script>
+
+<div class="container">
+    <form id="createStoreForm" asp-action="Create" method="post" enctype="multipart/form-data">
+        <div class="row justify-content-center">
+            <div class="form-group d-flex flex-column align-items-center">
+                <label for="Name">الاسم:</label>
+                <input asp-for="Name" class="form-control w-50" placeholder="أدخل اسم الشركة" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="form-group d-flex flex-column align-items-center mt-2">
+                <label for="logoFile">أضافة شعار الشركة:</label>
+                <input type="file" asp-for="Logo" class="form-control w-50" name="logoFile" id="logoFile" />
+                <span asp-validation-for="Logo" class="text-danger"></span>
+            </div>
+
+            <div class="form-group d-flex flex-column align-items-center mt-2">
+                <label for="LogoFile2">أضافة صورة في التقييمات :</label>
+                <input type="file" asp-for="ImageUrl2" class="form-control w-50" name="LogoFile2" id="LogoFile2" />
+                <span asp-validation-for="ImageUrl2" class="text-danger"></span>
+            </div>
+
+            <div class="form-group d-flex flex-column align-items-center mt-2">
+                <label for="InvoiceFile">أضافة صورة الفاتورة :</label>
+                <input type="file" asp-for="InvoiceImage" class="form-control w-50" name="InvoiceFile" id="InvoiceFile" />
+                <span asp-validation-for="InvoiceImage" class="text-danger"></span>
+            </div>
+
+            <div class="form-group d-flex flex-column align-items-center mt-2">
+                <label for="PhoneNumber">رقم الهاتف:</label>
+                <input asp-for="PhoneNumber" class="form-control w-50" placeholder="أدخل رقم الهاتف" />
+                <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+            </div>
+
+            <!-- Main Warehouses -->
+            <div class="form-group d-flex flex-column align-items-center mt-2">
+                <label for="mainWarehouseId">المستودع الرئيسي:</label>
+
+                <!-- للتوافق مع أي كود قديم بيقرأ MainWarehouseId واحد فقط -->
+                <input type="hidden" name="MainWarehouseId" id="mainWarehouseIdHidden" value="" />
+
+                <select id="mainWarehouseId" name="MainWarehouseIds" class="form-control w-50" multiple>
+                </select>
+
+                <small class="text-muted mt-1">يمكن اختيار أكثر من مستودع رئيسي لهذا المتجر</small>
+            </div>
+
+            <div class="form-group mt-2 d-flex align-items-center justify-content-center">
+                <button type="submit" class="btn btn-success mt-3"> موافقة </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    $(function () {
+    $.ajax({
+    url: '/DATALIST/GetMainWarehouses',
+    type: 'GET',
+    success: function (data) {
+    var dropdown = $('#mainWarehouseId');
+    dropdown.empty();
+
+    $.each(data, function (index, warehouse) {
+    dropdown.append($('<option>', {
+    value: warehouse.id,
+    text: warehouse.name
+    }));
+    });
+
+    if ($.fn.select2) {
+    dropdown.select2({
+    placeholder: 'اختار المستودع الرئيسي',
+    allowClear: true,
+    dir: 'rtl',
+    width: '50%'
+    });
+    }
+    }
+    });
+
+    $('#mainWarehouseId').on('change', function () {
+    var selectedValues = $(this).val() || [];
+    $('#mainWarehouseIdHidden').val(selectedValues.length ? selectedValues[0] : '');
+    });
+
+    $('#createStoreForm').on('submit', function (e) {
+    e.preventDefault();
+
+    var selectedValues = $('#mainWarehouseId').val() || [];
+    $('#mainWarehouseIdHidden').val(selectedValues.length ? selectedValues[0] : '');
+
+    var formData = new FormData(this);
+
+    $.ajax({
+    url: $(this).attr('action'),
+    type: 'POST',
+    data: formData,
+    processData: false,
+    contentType: false,
+    success: function (result) {
+    if (result.success) {
+    window.location.href = result.redirectUrl;
+    } else {
+    Toastify({
+    text: result.message || 'حدث خطأ',
+    duration: 4000,
+    gravity: 'bottom',
+    position: 'center',
+    style: { background: '#FF0000', borderRadius: '8px', fontWeight: 'bold' }
+    }).showToast();
+    }
+    },
+    error: function () {
+    Toastify({
+    text: 'خطأ في الاتصال',
+    duration: 3000,
+    gravity: 'bottom',
+    position: 'center',
+    style: { background: '#FF0000', borderRadius: '8px', fontWeight: 'bold' }
+    }).showToast();
+    }
+    });
+    });
+    });
+</script>

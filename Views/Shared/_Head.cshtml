@@ -1,0 +1,70 @@
+<!-- Set character encoding -->
+<meta charset="utf-8" />
+
+<!-- Favo Icon -->
+<link rel="icon"
+      type="image/png"
+      href="~/static/011.png"
+      asp-append-version="true" />
+
+<link rel="shortcut icon"
+      type="image/png"
+      href="~/static/011.png"
+      asp-append-version="true" />
+
+<!-- viewport -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f7f8fa">
+
+<!-- Title -->
+<title> MAJESTA - @ViewData["Title"] </title>
+
+<!-- CSS -->
+<link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+<link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/datepicker.min.css" asp-append-version="true" />
+
+<link rel="stylesheet" href="~/css/select2.css" asp-append-version="true" />
+
+<script>
+    // Define the global isAdmin variable here in the head
+    window.isAdmin = @User.IsInRole("Admin").ToString().ToLower(); // "true" or "false"
+    console.log("Admin status set in head:", window.isAdmin);
+</script>
+
+<!-- JavaScript -->
+
+<script asp-append-version="true" src="~/lib/jquery/dist/jquery.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/3.1.9/signalr.min.js"></script>
+<script src="https://cdn.canvasjs.com/canvasjs.min.js"></script>
+
+<script src="/js/Select2.js" defer></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+
+<script src="~/js/main.js" asp-append-version="true"></script>
+<script src="~/js/site.js" asp-append-version="true"></script>
+<script src="~/js/SignalRRealTime.js" asp-append-version="true"></script>
+
+<!-- Required AMP Boilerplate -->
+<script async src="https://cdn.ampproject.org/v0.js"></script>
+
+
+<!-- Correct AMP Component Scripts -->
+<script async custom-element="amp-sidebar" src="https://cdn.ampproject.org/v0/amp-sidebar-1.0.js"></script>
+<script async custom-element="amp-fit-text" src="https://cdn.ampproject.org/v0/amp-fit-text-0.1.js"></script>
+<script async custom-element="amp-bind" src="https://cdn.ampproject.org/v0/amp-bind-0.1.js"></script>
+<script async
+        src="~/js/common-select2.js"
+        asp-append-version="true"></script>
+
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode/minified/html5-qrcode.min.js"></script>
+
+<!-- Meta -->
+
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">

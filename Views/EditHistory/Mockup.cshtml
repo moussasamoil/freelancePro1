@@ -1,0 +1,248 @@
+@{
+    Layout = "_OrderDetailsLayout";
+    ViewData["Title"] = "سجل التعديلات — Mockup";
+}
+
+<style>
+    .edit-changes-modal {
+        background: #fff;
+        max-width: 980px;
+        margin: 24px auto;
+        border-radius: 10px;
+        box-shadow: 0 2px 14px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        direction: rtl;
+    }
+
+    .edit-changes-modal__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        border-bottom: 1px solid #ececec;
+        background: #fff;
+    }
+
+    .edit-changes-modal__back {
+        color: #333;
+        text-decoration: none;
+        font-size: 14px;
+        padding: 6px 10px;
+    }
+
+        .edit-changes-modal__back:hover {
+            color: #1d273b;
+        }
+
+    .edit-changes-modal__title {
+        font-weight: 600;
+        font-size: 16px;
+    }
+
+    .edit-changes-modal__icon i {
+        color: #1d273b;
+        font-size: 18px;
+    }
+
+    .edit-changes-modal__body {
+        padding: 20px;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    .edit-changes-empty {
+        text-align: center;
+        color: #999;
+        padding: 40px 0;
+    }
+
+    .edit-group {
+        background: #fafbfc;
+        border: 1px solid #ececec;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        overflow: hidden;
+    }
+
+    .edit-group__meta {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 10px 14px;
+        background: #f1f4f6;
+        font-size: 13px;
+        color: #555;
+        border-bottom: 1px solid #ececec;
+    }
+
+    .edit-group__num {
+        font-weight: 600;
+        color: #1d273b;
+    }
+
+    .edit-group__by {
+        font-weight: 500;
+        color: #444;
+    }
+
+    .edit-group__date {
+        margin-inline-start: auto;
+        color: #888;
+        font-size: 12px;
+    }
+
+    .edit-group__table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+        .edit-group__table thead th {
+            background: #fff;
+            color: #6c757d;
+            font-weight: 500;
+            text-align: start;
+            padding: 8px 14px;
+            border-bottom: 1px solid #ececec;
+            font-size: 13px;
+        }
+
+        .edit-group__table tbody td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #f1f1f1;
+            vertical-align: top;
+        }
+
+        .edit-group__table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+    .edit-group__field {
+        color: #444;
+        font-weight: 500;
+        width: 24%;
+    }
+
+    .edit-group__before {
+        color: #b85c5c;
+        background: #fcf3f3;
+        width: 38%;
+    }
+
+    .edit-group__after {
+        color: #222936;
+        background: #eff1f5;
+        width: 38%;
+    }
+</style>
+
+<div id="editChangesContainer"></div>
+
+@section Scripts {
+    <script>
+        (function () {
+            'use strict';
+
+            var SAMPLE = {
+                orderId: 12345,
+                editGroups: [
+                    {
+                        editNumber: 4,
+                        editedAt: '2026/05/02 14:32',
+                        editedBy: 'وسيم العيدلبي',
+                        changes: [
+                            { fieldLabel: 'حالة الطلب', before: 'قيد التوصيل', after: 'تم التسليم' },
+                            { fieldLabel: 'تكلفة التوصيل', before: '15.00', after: '12.50' }
+                        ]
+                    },
+                    {
+                        editNumber: 3,
+                        editedAt: '2026/04/28 09:11',
+                        editedBy: 'أحمد محمود',
+                        changes: [
+                            { fieldLabel: 'البلد', before: 'العراق', after: 'الأردن' },
+                            { fieldLabel: 'المدينة', before: 'بغداد', after: 'عمّان' },
+                            { fieldLabel: 'الحملة', before: 'حملة الصيف', after: 'حملة الخريف' },
+                            { fieldLabel: 'كمية مخزن طرابلس', before: '2', after: '3' }
+                        ]
+                    },
+                    {
+                        editNumber: 2,
+                        editedAt: '2026/04/15 17:48',
+                        editedBy: 'سارة حسن',
+                        changes: [
+                            { fieldLabel: 'العنوان', before: 'شارع الرشيد', after: 'شارع الجمهورية' },
+                            { fieldLabel: 'إضافة منتج مخزن بنغازي', before: null, after: '1' }
+                        ]
+                    }
+                ]
+            };
+
+            function escapeHtml(s) {
+                if (s === null || s === undefined || s === '') return '—';
+                return String(s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function renderGroup(g) {
+                var rows = g.changes.map(function (c) {
+                    return ''
+                        + '<tr>'
+                        + '<td class="edit-group__field">' + escapeHtml(c.fieldLabel) + '</td>'
+                        + '<td class="edit-group__before">' + escapeHtml(c.before) + '</td>'
+                        + '<td class="edit-group__after">' + escapeHtml(c.after) + '</td>'
+                        + '</tr>';
+                }).join('');
+
+                return ''
+                    + '<div class="edit-group">'
+                    + '  <div class="edit-group__meta">'
+                    + '    <span class="edit-group__num">تعديل رقم ' + escapeHtml(g.editNumber) + '</span>'
+                    + '    <span class="edit-group__by">' + escapeHtml(g.editedBy) + '</span>'
+                    + '    <span class="edit-group__date">' + escapeHtml(g.editedAt) + '</span>'
+                    + '  </div>'
+                    + '  <table class="edit-group__table">'
+                    + '    <thead><tr><th>الحقل</th><th>قبل</th><th>بعد</th></tr></thead>'
+                    + '    <tbody>' + rows + '</tbody>'
+                    + '  </table>'
+                    + '</div>';
+            }
+
+            function render(data, container) {
+                var body;
+                if (!data.editGroups || !data.editGroups.length) {
+                    body = '<div class="edit-changes-empty">لا توجد تعديلات لعرضها</div>';
+                } else {
+                    body = data.editGroups.map(renderGroup).join('');
+                }
+
+                container.innerHTML = ''
+                    + '<div class="edit-changes-modal">'
+                    + '  <div class="edit-changes-modal__header">'
+                    + '    <a class="edit-changes-modal__back" href="javascript:history.back()">'
+                    + '      <i class="fa-regular fa-chevron-right"></i> رجوع'
+                    + '    </a>'
+                    + '    <div class="edit-changes-modal__title">سجل التعديلات</div>'
+                    + '    <div class="edit-changes-modal__icon"><i class="fa-light fa-clock-rotate-left"></i></div>'
+                    + '  </div>'
+                    + '  <div class="edit-changes-modal__body">' + body + '</div>'
+                    + '</div>';
+            }
+
+            function init() {
+                var container = document.getElementById('editChangesContainer');
+                if (!container) return;
+                render(SAMPLE, container);
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+    </script>
+}

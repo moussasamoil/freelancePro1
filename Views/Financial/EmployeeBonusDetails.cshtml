@@ -1,0 +1,581 @@
+@model lotus_blue.Models.ViewModel.HomeViewModel
+@using lotus_blue.Services
+@inject DynamicCommon dynamicommon
+
+@{
+    ViewData["Title"] = "";
+    Layout = "_NoHeaderLayout";
+
+}
+
+<style>
+    .custom-shadow-inpage:hover {
+        box-shadow: 0px 0px 6px #1d273b;
+    }
+
+  
+</style>
+
+<header style="direction:ltr !important">
+    <nav class="nav-shadow background-white-green navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom ">
+        <div class="container-fluid">
+            <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                <div>
+                    <i class=""></i>
+                </div>
+
+                <div>
+              
+                </div>
+                <div class="p-0 " style="direction: rtl;">
+                    @await Component.InvokeAsync("Sidebar")
+                </div>
+            </div>
+        </div>
+    </nav>
+</header>
+
+
+
+<div class="width-99 my-2 me-0 mx-auto ">
+
+    <div class="row me-0 text-end mx-auto d-flex justify-content-between">
+
+        <div class="col-lg w-100 my-auto mb-0 me-3 col-sm-12 p-relative text-nowrap">
+
+            <a id="printButton" class="btn print-hide  my-2   shadow">
+
+                سحب فاتورة
+            </a>
+
+            <a id="PayOrders" class="btn print-hide  my-2 me-4  shadow">
+                
+                دفع العمولة
+                 
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<div class="form-group d-flex align-items-center">
+    <label for="pageSize" class="me-2">أظهر:</label>
+    <select id="pageSize" name="pageSize" class="custom-shadow-small me-2">
+
+        @foreach (var size in new int?[] { 10, 20, 35, 50, 100, 200, 300, 500, 1000, 2000 })
+        {
+            if (Model.PaginationViewModel.PageSize == size)
+            {
+                <option value="@size" selected>@size</option>
+            }
+            else
+            {
+                <option value="@size">@size</option>
+            }
+        }
+    </select>
+    <label for="pageSize">مدخلات</label>
+</div>
+
+
+
+
+
+@if (Model != null)
+{
+    <table class="table mt-2 mx-auto width-99" id="ordersTable">
+        <thead>
+            <tr>
+                <th>رقم الوصل </th>
+                @if (User.IsInRole("Admin"))
+                {
+                    <th>اسم  الموظف</th>
+                }
+                <th>اسم الزبون</th>
+                <th>رقم الهاتف</th>
+                <th>تاريخ الأنشاء</th>
+                @if (!User.IsInRole("DeliveryCompany") && !User.IsInRole("DeliveryRepresentative"))
+                {
+                    <th> الدولة</th>
+                }
+                <th>المدينة </th>
+                <th> المنتجات</th>
+                <th> الكمية</th>
+
+                @if (!User.IsInRole("DeliveryCompany") && !User.IsInRole("DeliveryRepresentative"))
+                {
+                    <th>نوع الصفحة</th>
+
+                    <th>اسم الصفحة</th>
+                    <th> الجنس </th>
+                }
+                <th> المتجر</th>
+                @if (!User.IsInRole("DeliveryCompany") && !User.IsInRole("DeliveryRepresentative"))
+                {
+                    <th>شركة التوصيل</th>
+                }
+                <th>اخر تحديث </th>
+                <th>  حالة الطلب</th>
+                @*  @if (User.IsInRole("Admin"))
+            {
+            <th>سعر التوصيل</th>
+            } *@
+                <th>قيمة المبلغ </th>
+
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var order in Model.PaginationViewModel.Items)
+            {
+
+                <tr class="pointer order-details" data-order-id="@order.Id">
+                    <td class="text-green"><i class="fa-solid f-s-14 text-green fa-cube"></i>  @order.Id</td>
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <td class="text-nowrap text-end">
+                            <img src="@order.Employee.LogoUrl" width="14" class="b-r-50">
+                            @order.Employee.Name
+                        </td>
+                    }
+                    <td class="text-nowrap">@order.CustomerName</td>
+                    <td>@order.TelephoneNumber</td>
+                    @if (order.OrderStatus == OrderStatusEnum.تم_المعالجة)
+                    {
+                        <td>@order.FixedOrderDate?.ToString("yyyy-MM-dd HH:mm")</td>
+
+                    }
+                    else
+                    {
+                        <td>@order.CreatedDate.ToString("yyyy-MM-dd HH:mm")</td>
+
+                    }
+                    @if (!User.IsInRole("DeliveryCompany") && !User.IsInRole("DeliveryRepresentative"))
+                    {
+                        <td class="text-end text-nowrap">
+                            <img loading="lazy" class="pb-1 icon-size-standard" src="@Model.CountryImageUrls[(order.Country.ToString())]" />
+
+                            @order.Country
+
+                        </td>
+                    }
+                    <td>@order.State</td>
+                    <td>
+                        <div class="row">
+                            @foreach (var warehouse in order.SelectedWarehouses)
+                            {
+                                <div class="col-auto text-nowrap">
+                                    <img src="@warehouse.Image" width="17" height="17" class="rounded-circle me-1">
+                                    @warehouse.WarehouseName
+                                </div>
+                            }
+                        </div>
+                    </td>
+
+                    <td>
+                        @order.TotalAmountOfOrderWarehouses
+
+                    </td>
+                    @if (!User.IsInRole("DeliveryCompany") && !User.IsInRole("DeliveryRepresentative"))
+                    {
+                        <td>
+                            <img loading="lazy" class="pb-1 icon-size-standard" src="@Model.SocialMediaIconUrls[(order.OrderSource.ToString())]" />
+
+                            @order.OrderSource
+                        </td>
+
+                        <td>
+
+                            @order.SourceName
+                        </td>
+                        <td>@(order.Gender ? "ذكر" : "انثى")</td>
+                    }
+                    <td class="@(User.IsInRole("DeliveryCompany") || User.IsInRole("DeliveryRepresentative") ? "pe-5 text-end" : "text-end pe-5")" style="@(User.IsInRole("DeliveryCompany") || User.IsInRole("DeliveryRepresentative") ? "padding-right:4rem;" : "")">
+
+                        <img loading="lazy" class="pb-1 icon-size-standard" src="@order.ManufacturingCompany.Logo" />
+                        @order.ManufacturingCompany.Name
+
+                    </td>
+                    @if (!User.IsInRole("DeliveryCompany") && !User.IsInRole("DeliveryRepresentative"))
+                    {
+                        <td class="text-end">
+                            <img loading="lazy" class="pb-1 b-r-50 icon-size-standard" src="@order.DeliveryCompany.Logo" />
+                            @order.DeliveryCompany.Name
+                        </td>
+                    }
+
+                    <td>@order.LastEditedDate?.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td class="text-end text-nowrap">
+                        <img loading="lazy" class="pb-1 icon-size-standard" src="@Model.OrderStatusIconUrls[(order.OrderStatus.ToString())]" />
+
+                        @order.OrderStatus
+                    </td>
+
+                    <td class="text-start ltr">
+
+
+                        @order.TotalPrice.ToString("N0")
+                        <span>@Model.CurrencySymbols[(order.Country.ToString())]</span>
+
+                    </td>
+
+                </tr>
+
+
+            }
+        </tbody>
+
+
+    </table>
+}
+
+
+else
+{
+    <p>No orders found for this employee.</p>
+}
+
+
+
+<!-- Display pagination controls -->
+<div id="pagination-link" class="mt-0 container-fluid">
+    <div class="d-flex justify-content-center align-items-center flex-wrap">
+
+        <p class="text-start pt-2 total-items-display">@Model.PaginationViewModel.TotalItems عدد الطلبات</p>
+
+        <nav aria-label="Page navigation" class="mx-auto">
+            <div class="d-flex justify-content-start">
+                <ul class="pagination p-0">
+                    <li class="page-item @(Model.PaginationViewModel.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link pointer" data-page="1">
+                            <i class="fa-solid fa-chevron-double-right text-green"></i>
+                        </a>
+                    </li>
+                    <li class="page-item @(Model.PaginationViewModel.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.PaginationViewModel.CurrentPage - 1)">
+                            <i class="fa-solid fa-chevron-right text-green"></i>
+                        </a>
+                    </li>
+
+                    @{
+                        int startPage = Model.PaginationViewModel.CurrentPage;
+                        int endPage = startPage + 2;
+                        if (endPage > Model.PaginationViewModel.TotalPages)
+                        {
+                            endPage = Model.PaginationViewModel.TotalPages;
+                        }
+                    }
+
+                    @for (int i = startPage; i <= endPage; i++)
+                    {
+                        <li class="numbers page-item @(Model.PaginationViewModel.CurrentPage == i ? "active" : "")">
+                            <a class="page-link" data-page="@i">@i</a>
+                        </li>
+                    }
+
+                    @if (Model.PaginationViewModel.TotalPages > endPage)
+                    {
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+
+                        @for (int i = Model.PaginationViewModel.TotalPages - 2; i <= Model.PaginationViewModel.TotalPages; i++)
+                        {
+                            <li class="numbers page-item @(Model.PaginationViewModel.CurrentPage == i ? "active" : "")">
+                                <a class="page-link" data-page="@i">@i</a>
+                            </li>
+                        }
+                    }
+
+
+
+                    <li class="page-item @(Model.PaginationViewModel.CurrentPage ==  Model.PaginationViewModel.TotalPages ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.PaginationViewModel.CurrentPage + 1)">
+                            <i class="fa-solid fa-chevron-left text-green f-s-18"></i>
+                        </a>
+                    </li>
+                    <li class="page-item @(Model.PaginationViewModel.CurrentPage == Model.PaginationViewModel.TotalPages ? "disabled" : "")">
+                        <a class="page-link" data-page="@(Model.PaginationViewModel.TotalPages)">
+                            <i class="fa-solid fa-chevron-double-left text-green"></i>
+                        </a>
+                    </li>
+
+
+                </ul>
+            </div>
+        </nav>
+
+
+
+        @if (User.IsInRole("Admin"))
+        {
+
+            <div class="d-flex justify-content-end">
+                @if (@Model.TotalOrderPrice != null)
+                {
+                    <div class="custom-shadow ms-3 TotalOrderPrice" style="display:none;">
+                        <span class="total-price-display text-green">
+                            @Model.TotalOrderPrice
+                            @if (Model.SelectedCoutnry != null)
+                            {
+                                @Common.GetCurrencyByCountryName(Model.SelectedCoutnry)
+                            }
+                        </span>
+                    </div>
+                }
+
+                <div class="custom-shadow">
+                    <span class="total-price-display-try text-green">
+                        @(Model.TotalOrderPriceTRY)
+
+                        TRY
+
+                    </span>
+                </div>
+                <div class="custom-shadow">
+                    <span class="total-price-display-usd text-green">
+                        @(Model.TotalOrderPriceDollar)
+
+                        USD
+
+                    </span>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+
+<style>
+    .icon-size-standard {
+        width: 18px;
+        height: 18px;
+    }
+
+</style>
+
+
+
+
+<script>
+    $(document).ready(function () {
+        function getQueryParameter(name) {
+            var urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+        var employeeId = getQueryParameter('employeeId');
+
+
+        $('#PayOrders').click(function (event) {
+            // Fetch all order IDs for the current filter criteria
+            $.ajax({
+                url: '/Order/GetAllOrderIdsForEmployeeBonus',
+                type: 'GET',
+                data: {
+                    employeeId: employeeId,
+                    isEmployeebonus: true
+                },
+                success: function (orderIds) {
+                    if (orderIds.length > 0) {
+                        $.ajax({
+                            url: '/Order/SetBonusPaidForEmployee',
+                            type: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify(orderIds),
+                            success: function (response) {
+                                if (response.success) {
+                                    alert(response.message);
+                                    // Optionally, you can refresh the page or the table to reflect the changes
+                                    window.location.href = response.redirectUrl;
+                                } else {
+                                    alert("Failed to update bonus paid status.");
+                                }
+                            },
+                            error: function (xhr, status, error) {
+                                alert("An error occurred while updating bonus paid status.");
+                            }
+                        });
+                    } else {
+                        alert("No orders found to update.");
+                    }
+                },
+                error: function (xhr, status, error) {
+                    alert("An error occurred while fetching order IDs.");
+                }
+            });
+        });
+
+        $('#printButton').click(function (event) {
+            // Fetch all order IDs for the current filter criteria
+            $.ajax({
+                url: '/Order/GetAllOrderIdsForEmployeeBonus',
+                type: 'GET',
+                data: {
+                    employeeId: employeeId,
+                    isEmployeebonus: true
+                },
+                success: function (orderIds) {
+                    if (orderIds.length > 0) {
+                        var allOrderIds = orderIds.join(',');
+                        var url = '@Url.Action("PrintSelectedOrders", "Order")?ids=' + allOrderIds;
+                        window.open(url, '_blank');
+                    } else {
+                        alert("No orders found to print.");
+                    }
+                },
+                error: function (xhr, status, error) {
+                    alert("An error occurred while fetching order IDs.");
+                }
+            });
+        });
+
+        $('.order-details').click(function () {
+            // Get the order ID from the data attribute
+            var orderId = $(this).data('order-id');
+            // Redirect to the order details page with the order ID
+            window.location.href = '/Order/Details/' + orderId; // Replace '/Order/Details/' with your actual details page URL
+        });
+
+
+
+
+        // Event listener for dropdown changes
+        $('#pageSize,#EmployeeId, #CountryId, #OrderSourceId, #GenderId,#ManufacturingCompanyId,#WorkShift,#ProductId').on('change', function () {
+            loadData();
+        });
+
+
+    });
+
+
+
+
+    // Function to load data
+    function loadData(page=1) {
+        // Extract the current query parameters from the URL
+        const urlParams = new URLSearchParams(window.location.search);
+
+        // Extract existing parameters
+        let params = {
+            startDate: urlParams.get('startDate'),
+            endDate: urlParams.get('endDate'),
+            employeeId: urlParams.get('employeeId'),
+            productId: urlParams.get('productId'),
+            storeId: urlParams.get('storeId'),
+            ordersourceId: urlParams.get('ordersourceId'),
+            workshift: urlParams.get('workshift'),
+            genderId: urlParams.get('genderId'),
+            isFixed: urlParams.get('isFixed'),
+            isOffer: urlParams.get('isOffer'),
+            isDiscount: urlParams.get('isDiscount'),
+            isEmployeebonus: urlParams.get('isEmployeebonus'),
+            isComments: urlParams.get('isComments'),
+            isMale: urlParams.get('isMale'),
+            isFemale: urlParams.get('isFemale'),
+            countryId: urlParams.get('countryId'),
+            warehouseId: urlParams.get('warehouseId'),
+            sourceId: urlParams.get('sourceId'),
+            isDeliverd: urlParams.get('isDeliverd')
+        };
+
+        // Get the selected page size from the dropdown
+        const pageSize = $('#pageSize').val();
+
+        // Update parameters based on filter changes
+        if ($('#EmployeeId').length) {
+            params.employeeId = $('#EmployeeId').val();
+        }
+        if ($('#GenderId').length) {
+            params.genderId = $('#GenderId').val();
+        }
+        if ($('#ProductId').length) {
+            params.productId = $('#ProductId').val();
+        }
+        if ($('#ManufacturingCompanyId').length) {
+            params.storeId = $('#ManufacturingCompanyId').val();
+        }
+        if ($('#OrderSourceId').length) {
+            params.ordersourceId = $('#OrderSourceId').val();
+        }
+        if ($('#CountryId').length) {
+            params.countryId = $('#CountryId').val();
+        }
+        if ($('#WorkShift').length) {
+            params.workshift = $('#WorkShift').val();
+        }
+
+        const startDateElement = document.getElementById('startDate');
+        const endDateElement = document.getElementById('endDate');
+
+        if (startDateElement && startDateElement.value) {
+            params.startDate = startDateElement.value;
+        }
+        if (endDateElement && endDateElement.value) {
+            params.endDate = endDateElement.value;
+        }
+
+        // Make an AJAX request with the current query parameters and page size
+        $.ajax({
+            url: '/Financial/EmployeeBonusDetails',
+            type: 'GET',
+            data: {
+                page: page, // Use the passed page parameter
+                pageSize: pageSize, // Add the page size here
+
+                // Use params object properties here
+                startDate: params.startDate,
+                endDate: params.endDate,
+                employeeId: params.employeeId,
+                productId: params.productId,
+                storeId: params.storeId,
+                ordersourceId: params.ordersourceId,
+                workshift: params.workshift,
+                genderId: params.genderId,
+                isFixed: params.isFixed,
+                isOffer: params.isOffer,
+                isDiscount: params.isDiscount,
+                isEmployeebonus: params.isEmployeebonus,
+                isComments: params.isComments,
+                isMale: params.isMale,
+                isFemale: params.isFemale,
+                countryId: params.countryId,
+            },
+            success: function (response) {
+                // Parse the response HTML to extract the orders table and pagination link
+                var parsedHtml = $(response);
+
+                // Extract the orders table HTML
+                var ordersTableHtml = parsedHtml.find('#ordersTable').html();
+
+                // Extract the pagination link HTML
+                var paginationLinkHtml = parsedHtml.find('#pagination-link').html();
+
+                // Update the respective elements with the extracted HTML
+                $('#ordersTable').html(ordersTableHtml);
+                $('#pagination-link').html(paginationLinkHtml);
+                $('#total').html($(response).find('#total').html());
+
+            },
+            error: function (xhr, status, error) {
+                // Handle errors
+                console.error("An error occurred while loading data: ", error);
+            }
+        });
+    }
+
+    // Bind an event listener to the pagination links
+    $(document).on('click', '.pagination a.page-link', function (event) {
+        event.preventDefault(); // Still prevent the default action
+        // Extract the page number from the data-page attribute instead of the href
+        const page = $(this).data('page');
+
+        // Call the loadData function with the extracted page number
+        loadData(page);
+    });
+
+
+</script>

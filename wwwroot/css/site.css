@@ -1,0 +1,842 @@
+
+
+
+html, body {
+    background-color: #f7f8fa !important;
+    margin: 0 !important;
+    height: 100% !important;
+    width: 100% !important;
+}
+
+/* Ensure no scrolling issues and full coverage */
+body {
+    display: flex !important;
+    min-height: 100vh !important;
+    flex-direction: column !important;
+}
+
+
+
+/*// fonts
+*/
+.f-s-18 {
+    font-size: 18px !important;
+}
+
+
+.f-s-14 {
+    font-size: 14px !important;
+}
+
+.f-s-12 {
+    font-size: 14px !important;
+}
+
+
+.f-s-16 {
+    font-size: 16px !important;
+}
+
+.f-s-24 {
+    font-size: 24px !important;
+}
+
+.f-s-1-35rem {
+    font-size: 1.35rem
+}
+
+.f-s-1-50rem {
+    font-size: 1.5rem;
+}
+
+.f-w-400 {
+    font-weight: 400 !important;
+}
+
+.f-w-600 {
+    font-weight: 600 !important;
+}
+
+
+/*// text  Colors
+*/
+
+.text-green {
+    color: #1d273b !important;
+}
+
+
+.text-green-v2 {
+    color: #30cb52 !important;
+}
+
+.text-yellow {
+    color: #ffc107
+}
+
+.text-yellow-v2 {
+    color: #e9cd54;
+}
+
+.text-grey {
+    color: #CECECE !important;
+}
+
+.text-grey-v2 {
+    color: #6c757d !important;
+}
+
+.text-gold-v2 {
+    color: #f28e02 !important;
+}
+
+.text-green-v2 {
+    color: #F89C02;
+}
+
+.text-blue {
+    color: #1970f1 !important;
+}
+
+.text-red {
+    color: #fe0017;
+}
+
+    .text-green-v2:hover {
+        color: #F89C02;
+    }
+
+.hover-text-white:hover {
+    color: white !important;
+}
+
+
+/*// background  Colors
+*/
+
+.background-grey {
+    background-color: #f0f0f0 !important;
+}
+.background-red {
+    background-color:red !important;
+}
+.background-gold {
+    background-color: #1d273b !important;
+}
+
+.background-yellow {
+    background-color: #ffc107 !important;
+}
+.background-yellow-v2 {
+    background-color: #f28e02 !important;
+}
+.background-white-green.failure {
+    background-color: #f9e4e4 !important;
+}
+.background-white-green {
+    background-color: #f7f8fa !important;
+}
+.background-white-red {
+    background-color: #fae3e3 !important;
+}
+
+.background-white-green-v2 {
+    background-color: #e4fbe9 !important;
+}
+
+.background-green {
+    background-color: #30cb52 !important;
+}
+
+.background-whiteblue {
+    background-color: #007bff !important;
+}
+
+.background-white {
+    background-color: white !important;
+}
+.hover-background-gold-v2:hover {
+    background-color: #F89C02 !important;
+}
+.grey-hover:hover{
+    background-color:#f7f7f7 !important;
+}
+/*// Shadows
+*/
+.custom-box-shadow {
+    box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2) !important;
+    border:none !important;
+    background-color:white !important;
+}
+.custom-shadow-inpage {
+    color: black;
+    box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+    border-radius: 8px !important;
+    padding-right: 1rem;
+    padding-left: 1rem;
+    padding-bottom: 8px;
+    background-color:white;
+}
+
+.shadow-border {
+    background-color: #ffffff;
+    box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+    border-radius: 8px !important;
+    padding: 6px;
+    font-size: 18px;
+}
+
+
+
+/*// padding
+*/
+
+.padding-left-4 {
+    padding-left: 4px !important;
+}
+.padding-top-2 {
+    padding-top: 4px !important;
+}
+
+/*// directions
+*/
+
+.rtl {
+    direction: rtl !important;
+}
+
+.ltr {
+    direction: ltr !important;
+}
+
+
+
+/*// heights
+*/
+
+vh-50 {
+    height: 50vh !important;
+}
+
+.h-200-px {
+    height: 200px !important;
+}
+
+/*// width
+*/
+
+@media (max-width: 720px) {
+    .w-sm-100 {
+        width: 100% !important;
+    }
+    .w-sm-50{
+        width: 50% !important;
+    }
+
+    .f-s-18 {
+        font-size: 16px !important;
+    }
+   
+}
+
+.w-30 {
+    width: 30% !important;
+}
+
+/*// buttons
+*/
+.btn {
+    border-radius: 50rem !important; /* Makes all buttons rounded (pill shape) */
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    padding-top:4px;
+    padding-bottom:4px;
+}
+
+.btn-yellow-v3 {
+    background-color: #ffc107 !important; /* Text color */
+    border-color: #ffc107 !important; /* Outline (border) color */
+    color: white;
+    border-radius: 8px;
+    box-shadow: 0px 0px 4px #ffc107 !important;
+}
+
+.btn-yellow-v3:hover {
+    background-color: #ffc107 !important; /* Text color */
+    border-color: #ffc107 !important; /* Outline (border) color */
+    color: white;
+    border-radius: 8px;
+    box-shadow: 0px 0px 4px #ffc107 !important;
+}
+
+
+.btn-green-v2 {
+    background-color: #1d273b !important; /* Text color */
+    border-color: #1d273b !important; /* Outline (border) color */
+    color: white;
+    border-radius: 8px;
+    box-shadow: 0px 0px 4px #1d273b !important;
+}
+
+    .btn-green-v2:hover {
+        background-color: #1d273b !important; /* Text color */
+        border-color: #1d273b !important; /* Outline (border) color */
+        color: white !important;
+        border-radius: 8px;
+    }
+
+.btn-blue {
+    border-color: #0d6efd; /* Bootstrap 5 primary color */
+    background-color: #0d6efd; /* Bootstrap 5 primary color */
+    color: white;
+    border-radius: 8px;
+    box-shadow: 0px 0px 6px rgba(13, 110, 253, 1); /* Box shadow with the same color */
+}
+
+
+.btn-yellow {
+    border-color: #fc9512 !important; /* Outline (border) color */
+    background-color: #fc9512 !important; /* Text color */
+    color: white !important;
+    border-radius: 8px;
+    box-shadow: 0px 0px 6px rgba(252, 149, 18, 1) !important; /* Box shadow with the same color */
+}
+
+.btn-red {
+    background-color: red !important; /* Text color */
+    border-color: red !important; /* Outline (border) color */
+    color: white !important;
+    border-radius: 8px;
+    box-shadow: 0px 0px 6px red !important; /* Box shadow with the same color */
+}
+.btn-whiteblue {
+    background-color: #45bbea !important; /* Text color */
+    border-color: #45bbea !important; /* Outline (border) color */
+    color: white !important;
+    border-radius: 8px;
+    box-shadow: 0px 0px 6px #45bbea !important; /* Box shadow with the same color */
+}
+
+.btn-green {
+    border-color: #2ab149 !important; /* Outline (border) color */
+    background-color: #2ab149 !important; /* Text color */
+    color: white !important; /* Outline (border) color */
+    border-radius: 8px;
+    box-shadow: 0px 0px 6px rgba(42, 177, 73, 1) !important; /* Box shadow with the same color */
+}
+
+    .btn-green:hover {
+        background-color: #2ab149 !important;
+        border-color: #2ab149; /* Outline (border) color */
+    }
+
+.btn-yellow:hover {
+    background-color: #fc9512 !important;
+    border-color: #fc9512; /* Outline (border) color */
+    text-decoration: none;
+}
+
+
+.btn-red:hover {
+    background-color: red !important;
+    border-color: red; /* Outline (border) color */
+}
+
+.btn-blue {
+    border-color: #007bff !important;
+    background-color: #007bff !important;
+    color: white !important; /* Outline (border) color */
+    border-radius: 8px;
+    box-shadow: 0px 0px 6px #007bff !important;
+}
+
+    .btn-blue:hover {
+        background-color: #007bff !important;
+        border-color: #007bff; /* Outline (border) color */
+    }
+
+
+.btn-yellow-v2 {
+    border-color: #f1c75b !important;
+    background-color: #f1c75b !important;
+    color: white !important; /* Outline (border) color */
+    border-radius: 8px;
+    box-shadow: 0px 0px 6px #f1c75b !important;
+}
+
+    .btn-yellow-v2:hover {
+        background-color: #f1c75b !important;
+        border-color: #f1c75b; /* Outline (border) color */
+    }
+
+.btn {
+    border-radius: 8px;
+}
+
+
+/*// others  
+*/
+
+ul, li {
+    border: none !important;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    display: none;
+}
+
+
+.centered {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+:focus-visible {
+    outline: none !important; /* Remove outline */
+}
+
+.form-control:focus {
+    box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+input {
+    border-radius: 8px !important;
+}
+   
+
+p {
+    padding: 0;
+    margin: 0;
+}
+
+
+.pointer {
+    cursor: pointer;
+}
+
+
+.hidden {
+    display: none !important;
+}
+
+.visible {
+    display: block !important; /* Adjust 'block' as needed (e.g., 'flex', 'inline-block') */
+}
+
+
+
+.drop-down-design {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+    padding-top: 5px;
+    padding-bottom: 5px;
+    background-color: white;
+    color: #6c757d;
+    font-size: 17px;
+    padding-right: 14px;
+}
+
+
+    .drop-down-design:hover {
+        background-color: #F0F0F0 !important;
+    }
+
+.text-with-line {
+    text-decoration: underline;
+}
+
+
+/*// custom width
+*/
+
+.w-65{
+    width:65% !important;
+}
+
+/*// borders
+*/
+
+
+.b-r-8 {
+    border-radius: 8px !important;
+}
+
+
+.b-r-50 {
+    border-radius: 50px !important;
+}
+
+.border-top {
+    border-top: 1px solid rgba(0, 0, 0, 0.2) !important;
+}
+
+.border-right {
+    border-right: 1px solid rgba(0, 0, 0, 0.2) !important;
+}
+
+.borderb-bottom {
+    border-bottom:1px solid rgba(0, 0, 0, 0.2) !important;
+}
+
+/*Modal*/
+
+.modal {
+    background-color: rgba(33, 37, 41, 0.1);
+}
+
+
+
+.modal-dialog {
+    transform: translate(-50%, -50%);
+    border-radius: 8px !important; /* Border radius for the entire <thead> */
+}
+
+
+.modal-header {
+    padding: 0;
+    border-bottom: 1px solid #dee2e6;
+    width: 95%;
+    margin: 0 auto; /* Center the element horizontally */
+}
+.modal,
+.modal-dialog {
+    transition: none !important;
+    transform: none !important;
+}
+@media (min-width: 992px) {
+    .modal-lg, .modal-xl {
+        max-width: 650px !important;
+    }
+    .modal-dialog {
+        width: 120% !important; /* Adjust this width as needed */
+    }
+}
+
+/* increase and decrease buttons create edit resent order */
+
+
+.my-input-group .btn.rounded-btn {
+    border-radius: 16px !important;
+    color: white !important;
+}
+
+.my-input-group .form-control {
+    border-radius: 8px !important;
+    background-color: #1d273b;
+    color: white !important;
+}
+
+
+.my-input-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    border-radius: 8px;
+    width: 105% !important; /* Adjust as per your layout */
+}
+
+.gold-warehouse {
+    background-color: #1d273b !important;
+    color: white !important;
+}
+
+/* Centering placeholder */
+.my-input-group .form-control::placeholder {
+    text-align: center;
+    color: white !important;
+}
+
+/* Optional: Centering input text */
+.my-input-group .form-control {
+    text-align: center;
+}
+
+/* Overriding Bootstrap styles if necessary */
+.my-input-group .btn {
+    position: relative;
+    z-index: 2;
+}
+
+.my-input-group #decrease {
+    border-end-end-radius: 0;
+    border-start-end-radius: 0;
+    position: absolute;
+    right: 4px;
+}
+
+.my-input-group #increase {
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+    position: absolute;
+    left: 4px;
+}
+
+.my-input-group .form-control::-webkit-outer-spin-button,
+.my-input-group .form-control::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.my-input-group .form-control[type=number] {
+    -moz-appearance: textfield;
+}
+
+
+
+
+/*ios switch*/
+
+.ios-switch {
+    display: inline-block;
+    cursor: pointer;
+}
+
+    .ios-switch input {
+        display: none;
+    }
+
+    .ios-switch i {
+        position: relative;
+        display: inline-block;
+        margin-right: 0.5rem;
+        width: 46px;
+        height: 26px;
+        background-color: #e6e6e6;
+        border-radius: 23px;
+        vertical-align: text-bottom;
+        transition: all 0.3s;
+    }
+
+        .ios-switch i::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            width: 42px;
+            height: 22px;
+            background-color: #fff;
+            border-radius: 11px;
+            transform: translate3d(2px, 2px, 0) scale3d(1, 1, 1);
+            transition: all 0.3s; /* Added 's' to specify seconds */
+        }
+
+        .ios-switch i::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            width: 22px;
+            height: 22px;
+            background-color: #fff;
+            border-radius: 11px;
+            box-shadow: 0 2px 2px rgba(0, 0, 0, 0.24);
+            transform: translate3d(2px, 2px, 0);
+            transition: all 0.2s ease-in-out;
+        }
+
+    .ios-switch:active i::after {
+        width: 28px;
+        transform: translate3d(2px, 2px, 0);
+    }
+
+    /* Updated selector to include 'input:checked' */
+    .ios-switch input:checked + i {
+        background-color: #30cb52;
+    }
+
+        /* Updated selector to include 'input:checked' */
+        .ios-switch input:checked + i::before {
+            transform: translate3d(18px, 2px, 0) scale3d(0, 0, 0);
+        }
+
+        /* Updated selector to include 'input:checked' */
+        .ios-switch input:checked + i::after {
+            transform: translate3d(22px, 2px, 0);
+        }
+
+
+/* Table */
+
+.table > :not(:last-child) > :last-child > * {
+    border-bottom-color: #d3d3d3;
+}
+
+thead {
+    border-radius: 8px; /* Border radius for the entire <thead> */
+}
+
+
+th {
+    font-size: 0.9rem;
+    padding: 0px !important;
+    align-items: center; /* Center vertically */
+    vertical-align: middle; /* Center the content vertically within the table cells */
+}
+
+
+thead tr {
+    background-color: #f7f7f7;
+}
+
+table {
+    box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2); /* Box shadow */
+    text-align: center; /* Center the text within the table cells */
+    align-items: center; /* Center vertically */
+    border-radius: 8px;
+    background-color: #ffffff;
+}
+
+thead tr th {
+    color: #6c757d;
+}
+
+
+tr {
+    border-radius: 8px !important;
+    align-items: center; /* Center vertically */
+    vertical-align: middle; /* Center the content vertically within the table cells */
+}
+
+td {
+    align-items: center; /* Center vertically */
+    vertical-align: middle; /* Center the content vertically within the table cells */
+}
+
+
+tr:hover td {
+    background-color: #e2e5eb;
+    cursor: pointer;
+}
+
+
+
+/* pagination */
+
+.pagination .page-link {
+    color: #333; /* Set the default text color */
+    padding: 6px 12px; /* Adjust padding */
+    border: none; /* Remove the border */
+}
+
+.pagination .page-item.disabled .page-link,
+.page-link.page-link-custom {
+    color: black !important; /* Set the text color to black for both cases */
+}
+
+/* Change text color to white on selection */
+.pagination .page-item.active .page-link {
+    color: white !important;
+    background: #1d273b;
+}
+
+
+/* Change text color to white on hover for page numbers */
+.pagination .numbers.page-item:not(.active):hover .page-link {
+    color: black !important; /* Set text color to white on hover for non-selected page numbers */
+    box-shadow: none;
+    border: none;
+    margin: 0;
+}
+
+
+
+.numbers.page-item:not(.active) {
+    box-shadow: none;
+    border: 1px solid #ccc; /* Add border */
+    margin: 2px; /* Add margin */
+}
+
+    .numbers.page-item:not(.active):not(a:hover) {
+        box-shadow: none;
+        border: none; /* Add border */
+        margin: 0; /* Add margin */
+    }
+
+/* Adjust styles for active page */
+.numbers.page-item.active {
+    border: 1px solid #1d273b; /* Border color for active page */
+}
+
+.page-link:focus {
+    box-shadow: none !important;
+}
+
+.page-item {
+    border: 1px solid #d3d3d3 !important;
+    margin-left: 8px !important;
+    border-radius: 8px !important;
+    overflow: hidden; /* Ensure that child elements do not overflow the border-radius */
+}
+
+.page-link {
+    padding-right: 16px !important;
+    padding-left: 16px !important;
+    display: block; /* This ensures the anchor tag fills the .page-item */
+    /* Apply border-radius here too if .page-link has its own background or border */
+    border-radius: 8px !important;
+}
+
+
+
+.page-item.active {
+    background-color: #1d273b !important;
+}
+
+.page-link:hover {
+    background-color: rgb(229, 255, 250) !important;
+}
+
+
+/*
+
+all
+*/
+
+.icon-size-standard {
+    width: 13px;
+    height: 18px;
+}
+
+.custom-width-search-input {
+    width: 37%;
+    height: 16px;
+}
+
+.complaints-active {
+    background-color: red !important;
+    color: white !important;
+}
+
+/* Basic reset to hide the default checkbox appearance */
+input[type="checkbox"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    border: 2px solid gray;
+    border-radius: 50% !important; /* Circle shape */
+    outline: none;
+    cursor: pointer;
+    position: relative;
+}
+
+    /* Checked state styling */
+    input[type="checkbox"]:checked {
+        background-color: #182540; /* Green background */
+        border-color: #182540; /* Change border to match */
+    }
+
+        /* Add the checkmark when checked */
+        input[type="checkbox"]:checked:before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 15px;
+            background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="white"%3E%3Cpath stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /%3E%3C/svg%3E');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            transform: translate(-50%, -50%);
+        }

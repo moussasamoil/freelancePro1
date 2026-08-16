@@ -1,0 +1,4068 @@
+@using System.Collections.Generic
+@using System.Linq
+@using System.Globalization
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using Crm_LotusBlue.Controllers
+@{
+    ViewData["Title"] = "إدارة تسجيل الدوام";
+    ViewBag.Title = "إدارة تسجيل الدوام";
+    ViewBag.PageTitle = "إدارة تسجيل الدوام";
+    ViewBag.HeaderTitle = "إدارة تسجيل الدوام";
+
+    var attendanceLogs = ViewBag.AttendanceLogs as List<EmployeeAttendanceLogRow>;
+    var shiftBlockRows = ViewBag.EmployeeShiftBlockRows as List<EmployeeShiftBlockRow>;
+    var employees = ViewBag.Employees as List<SelectListItem>;
+    var filterEmployeeId = ViewBag.FilterEmployeeId?.ToString() ?? "";
+    var filterFromDate = ViewBag.FilterFromDate as string ?? "";
+    var filterToDate = ViewBag.FilterToDate as string ?? "";
+    var transactionDeductionAmountMap = ViewBag.TransactionDeductionAmountMap as Dictionary<int, string> ?? new Dictionary<int, string>();
+    var advanceAmountMap = ViewBag.AdvanceAmountMap as Dictionary<int, string> ?? new Dictionary<int, string>();
+    var bonusAmountMap = ViewBag.BonusAmountMap as Dictionary<int, string> ?? new Dictionary<int, string>();
+    var attendanceCurrencyMap = ViewBag.AttendanceCurrencyMap as Dictionary<int, string> ?? new Dictionary<int, string>();
+    var presentCount = ViewBag.PresentCount as int? ?? 0;
+    var absentCount = ViewBag.AbsentCount as int? ?? 0;
+    var lateCount = ViewBag.LateCount as int? ?? 0;
+    var disciplinedCount = ViewBag.DisciplinedCount as int? ?? 0;
+    var selectedEmployeeText = "كل الموظفين";
+    var selectedEmployeeImage = "";
+    var isAutoPeriodFilter = ViewBag.IsAutoPeriodFilter is bool autoPeriodValue && autoPeriodValue;
+    var attendanceDateRangeText = "";
+
+    if (!string.IsNullOrWhiteSpace(filterFromDate) && !string.IsNullOrWhiteSpace(filterToDate))
+    {
+        attendanceDateRangeText = $"{filterFromDate} - {filterToDate}";
+    }
+    else if (!string.IsNullOrWhiteSpace(filterFromDate))
+    {
+        attendanceDateRangeText = filterFromDate;
+    }
+    else if (!string.IsNullOrWhiteSpace(filterToDate))
+    {
+        attendanceDateRangeText = filterToDate;
+    }
+
+    if (employees != null && !string.IsNullOrWhiteSpace(filterEmployeeId))
+    {
+        var selectedEmployee = employees.FirstOrDefault(e => e.Value == filterEmployeeId);
+
+        if (selectedEmployee != null)
+        {
+            selectedEmployeeText = selectedEmployee.Text;
+            selectedEmployeeImage = selectedEmployee.Group?.Name ?? "";
+        }
+    }
+    if (attendanceLogs != null)
+    {
+        presentCount = attendanceLogs.Count(x => !x.IsAbsent && x.LateMinutes.HasValue);
+        absentCount = attendanceLogs.Count(x => x.IsAbsent);
+        lateCount = attendanceLogs.Count(x => !x.IsAbsent && x.LateMinutes.HasValue && x.LateMinutes.Value > 0);
+        disciplinedCount = attendanceLogs.Count(x => !x.IsAbsent && x.LateMinutes.HasValue && x.LateMinutes.Value == 0);
+    }
+}
+
+
+@functions {
+    private static string FormatArabicAmPm(DateTime value)
+    {
+        return value.ToString("hh:mm", CultureInfo.InvariantCulture) + " " + (value.Hour < 12 ? "ص" : "م");
+    }
+
+    private static string FormatArabicAmPmFull(DateTime value)
+    {
+        return value.ToString("yyyy/MM/dd hh:mm", CultureInfo.InvariantCulture) + " " + (value.Hour < 12 ? "ص" : "م");
+    }
+
+    private static string FormatArabicAmPmFromText(string? timeText)
+    {
+        if (string.IsNullOrWhiteSpace(timeText))
+        {
+            return "-";
+        }
+
+        var cleanTimeText = timeText.Trim();
+
+        if (cleanTimeText == "-" || cleanTimeText.Contains("ص") || cleanTimeText.Contains("م"))
+        {
+            return cleanTimeText;
+        }
+
+        if (TimeSpan.TryParse(cleanTimeText, out var timeValue))
+        {
+            var dateTime = DateTime.Today.Add(timeValue);
+            return dateTime.ToString("hh:mm", CultureInfo.InvariantCulture) + " " + (timeValue.Hours < 12 ? "ص" : "م");
+        }
+
+        return cleanTimeText;
+    }
+}
+
+<div class="attendance-log-full-page" dir="rtl">
+    <style>
+            .attendance-log-full-page {
+                width: 100%;
+                max-width: 100%;
+                padding: 14px 16px 24px;
+                margin: 0;
+                box-sizing: border-box;
+            }
+
+            .attendance-log-page {
+                width: 100%;
+                max-width: 100%;
+                margin: 0;
+            }
+
+
+            .attendance-page-heading {
+                background: #F5F5F5;
+                color: #f28e02;
+                border-radius: 16px;
+                padding: 14px 18px;
+                margin-bottom: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                flex-wrap: wrap;
+                border: 1px solid #e9eaec;
+                box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+            }
+
+            .attendance-page-heading-title {
+                margin: 0;
+                color: #f28e02;
+                font-size: 22px;
+                font-weight: 900;
+            }
+
+            .assign-work-times-link {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 38px;
+                padding: 7px 18px;
+                border-radius: 999px;
+                background: #1d273b;
+                color: #ffffff !important;
+                text-decoration: none !important;
+                font-size: 15px;
+                font-weight: 800;
+                box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+                white-space: nowrap;
+            }
+
+                .assign-work-times-link:hover {
+                    background: #1d273b;
+                    color: #ffffff !important;
+                    text-decoration: none !important;
+                }
+
+
+            .top-assign-work-times-link {
+                position: absolute;
+                right: 830%;
+                top: 50%;
+                transform: translateY(-50%);
+                z-index: 3;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 28px;
+                padding: 4px 13px;
+                border-radius: 999px;
+                background: #1d273b;
+                color: #ffffff !important;
+                text-decoration: none !important;
+                font-size: 13px;
+                font-weight: 800 !important;
+                line-height: 1.2;
+                white-space: nowrap;
+                vertical-align: middle;
+                box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+            }
+
+                .top-assign-work-times-link:hover {
+                    background: #1d273b;
+                    color: #ffffff !important;
+                    text-decoration: none !important;
+                }
+
+            .top-attendance-header-links {
+                position: absolute;
+                right: 620%;
+                top: 50%;
+                transform: translateY(-50%);
+                z-index: 3;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                white-space: nowrap;
+            }
+
+                .top-attendance-header-links .top-assign-work-times-link {
+                    position: static;
+                    right: auto;
+                    top: auto;
+                    transform: none;
+                    min-height: 26px;
+                    padding: 3px 9px;
+                    font-size: 12px;
+                }
+
+            .attendance-filter-card,
+            .attendance-log-card {
+                background: #ffffff;
+                border: 1px solid #e9eaec;
+                box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+                width: 100%;
+            }
+
+            .attendance-filter-card {
+                border-radius: 18px;
+                padding: 16px;
+                margin-bottom: 16px;
+            }
+
+            .attendance-summary-grid {
+                display: grid;
+                grid-template-columns: repeat(5, minmax(0, 1fr));
+                gap: 12px;
+                margin-bottom: 16px;
+            }
+
+            .attendance-summary-card {
+                min-height: 58px;
+                border-radius: 14px;
+                padding: 12px 14px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                box-shadow: 0 6px 15px rgba(15, 23, 42, 0.05);
+                border: 1px solid rgba(226, 232, 240, 0.9);
+            }
+
+            .attendance-summary-label {
+                font-size: 13px;
+                font-weight: 900 !important;
+            }
+
+            .attendance-summary-count {
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                font-weight: 900 !important;
+                background: rgba(255,255,255,0.7);
+            }
+
+            .attendance-summary-present {
+                background: rgba(34, 197, 94, 0.10);
+                color: #16a34a;
+            }
+
+            .attendance-summary-absent {
+                background: rgba(239, 68, 68, 0.10);
+                color: #dc2626;
+            }
+
+            .attendance-summary-late {
+                background: rgba(245, 158, 11, 0.12);
+                color: #d97706;
+            }
+
+            .attendance-summary-disciplined {
+                background: rgba(20, 184, 166, 0.10);
+                color: #1c273c;
+            }
+
+            .attendance-summary-leave {
+                background: rgba(59, 130, 246, 0.10);
+                color: #2563eb;
+            }
+
+            .attendance-summary-trash {
+                background: rgba(100, 116, 139, 0.10);
+                color: #475569;
+                border: 1px solid rgba(100, 116, 139, 0.18);
+                cursor: pointer;
+                width: 100%;
+                text-align: inherit;
+            }
+
+                .attendance-summary-trash:hover {
+                    background: rgba(100, 116, 139, 0.16);
+                }
+
+            .attendance-trash-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.45);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                z-index: 100002;
+                padding: 16px;
+            }
+
+            .attendance-trash-popup {
+                width: min(760px, 96vw);
+                max-height: 84vh;
+                background: #ffffff;
+                border-radius: 18px;
+                overflow: hidden;
+                box-shadow: 0 22px 58px rgba(15, 23, 42, 0.28);
+                direction: rtl;
+            }
+
+            .attendance-trash-header {
+                background: #F5F5F5;
+                color: #f28e02;
+                padding: 14px 18px;
+                font-size: 21px;
+                font-weight: 900 !important;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                border-bottom: 1px solid #94a3b8;
+            }
+
+            .attendance-trash-close {
+                border: 0;
+                background: transparent;
+                color: #334155;
+                font-size: 26px;
+                line-height: 1;
+                cursor: pointer;
+            }
+
+            .attendance-trash-body {
+                padding: 16px 18px;
+                max-height: 58vh;
+                overflow-y: auto;
+            }
+
+            .attendance-trash-item {
+                padding: 12px 0;
+                border-bottom: 1px solid #e5e7eb;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 14px;
+                flex-wrap: wrap;
+            }
+
+                .attendance-trash-item:last-child {
+                    border-bottom: 0;
+                }
+
+            .attendance-trash-info {
+                flex: 1;
+                min-width: 240px;
+                color: #334155;
+                font-size: 14px;
+                line-height: 1.8;
+            }
+
+            .attendance-trash-name {
+                color: #1d273b;
+                font-size: 15px;
+                font-weight: 800 !important;
+            }
+
+            .attendance-trash-restore-btn,
+            .attendance-trash-restore-all-btn {
+                border: 0;
+                border-radius: 999px;
+                min-height: 36px;
+                padding: 6px 16px;
+                color: #ffffff;
+                font-size: 14px;
+                cursor: pointer;
+                box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+            }
+
+            .attendance-trash-restore-btn {
+                background: #1d273b;
+            }
+
+            .attendance-trash-restore-all-btn {
+                background: #f28e02;
+            }
+
+            .attendance-trash-footer {
+                padding: 0 18px 18px;
+                display: flex;
+                justify-content: center;
+            }
+
+            .attendance-trash-empty {
+                padding: 28px 10px;
+                text-align: center;
+                color: #64748b;
+                font-size: 16px;
+            }
+
+            @@media (max-width: 768px) {
+                .attendance-summary-grid {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+            }
+
+
+            .attendance-filter-title {
+                background: #F5F5F5;
+                color: #f28e02;
+                border-radius: 14px;
+                padding: 14px 18px;
+                font-size: 20px;
+                font-weight: 900;
+                margin-bottom: 16px;
+                border-bottom: 1px solid #94a3b8;
+            }
+
+            .form-label {
+                font-weight: 800;
+                color: #334155;
+                margin-bottom: 8px;
+            }
+
+            .attendance-filter-input {
+                min-height: 44px;
+                height: 44px;
+                border-radius: 8px !important;
+                border: 0 !important;
+                background-color: #ffffff !important;
+                box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2) !important;
+                color: #111827 !important;
+                font-size: 16px;
+                font-weight: 700;
+                padding-right: 14px;
+                padding-left: 14px;
+                outline: none !important;
+            }
+
+                .attendance-filter-input:focus {
+                    border: 1px solid #1d273b !important;
+                    box-shadow: 0 0 0 0.15rem rgba(24, 160, 136, 0.15), 0px 0px 4px rgba(0, 0, 0, 0.2) !important;
+                }
+
+            .attendance-date-range-input {
+                cursor: pointer !important;
+                text-align: center !important;
+                direction: ltr !important;
+                unicode-bidi: plaintext !important;
+            }
+
+            .attendance-filter-card .filter-btn {
+                display: none !important;
+            }
+
+            .employee-custom-dropdown {
+                position: relative;
+                width: 100%;
+            }
+
+            .selected-employee {
+                min-height: 44px;
+                height: 44px;
+                border-radius: 8px !important;
+                background: #ffffff;
+                color: #111827;
+                box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+                padding: 0 14px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                font-size: 16px;
+                font-weight: 800;
+                user-select: none;
+            }
+
+            .selected-employee-text {
+                flex: 1;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                text-align: right;
+            }
+
+            .selected-employee-image,
+            .selected-employee-placeholder {
+                width: 30px;
+                height: 30px;
+                min-width: 30px;
+                border-radius: 50%;
+                object-fit: cover;
+                border: 1px solid #e9eaec;
+                background: #f8fafc;
+            }
+
+            .selected-employee-placeholder {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                color: #1d273b;
+                font-size: 15px;
+            }
+
+            .selected-employee-icon {
+                color: #1d273b;
+                font-size: 15px;
+                transition: transform 0.18s ease;
+            }
+
+            .employee-custom-dropdown.open .selected-employee-icon {
+                transform: rotate(180deg);
+            }
+
+            .employee-options-dropdown {
+                display: none;
+                position: absolute;
+                top: calc(100% + 6px);
+                right: 0;
+                left: 0;
+                z-index: 9999;
+                background: #ffffff;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16);
+                max-height: 290px;
+                overflow-y: auto;
+                overflow-x: hidden;
+                padding: 0;
+            }
+
+            .employee-custom-dropdown.open .employee-options-dropdown {
+                display: block;
+            }
+
+            .employee-option {
+                min-height: 46px;
+                padding: 9px 13px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                color: #111827;
+                font-weight: 800;
+                background: #ffffff;
+                border-bottom: 1.5px solid #111827;
+                cursor: pointer;
+                transition: background 0.15s ease;
+            }
+
+                .employee-option:last-child {
+                    border-bottom: 0;
+                }
+
+                .employee-option:hover,
+                .employee-option.active {
+                    background: #f8fafc;
+                }
+
+            .employee-option-image,
+            .employee-option-placeholder {
+                width: 30px;
+                height: 30px;
+                min-width: 30px;
+                border-radius: 50%;
+                object-fit: cover;
+                border: 1px solid #e9eaec;
+                background: #f8fafc;
+            }
+
+            .employee-option-placeholder {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                color: #1d273b;
+                font-size: 15px;
+            }
+
+            .employee-option-name {
+                flex: 1;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                text-align: right;
+            }
+
+            .employee-options-dropdown::-webkit-scrollbar {
+                width: 7px;
+            }
+
+            .employee-options-dropdown::-webkit-scrollbar-track {
+                background: #e9eaec;
+                border-radius: 999px;
+            }
+
+            .employee-options-dropdown::-webkit-scrollbar-thumb {
+                background: #1d273b;
+                border-radius: 999px;
+            }
+
+            .filter-btn,
+            .print-selected-btn,
+            .reset-btn {
+                border: 0;
+                border-radius: 999px;
+                min-height: 44px;
+                padding: 7px 20px;
+                color: #ffffff;
+                font-weight: 800;
+                box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+                white-space: nowrap;
+            }
+
+            .filter-btn {
+                background: #1d273b;
+            }
+
+            .print-selected-btn {
+                background: #f28e02;
+            }
+
+            .reset-btn {
+                background: #64748b;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                text-decoration: none;
+            }
+
+            .attendance-log-card {
+                border-radius: 18px;
+                overflow: hidden;
+            }
+
+            .attendance-log-header {
+                background: #F5F5F5;
+                color: #f28e02;
+                padding: 16px 20px;
+                font-size: 22px;
+                font-weight: 900;
+                display: flex;
+                justify-content: space-between;
+                gap: 10px;
+                align-items: center;
+                flex-wrap: wrap;
+                border-bottom: 1px solid #94a3b8;
+            }
+
+            .attendance-log-count {
+                background: rgba(24, 160, 136, 0.12);
+                border: 1px solid rgba(24, 160, 136, 0.20);
+                color: #1d273b;
+                padding: 6px 14px;
+                border-radius: 999px;
+                font-size: 14px;
+                font-weight: 800;
+            }
+
+            .table-responsive {
+                width: 100%;
+                max-width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .attendance-table {
+                margin: 0;
+                text-align: center;
+                vertical-align: middle;
+                width: 100%;
+                min-width: 1860px;
+                table-layout: auto;
+                font-size: 12px;
+                border-collapse: separate;
+                border-spacing: 0;
+            }
+
+                .attendance-table thead {
+                    background: #f8fafc;
+                    color: #334155;
+                }
+
+                .attendance-table th,
+                .attendance-table td {
+                    vertical-align: middle;
+                    white-space: nowrap;
+                    padding: 5px 6px;
+                    line-height: 1.25;
+                    border-left: 1px solid rgba(148, 163, 184, 0.24);
+                    border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+                }
+
+                    .attendance-table th:last-child,
+                    .attendance-table td:last-child {
+                        border-left: 0;
+                    }
+
+                .attendance-table tbody tr:hover {
+                    background: rgba(248, 250, 252, 0.85);
+                }
+
+            #selectAllAttendanceRecords {
+                margin-top: 4px;
+            }
+
+            .record-select-checkbox {
+                appearance: none;
+                -webkit-appearance: none;
+                width: 24px;
+                height: 24px;
+                border-radius: 50%;
+                border: 2px solid #64748b;
+                background: #ffffff;
+                display: inline-block;
+                cursor: pointer;
+                position: relative;
+            }
+
+                .record-select-checkbox:checked {
+                    border-color: #1d273b;
+                    background: #1d273b;
+                }
+
+                    .record-select-checkbox:checked::after {
+                        content: "";
+                        position: absolute;
+                        width: 8px;
+                        height: 8px;
+                        border-radius: 50%;
+                        background: #ffffff;
+                        top: 6px;
+                        left: 6px;
+                    }
+
+            .employee-photo {
+                width: 38px;
+                height: 38px;
+                border-radius: 50%;
+                object-fit: cover;
+                border: 3px solid rgba(24, 160, 136, 0.18);
+                box-shadow: 0 5px 14px rgba(15, 23, 42, 0.08);
+                background: #f8fafc;
+                cursor: pointer;
+                transition: transform 0.16s ease, box-shadow 0.16s ease;
+            }
+
+                .employee-photo:hover {
+                    transform: scale(1.06);
+                    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
+                }
+
+            .employee-cell {
+                min-width: 175px;
+            }
+
+            .employee-name {
+                color: #1d273b;
+            }
+
+            .attendance-employee-inline {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                white-space: nowrap;
+            }
+
+            .attendance-employee-table-image {
+                width: 28px;
+                height: 28px;
+                min-width: 28px;
+                border-radius: 50%;
+                object-fit: cover;
+                border: 2px solid rgba(24, 160, 136, 0.22);
+                background: #f8fafc;
+            }
+
+            .attendance-ip-changed {
+                color: #dc2626 !important;
+                font-weight: 900 !important;
+            }
+
+            .attendance-ip-hover {
+                position: relative;
+                display: inline-block;
+                cursor: help;
+            }
+
+            .attendance-ip-cloud-tooltip {
+                position: fixed;
+                display: none;
+                min-width: 280px;
+                max-width: 420px;
+                padding: 12px 14px;
+                border-radius: 16px;
+                background: #ffffff;
+                color: #334155;
+                border: 1px solid rgba(24, 160, 136, 0.28);
+                box-shadow: 0 18px 42px rgba(15, 23, 42, 0.22);
+                z-index: 2147483000;
+                white-space: pre-line;
+                text-align: right;
+                direction: rtl;
+                font-size: 12px;
+                font-weight: 800 !important;
+                line-height: 1.8;
+                pointer-events: none;
+            }
+
+                .attendance-ip-cloud-tooltip::after {
+                    content: "";
+                    position: absolute;
+                    left: 24px;
+                    bottom: -8px;
+                    border-width: 8px 8px 0 8px;
+                    border-style: solid;
+                    border-color: #ffffff transparent transparent transparent;
+                }
+
+            .date-cell {
+                min-width: 105px;
+            }
+
+            .time-cell {
+                min-width: 92px;
+            }
+
+            .attendance-time-late {
+                color: #dc2626 !important;
+            }
+
+            .attendance-time-disciplined {
+                color: #16a34a !important;
+            }
+
+            .shift-cell {
+                min-width: 92px;
+            }
+
+            .status-cell {
+                min-width: 88px;
+            }
+
+            .status-pill {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 86px;
+                min-height: 30px;
+                padding: 4px 12px;
+                border-radius: 999px;
+                font-size: 13px;
+            }
+
+            .status-present {
+                background: rgba(42, 177, 73, 0.12);
+                color: rgb(42, 177, 73);
+            }
+
+            .status-late {
+                background: rgba(242, 142, 2, 0.14);
+                color: #f28e02;
+            }
+
+            .status-no-shift {
+                background: rgba(100, 116, 139, 0.14);
+                color: #64748b;
+            }
+
+            .status-absent {
+                background: rgba(220, 38, 38, 0.12);
+                color: #dc2626;
+            }
+
+            .deduction-cell {
+                min-width: 92px;
+                color: #dc2626;
+                font-size: 16px;
+            }
+
+            .advance-cell {
+                min-width: 92px;
+                color: #b45309;
+                font-size: 16px;
+                direction: ltr;
+            }
+
+            .bonus-cell {
+                min-width: 92px;
+                color: #15803d;
+                font-size: 16px;
+                direction: ltr;
+            }
+
+            .reason-cell {
+                min-width: 205px;
+                max-width: 300px;
+                white-space: normal !important;
+                text-align: right;
+                line-height: 1.9;
+                color: #334155;
+            }
+
+            .ip-cell {
+                direction: ltr;
+                color: #1c273c;
+                min-width: 95px;
+            }
+
+            .location-cell {
+                min-width: 125px;
+                max-width: 175px;
+                white-space: normal !important;
+                color: #475569;
+            }
+
+            .ip-location-cell {
+                min-width: 190px;
+                max-width: 250px;
+                white-space: normal !important;
+                text-align: right;
+                line-height: 1.7;
+            }
+
+            .ip-location-box {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                align-items: flex-start;
+                direction: rtl;
+            }
+
+            .ip-location-line {
+                width: 100%;
+                color: #334155;
+                font-size: 12px;
+                font-weight: 500 !important;
+                word-break: break-word;
+            }
+
+            .ip-location-label {
+                color: #1d273b;
+                font-weight: 800 !important;
+                margin-left: 4px;
+            }
+
+            .attendance-actions-cell {
+                min-width: 176px;
+                white-space: nowrap;
+            }
+
+            .attendance-row-actions {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                flex-wrap: nowrap;
+            }
+
+            .attendance-edit-row-btn,
+            .attendance-delete-row-btn,
+            .attendance-print-row-btn {
+                border: 0;
+                border-radius: 999px;
+                min-width: 48px;
+                min-height: 28px;
+                padding: 4px 10px;
+                color: #ffffff;
+                font-size: 12px;
+                font-weight: 800 !important;
+                cursor: pointer;
+                box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+            }
+
+            .attendance-edit-row-btn {
+                background: #1d273b;
+            }
+
+            .attendance-delete-row-btn {
+                background: #dc2626;
+            }
+
+            .attendance-print-row-btn {
+                background: #f28e02;
+                min-width: 72px;
+            }
+
+            .attendance-edit-popup-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.45);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                z-index: 100000;
+                padding: 16px;
+            }
+
+            .attendance-edit-popup {
+                width: min(620px, 96vw);
+                background: #ffffff;
+                border-radius: 18px;
+                overflow: hidden;
+                box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+                direction: rtl;
+            }
+
+            .attendance-edit-popup-header {
+                background: #F5F5F5;
+                color: #f28e02;
+                padding: 14px 18px;
+                font-size: 21px;
+                font-weight: 900 !important;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                border-bottom: 1px solid #94a3b8;
+            }
+
+            .attendance-edit-header-main {
+                display: inline-flex;
+                align-items: center;
+                justify-content: flex-start;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+
+            .attendance-edit-history-toggle-btn {
+                border: 0;
+                border-radius: 999px;
+                min-height: 30px;
+                padding: 5px 14px;
+                background: rgba(24, 160, 136, 0.12);
+                color: #1d273b;
+                font-size: 13px;
+                font-weight: 900 !important;
+                cursor: pointer;
+                box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+            }
+
+                .attendance-edit-history-toggle-btn.is-active {
+                    background: #1d273b;
+                    color: #ffffff;
+                }
+
+            .attendance-edit-history-block {
+                display: none;
+            }
+
+                .attendance-edit-history-block.is-visible {
+                    display: block;
+                }
+
+            .attendance-log-full-page.is-attendance-table-loading .attendance-summary-grid,
+            .attendance-log-full-page.is-attendance-table-loading .attendance-log-card {
+                opacity: .55;
+                pointer-events: none;
+                transition: opacity .15s ease;
+            }
+
+            .attendance-edit-popup-close {
+                border: 0;
+                background: transparent;
+                color: #334155;
+                font-size: 26px;
+                line-height: 1;
+                cursor: pointer;
+            }
+
+            .attendance-edit-popup-body {
+                padding: 18px;
+            }
+
+            .attendance-edit-label {
+                display: block;
+                color: #334155;
+                font-size: 14px;
+                font-weight: 800 !important;
+                margin-bottom: 6px;
+            }
+
+            .attendance-edit-input {
+                width: 100%;
+                min-height: 42px;
+                border-radius: 8px !important;
+                border: 0 !important;
+                background-color: #ffffff !important;
+                box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2) !important;
+                color: #111827 !important;
+                font-size: 15px;
+                font-weight: 700 !important;
+                padding: 8px 12px;
+                outline: none !important;
+            }
+
+            textarea.attendance-edit-input {
+                min-height: 82px;
+                resize: vertical;
+                line-height: 1.7;
+            }
+
+            .attendance-edit-popup-footer {
+                display: flex;
+                justify-content: center;
+                gap: 10px;
+                flex-wrap: wrap;
+                padding: 0 18px 18px;
+            }
+
+            .attendance-save-row-btn,
+            .attendance-cancel-row-btn {
+                border: 0;
+                border-radius: 999px;
+                min-width: 110px;
+                min-height: 42px;
+                padding: 7px 18px;
+                color: #ffffff;
+                font-size: 15px;
+                font-weight: 900 !important;
+                cursor: pointer;
+            }
+
+            .attendance-save-row-btn {
+                background: #f28e02;
+            }
+
+            .attendance-cancel-row-btn {
+                background: #dc2626;
+            }
+
+            .attendance-money-with-currency {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                direction: ltr;
+                white-space: nowrap;
+            }
+
+            .attendance-currency-text {
+                color: inherit;
+                font-size: 11px;
+                font-weight: 800 !important;
+            }
+
+
+            .attendance-edit-shift-info {
+                margin-top: 4px;
+                padding: 10px 12px;
+                border-radius: 12px;
+                background: rgba(24, 160, 136, 0.08);
+                color: #1c273c;
+                font-size: 13px;
+                font-weight: 800 !important;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 14px;
+                flex-wrap: wrap;
+            }
+
+            .attendance-edit-shift-time-edit {
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+                min-width: 190px;
+                flex: 1;
+            }
+
+            .attendance-edit-shift-time-input {
+                min-height: 38px !important;
+                height: 38px !important;
+                text-align: center;
+                direction: ltr;
+            }
+
+            .attendance-edit-shift-note {
+                width: 100%;
+                color: #64748b;
+                font-size: 12px;
+                font-weight: 800 !important;
+                text-align: center;
+            }
+
+
+            .attendance-edit-time-control {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                width: 100%;
+            }
+
+                .attendance-edit-time-control .attendance-edit-input {
+                    flex: 1;
+                }
+
+            .attendance-clear-time-btn {
+                border: 0;
+                border-radius: 999px;
+                min-width: 56px;
+                min-height: 36px;
+                padding: 6px 12px;
+                background: #64748b;
+                color: #ffffff;
+                font-size: 13px;
+                font-weight: 900 !important;
+                cursor: pointer;
+                box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+                white-space: nowrap;
+            }
+
+                .attendance-clear-time-btn:hover {
+                    background: #475569;
+                }
+
+            .attendance-edit-clear-note {
+                margin-top: 5px;
+                color: #64748b;
+                font-size: 11px;
+                font-weight: 800 !important;
+                line-height: 1.6;
+            }
+
+            .attendance-edit-section-line {
+                height: 1px;
+                background: #e5e7eb;
+                margin: 18px 0 14px;
+            }
+
+            .attendance-edit-history-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                margin-bottom: 14px;
+                color: #0f172a;
+                font-size: 15px;
+                font-weight: 900 !important;
+            }
+
+            .attendance-edit-history-count {
+                min-width: 26px;
+                height: 26px;
+                border-radius: 999px;
+                background: rgba(24, 160, 136, 0.18);
+                color: #1c273c;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                font-weight: 900 !important;
+                padding: 0 9px;
+            }
+
+            .attendance-edit-history-list {
+                position: relative;
+                max-height: 270px;
+                overflow-y: auto;
+                padding-left: 26px;
+                padding-right: 0;
+            }
+
+                .attendance-edit-history-list::before {
+                    content: "";
+                    position: absolute;
+                    left: 9px;
+                    top: 6px;
+                    bottom: 6px;
+                    width: 2px;
+                    background: #1d273b;
+                    border-radius: 999px;
+                }
+
+            .attendance-edit-history-empty,
+            .attendance-edit-history-loading {
+                color: #64748b;
+                font-size: 14px;
+                font-weight: 800 !important;
+                text-align: center;
+                padding: 16px 8px;
+            }
+
+            .attendance-edit-history-item {
+                position: relative;
+                border: 1px solid #e5e7eb;
+                border-radius: 14px;
+                padding: 12px 14px;
+                margin-bottom: 12px;
+                background: #ffffff;
+                box-shadow: 0 5px 16px rgba(15, 23, 42, 0.05);
+            }
+
+                .attendance-edit-history-item::before {
+                    content: "";
+                    position: absolute;
+                    left: -24px;
+                    top: 22px;
+                    width: 14px;
+                    height: 14px;
+                    border-radius: 50%;
+                    background: #ffffff;
+                    border: 3px solid #1d273b;
+                    z-index: 1;
+                }
+
+            .attendance-edit-history-top {
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 10px;
+                margin-bottom: 10px;
+            }
+
+
+            .attendance-edit-history-top {
+                direction: rtl;
+            }
+
+            .attendance-edit-history-user {
+                order: 1;
+                text-align: right;
+            }
+
+            .attendance-edit-history-time {
+                order: 2;
+                margin-right: auto;
+                text-align: left;
+            }
+
+            .attendance-edit-history-time {
+                color: #334155;
+                direction: ltr;
+                text-align: left;
+                font-size: 13px;
+                font-weight: 900 !important;
+                line-height: 1.5;
+            }
+
+            .attendance-edit-history-date {
+                color: #94a3b8;
+                font-size: 12px;
+                font-weight: 700 !important;
+            }
+
+            .attendance-edit-history-user {
+                color: #0f172a;
+                text-align: right;
+                font-size: 14px;
+                font-weight: 900 !important;
+                line-height: 1.6;
+            }
+
+            .attendance-edit-history-meta {
+                color: #64748b;
+                font-size: 12px;
+                font-weight: 800 !important;
+            }
+
+
+            .attendance-edit-history-top .attendance-edit-history-user {
+                order: 1;
+                text-align: right !important;
+            }
+
+            .attendance-edit-history-top .attendance-edit-history-time {
+                order: 2;
+                margin-right: auto;
+                text-align: left !important;
+            }
+
+            .attendance-edit-history-change {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                flex-wrap: wrap;
+                padding-top: 8px;
+                margin-top: 8px;
+                border-top: 1px dashed #e5e7eb;
+                font-size: 12px;
+                font-weight: 800 !important;
+            }
+
+            .attendance-edit-history-field {
+                color: #64748b;
+                min-width: 80px;
+                text-align: center;
+            }
+
+            .attendance-edit-history-old,
+            .attendance-edit-history-new {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 30px;
+                max-width: 100%;
+                padding: 5px 10px;
+                border-radius: 8px;
+                word-break: break-word;
+                white-space: normal;
+            }
+
+            .attendance-edit-history-old {
+                background: rgba(239, 68, 68, 0.08);
+                color: #dc2626;
+                border: 1px dashed rgba(239, 68, 68, 0.45);
+                text-decoration: line-through;
+            }
+
+            .attendance-edit-history-new {
+                background: rgba(34, 197, 94, 0.08);
+                color: #16a34a;
+                border: 1px dashed rgba(34, 197, 94, 0.45);
+            }
+
+            .attendance-edit-history-arrow {
+                color: #64748b;
+            }
+
+
+            .attendance-delete-confirm-backdrop,
+            .attendance-success-status-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.45);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                z-index: 100001;
+                padding: 16px;
+            }
+
+            .attendance-delete-confirm-box,
+            .attendance-success-status-box {
+                width: min(430px, 94vw);
+                background: #ffffff;
+                border-radius: 20px;
+                box-shadow: 0 22px 58px rgba(15, 23, 42, 0.28);
+                overflow: hidden;
+                text-align: center;
+                direction: rtl;
+                animation: attendanceAlertFadeIn 0.2s ease-out;
+            }
+
+            .attendance-delete-confirm-body,
+            .attendance-success-status-body {
+                padding: 30px 24px 22px;
+            }
+
+            .attendance-delete-confirm-icon {
+                width: 72px;
+                height: 72px;
+                border-radius: 50%;
+                background: rgba(220, 38, 38, 0.12);
+                color: #dc2626;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 16px;
+            }
+
+                .attendance-delete-confirm-icon svg {
+                    width: 34px;
+                    height: 34px;
+                    fill: currentColor;
+                }
+
+            .attendance-delete-confirm-title {
+                color: #334155;
+                font-size: 22px;
+                font-weight: 900 !important;
+                margin-bottom: 8px;
+            }
+
+            .attendance-delete-confirm-message {
+                color: #64748b;
+                font-size: 17px;
+                font-weight: 700 !important;
+                line-height: 1.7;
+            }
+
+            .attendance-delete-confirm-footer {
+                display: flex;
+                gap: 10px;
+                justify-content: center;
+                padding: 0 20px 22px;
+            }
+
+            .attendance-delete-confirm-btn,
+            .attendance-delete-cancel-btn {
+                border: 0;
+                border-radius: 999px;
+                min-width: 120px;
+                min-height: 44px;
+                padding: 7px 18px;
+                color: #ffffff;
+                font-size: 16px;
+                font-weight: 900 !important;
+                cursor: pointer;
+                box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+            }
+
+            .attendance-delete-confirm-btn {
+                background: #dc2626;
+            }
+
+            .attendance-delete-cancel-btn {
+                background: #64748b;
+            }
+
+            .attendance-success-status-icon {
+                width: 76px;
+                height: 76px;
+                border-radius: 50%;
+                background: rgba(42, 177, 73, 0.12);
+                color: rgb(42, 177, 73);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 16px;
+                font-size: 48px;
+                font-weight: 900 !important;
+                line-height: 1;
+            }
+
+            .attendance-success-status-title {
+                color: rgb(42, 177, 73);
+                font-size: 25px;
+                font-weight: 900 !important;
+                margin: 0;
+            }
+
+            .empty-row {
+                color: #64748b;
+                padding: 26px !important;
+            }
+
+            .attendance-alert-backdrop,
+            .attendance-image-popup-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.45);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                z-index: 99999;
+                padding: 16px;
+            }
+
+            .attendance-alert-box {
+                width: min(430px, 94vw);
+                background: #ffffff;
+                border-radius: 18px;
+                box-shadow: 0 18px 45px rgba(15, 23, 42, 0.24);
+                overflow: hidden;
+                text-align: center;
+                animation: attendanceAlertFadeIn 0.2s ease-out;
+            }
+
+            .attendance-alert-body {
+                padding: 28px 24px 18px;
+            }
+
+            .attendance-alert-icon {
+                width: 64px;
+                height: 64px;
+                border-radius: 50%;
+                background: rgba(242, 142, 2, 0.12);
+                color: #f28e02;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 38px;
+                font-weight: 900;
+                margin: 0 auto 14px;
+            }
+
+            .attendance-alert-title {
+                color: #334155;
+                font-size: 22px;
+                font-weight: 800;
+                margin-bottom: 8px;
+            }
+
+            .attendance-alert-message {
+                color: #64748b;
+                font-size: 17px;
+                font-weight: 700;
+                line-height: 1.7;
+            }
+
+            .attendance-alert-footer {
+                border-top: 1px solid #e5e7eb;
+            }
+
+            .attendance-alert-confirm {
+                width: 100%;
+                min-height: 56px;
+                border: 0;
+                background: #ffffff;
+                color: #f28e02 !important;
+                font-size: 22px;
+                font-weight: 800;
+            }
+
+                .attendance-alert-confirm:hover {
+                    background: rgba(242, 142, 2, 0.08);
+                }
+
+            .attendance-image-popup {
+                width: min(560px, 96vw);
+                background: #ffffff;
+                border-radius: 20px;
+                overflow: hidden;
+                box-shadow: 0 22px 58px rgba(15, 23, 42, 0.32);
+                animation: attendanceAlertFadeIn 0.2s ease-out;
+                text-align: center;
+            }
+
+            .attendance-image-popup-header {
+                background: #cbd5e1;
+                color: #1d273b;
+                padding: 14px 18px;
+                font-size: 22px;
+                font-weight: 900;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .attendance-image-popup-close {
+                border: 0;
+                background: transparent;
+                color: #334155;
+                font-size: 26px;
+                font-weight: 900;
+                line-height: 1;
+                cursor: pointer;
+            }
+
+            .attendance-image-popup-body {
+                padding: 18px;
+            }
+
+            .attendance-image-popup-img {
+                width: 100%;
+                max-height: 520px;
+                object-fit: contain;
+                border-radius: 16px;
+                border: 2px solid rgba(24, 160, 136, 0.22);
+                background: #f8fafc;
+            }
+
+            .attendance-image-popup-time {
+                margin-top: 14px;
+                color: #334155;
+                font-size: 18px;
+                font-weight: 900;
+            }
+
+            @@keyframes attendanceAlertFadeIn {
+                from {
+                    opacity: 0;
+                    transform: scale(0.96);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+
+            @@media (max-width: 1400px) {
+                .attendance-table {
+                    min-width: 1960px;
+                    font-size: 12px;
+                }
+
+                    .attendance-table th,
+                    .attendance-table td {
+                        padding: 10px 9px;
+                    }
+
+                .employee-photo {
+                    width: 46px;
+                    height: 46px;
+                }
+
+                .employee-cell {
+                    min-width: 190px;
+                }
+
+                .reason-cell {
+                    min-width: 230px;
+                    max-width: 320px;
+                }
+
+                .location-cell {
+                    min-width: 145px;
+                    max-width: 190px;
+                }
+            }
+
+
+            .shift-block-card {
+                background: #ffffff;
+                border: 1px solid #e9eaec;
+                box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+                border-radius: 18px;
+                overflow: hidden;
+                margin-bottom: 16px;
+            }
+
+            .shift-block-header {
+                background: #F5F5F5;
+                color: #f28e02;
+                padding: 14px 18px;
+                font-size: 20px;
+                font-weight: 900;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                flex-wrap: wrap;
+                border-bottom: 1px solid #94a3b8;
+            }
+
+            .shift-block-note {
+                color: #64748b;
+                font-size: 13px;
+                font-weight: 800;
+            }
+
+            .shift-block-table {
+                width: 100%;
+                min-width: 760px;
+                margin: 0;
+                text-align: center;
+                border-collapse: separate;
+                border-spacing: 0;
+            }
+
+                .shift-block-table th,
+                .shift-block-table td {
+                    padding: 10px 12px;
+                    border-bottom: 1px solid #e5e7eb;
+                    vertical-align: middle;
+                    white-space: nowrap;
+                }
+
+                .shift-block-table thead {
+                    background: #f8fafc;
+                    color: #334155;
+                    font-weight: 900;
+                }
+
+            .shift-block-status-pill {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 88px;
+                border-radius: 999px;
+                padding: 6px 12px;
+                font-size: 13px;
+                font-weight: 900;
+            }
+
+                .shift-block-status-pill.is-blocked {
+                    background: #fee2e2;
+                    color: #991b1b;
+                    border: 1px solid #fecaca;
+                }
+
+                .shift-block-status-pill.is-open {
+                    background: #dcfce7;
+                    color: #166534;
+                    border: 1px solid #bbf7d0;
+                }
+
+            .shift-block-switch {
+                position: relative;
+                display: inline-block;
+                width: 58px;
+                height: 30px;
+            }
+
+                .shift-block-switch input {
+                    opacity: 0;
+                    width: 0;
+                    height: 0;
+                }
+
+            .shift-block-slider {
+                position: absolute;
+                cursor: pointer;
+                inset: 0;
+                background: #31d657;
+                transition: .18s;
+                border-radius: 999px;
+                border: 1px solid #31d657;
+                box-shadow: 0 0 0 2px rgba(49, 214, 87, 0.14), inset 0 1px 3px rgba(15, 23, 42, 0.10);
+            }
+
+                .shift-block-slider:before {
+                    position: absolute;
+                    content: "";
+                    height: 24px;
+                    width: 24px;
+                    left: 3px;
+                    bottom: 2px;
+                    background: #ffffff;
+                    transition: .18s;
+                    border-radius: 50%;
+                    box-shadow: 0 2px 5px rgba(15, 23, 42, 0.22);
+                }
+
+            .shift-block-switch input:checked + .shift-block-slider {
+                background: #e5e7eb;
+                border-color: #d1d5db;
+                box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.12);
+            }
+
+                .shift-block-switch input:checked + .shift-block-slider:before {
+                    transform: translateX(28px);
+                }
+
+            .shift-block-switch input:disabled + .shift-block-slider {
+                opacity: .55;
+                cursor: not-allowed;
+            }
+
+            .shift-block-message {
+                display: none;
+                margin: 12px 14px 0;
+                padding: 10px 14px;
+                border-radius: 12px;
+                font-size: 14px;
+                font-weight: 900;
+                line-height: 1.7;
+            }
+
+                .shift-block-message.success {
+                    display: block;
+                    background: #dcfce7;
+                    color: #166534;
+                    border: 1px solid #bbf7d0;
+                }
+
+                .shift-block-message.error {
+                    display: block;
+                    background: #fee2e2;
+                    color: #991b1b;
+                    border: 1px solid #fecaca;
+                }
+
+
+
+            .shift-block-cell {
+                min-width: 86px;
+                text-align: center;
+            }
+
+            .attendance-inline-block-switch {
+                margin: 0 auto;
+            }
+
+            .shift-block-empty {
+                color: #94a3b8;
+                font-size: 14px;
+                font-weight: 800 !important;
+            }
+
+            @@media print {
+                @@page {
+                    size: A4 landscape;
+                    margin: 8mm;
+                }
+
+                body * {
+                    visibility: hidden !important;
+                }
+
+                #printArea,
+                #printArea * {
+                    visibility: visible !important;
+                }
+
+                #printArea {
+                    position: absolute;
+                    top: 0;
+                    right: 0;
+                    left: 0;
+                    width: 100%;
+                    direction: rtl;
+                    display: block !important;
+                }
+
+                    #printArea table {
+                        width: 100% !important;
+                    }
+            }
+
+            .attendance-log-full-page,
+            .attendance-log-full-page * {
+                font-weight: 400 !important;
+            }
+    </style>
+
+    <div class="attendance-log-page">
+
+        <div class="attendance-filter-card">
+            <div class="attendance-filter-title">فلترة وسحب الكشف</div>
+
+            <form id="attendanceFilterForm" method="get" asp-controller="EmployeeAttendance" asp-action="AttendanceLog" autocomplete="off">
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <label class="form-label">اسم الموظف</label>
+
+                        <input type="hidden" name="employeeId" id="employeeIdInput" value="@filterEmployeeId" />
+
+                        <div class="employee-custom-dropdown" id="employeeCustomDropdown">
+                            <div class="selected-employee" id="selectedEmployeeButton" role="button" tabindex="0">
+                                @if (!string.IsNullOrWhiteSpace(selectedEmployeeImage))
+                                {
+                                    <img src="@selectedEmployeeImage"
+                                         id="selectedEmployeeImage"
+                                         class="selected-employee-image"
+                                         alt="@selectedEmployeeText"
+                                         onerror="this.style.display='none'; document.getElementById('selectedEmployeePlaceholder').style.display='inline-flex';" />
+
+                                    <span id="selectedEmployeePlaceholder" class="selected-employee-placeholder" style="display:none;">
+                                        <i class="fa-light fa-user"></i>
+                                    </span>
+                                }
+                                else
+                                {
+                                    <img src=""
+                                         id="selectedEmployeeImage"
+                                         class="selected-employee-image"
+                                         alt="@selectedEmployeeText"
+                                         style="display:none;" />
+
+                                    <span id="selectedEmployeePlaceholder" class="selected-employee-placeholder">
+                                        <i class="fa-light fa-users"></i>
+                                    </span>
+                                }
+                                <span class="selected-employee-text" id="selectedEmployeeText">@selectedEmployeeText</span>
+                                <i class="fa-duotone fa-chevron-down selected-employee-icon"></i>
+                            </div>
+
+                            <div class="employee-options-dropdown" id="employeeOptionsDropdown">
+                                <div class="employee-option @(string.IsNullOrWhiteSpace(filterEmployeeId) ? "active" : "")"
+                                     data-value=""
+                                     data-text="كل الموظفين"
+                                     data-image="">
+                                    <span class="employee-option-placeholder">
+                                        <i class="fa-light fa-users"></i>
+                                    </span>
+                                    <span class="employee-option-name">كل الموظفين</span>
+                                </div>
+
+                                @if (employees != null && employees.Any())
+                                {
+                                    foreach (var employee in employees)
+                                    {
+                                        var employeeImage = employee.Group?.Name ?? "";
+                                        var activeClass = employee.Value == filterEmployeeId ? "active" : "";
+
+                                        <div class="employee-option @activeClass"
+                                             data-value="@employee.Value"
+                                             data-text="@employee.Text"
+                                             data-image="@employeeImage">
+                                            @if (!string.IsNullOrWhiteSpace(employeeImage))
+                                            {
+                                                <img src="@employeeImage"
+                                                     class="employee-option-image"
+                                                     alt="@employee.Text"
+                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
+
+                                                <span class="employee-option-placeholder" style="display:none;">
+                                                    <i class="fa-light fa-user"></i>
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="employee-option-placeholder">
+                                                    <i class="fa-light fa-user"></i>
+                                                </span>
+                                            }
+
+                                            <span class="employee-option-name">@employee.Text</span>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <label class="form-label">مدة التاريخ</label>
+                        <input type="hidden" name="fromDate" id="startDate" value="@filterFromDate" />
+                        <input type="hidden" name="toDate" id="endDate" value="@filterToDate" />
+                        <input type="hidden" name="useAutoPeriod" id="useAutoPeriodInput" value="@(isAutoPeriodFilter ? "true" : "false")" />
+                        <input id="custom-datepicker"
+                               class="form-control attendance-filter-input custom-datepicker attendance-date-range-input"
+                               placeholder="فلتر حسب التاريخ"
+                               value="@attendanceDateRangeText"
+                               readonly />
+                    </div>
+
+                    <div class="col-12 col-md-6 col-xl-3 d-flex gap-2 flex-wrap">
+                        <a href="/EmployeeAttendance/AttendanceLog" class="reset-btn">إلغاء الفلتر</a>
+                        <button type="button" id="printSelectedRecordsBtn" class="print-selected-btn">سحب الكشف</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <form id="shiftBlockAntiForgeryForm" method="post" style="display:none;">
+            @Html.AntiForgeryToken()
+        </form>
+
+        <div id="shiftBlockMessage" class="shift-block-message"></div>
+
+        <div class="attendance-summary-grid">
+            <div class="attendance-summary-card attendance-summary-present">
+                <span class="attendance-summary-label">حاضر</span>
+                <span class="attendance-summary-count">@presentCount</span>
+            </div>
+            <div class="attendance-summary-card attendance-summary-absent">
+                <span class="attendance-summary-label">غائب</span>
+                <span class="attendance-summary-count">@absentCount</span>
+            </div>
+            <div class="attendance-summary-card attendance-summary-late">
+                <span class="attendance-summary-label">متأخر</span>
+                <span class="attendance-summary-count">@lateCount</span>
+            </div>
+            <div class="attendance-summary-card attendance-summary-disciplined">
+                <span class="attendance-summary-label">منضبط</span>
+                <span class="attendance-summary-count">@disciplinedCount</span>
+            </div>
+            <button type="button" id="attendanceTrashBtn" class="attendance-summary-card attendance-summary-trash">
+                <span class="attendance-summary-label">سلة محذوفات</span>
+                <span class="attendance-summary-count">🗑</span>
+            </button>
+        </div>
+
+        <div class="attendance-log-card">
+            <div class="attendance-log-header">
+                <span>سجلات اوقات دوام الموظفين</span>
+                <span class="attendance-log-count">
+                    عدد السجلات: @(attendanceLogs?.Count ?? 0)
+                </span>
+            </div>
+
+            <div class="table-responsive">
+                <table id="attendanceTable" class="table attendance-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <input type="checkbox"
+                                       id="selectAllAttendanceRecords"
+                                       class="record-select-checkbox"
+                                       title="تحديد كل السجلات" />
+                            </th>
+                            <th>صورة الدخول</th>
+                            <th>صورة الخروج</th>
+                            <th>اسم الموظف</th>
+                            <th>التاريخ</th>
+                            <th>وقت الدخول</th>
+                            <th>وقت الخروج</th>
+                            <th>بداية الشيفت</th>
+                            <th>نهاية الشيفت</th>
+                            <th>حالة الحضور</th>
+                            <th>بلوك</th>
+                            <th>خصم اليوم</th>
+                            <th>سلف اليوم</th>
+                            <th>مكافآت اليوم</th>
+                            <th>سبب الخصم / التأخير</th>
+                            <th>IP / الموقع</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @if (attendanceLogs != null && attendanceLogs.Any())
+                        {
+                            foreach (var item in attendanceLogs)
+                            {
+                                var isAutoAbsentRow = item.IsSyntheticAbsentRow;
+                                var hasCheckInImage = !string.IsNullOrWhiteSpace(item.FaceImagePath);
+                                var hasCheckOutImage = !string.IsNullOrWhiteSpace(item.CheckOutFaceImagePath);
+
+                                var checkInImagePath = !hasCheckInImage
+                                ? "/static/circle-user-solid.svg"
+                                : item.FaceImagePath;
+
+                                var checkOutImagePath = !hasCheckOutImage
+                                ? "/static/circle-user-solid.svg"
+                                : item.CheckOutFaceImagePath;
+
+                                var ipTextClass = item.IsCheckInIpChanged ? "attendance-ip-changed" : "";
+                                var ipHistoryTitle = item.CheckInIpHistoryTooltip ?? "";
+                                var ipHoverClass = string.IsNullOrWhiteSpace(ipHistoryTitle) ? "attendance-ip-hover" : "attendance-ip-hover has-ip-history";
+
+                                var statusClass = item.IsAbsent
+                                ? "status-absent"
+                                : item.LateMinutes == null
+                                ? "status-no-shift"
+                                : item.LateMinutes > 0
+                                ? "status-late"
+                                : "status-present";
+
+                                var statusText = item.IsAbsent
+                                ? "غائب"
+                                : item.LateMinutes == null
+                                ? "بدون شيفت"
+                                : item.LateMinutes > 0
+                                ? "متأخر"
+                                : "منضبط";
+
+                                var attendanceDateText = item.CheckInAt.ToString("yyyy/MM/dd");
+
+                                // Display times with Arabic AM/PM suffix (ص / م), while keeping raw 24h values for edit inputs.
+                                // لو الإدارة مسحت وقت الدخول أو صورة الدخول، نخلي وقت الدخول فاضي لحد ما الموظف يصور دخول مرة تانية.
+                                var rawCheckInTimeText = isAutoAbsentRow || !hasCheckInImage ? "" : item.CheckInAt.ToString("HH:mm");
+                                var rawCheckOutTimeText = item.CheckOutAt.HasValue && hasCheckOutImage
+                                ? item.CheckOutAt.Value.ToString("HH:mm")
+                                : "";
+
+                                var checkInTimeText = isAutoAbsentRow || !hasCheckInImage ? "-" : FormatArabicAmPm(item.CheckInAt);
+                                var checkOutTimeText = item.CheckOutAt.HasValue && hasCheckOutImage
+                                ? FormatArabicAmPm(item.CheckOutAt.Value)
+                                : "-";
+
+                                var checkInFullTimeText = isAutoAbsentRow || !hasCheckInImage ? "-" : FormatArabicAmPmFull(item.CheckInAt);
+                                var checkOutFullTimeText = item.CheckOutAt.HasValue && hasCheckOutImage
+                                ? FormatArabicAmPmFull(item.CheckOutAt.Value)
+                                : "-";
+
+                                var shiftStartDisplayText = FormatArabicAmPmFromText(item.ShiftStartTimeText);
+                                var shiftEndDisplayText = FormatArabicAmPmFromText(item.ShiftEndTimeText);
+
+                                var isLateRow = !item.IsAbsent && item.LateMinutes.HasValue && item.LateMinutes.Value > 0;
+                                var isDisciplinedRow = !item.IsAbsent && item.LateMinutes.HasValue && item.LateMinutes.Value == 0;
+                                var attendanceDateClass = isLateRow ? "attendance-time-late" : "";
+                                var checkInTimeClass = isLateRow ? "attendance-time-late" : (isDisciplinedRow ? "attendance-time-disciplined" : "");
+                                var checkOutTimeClass = isLateRow ? "attendance-time-late" : (isDisciplinedRow && item.CheckOutAt.HasValue ? "attendance-time-disciplined" : "");
+
+                                var dailyDeductionText = transactionDeductionAmountMap.ContainsKey(item.Id)
+                                ? transactionDeductionAmountMap[item.Id]
+                                : "0.00";
+
+                                var advanceAmountText = advanceAmountMap.ContainsKey(item.Id)
+                                ? advanceAmountMap[item.Id]
+                                : "0.00";
+
+                                var bonusAmountText = bonusAmountMap.ContainsKey(item.Id)
+                                ? bonusAmountMap[item.Id]
+                                : "0.00";
+
+                                var currencyText = attendanceCurrencyMap.ContainsKey(item.Id)
+                                ? attendanceCurrencyMap[item.Id]
+                                : "";
+
+                                var editReasonText = string.IsNullOrWhiteSpace(item.SuggestedLateReason)
+                                ? (string.IsNullOrWhiteSpace(item.LateReason) ? "" : item.LateReason)
+                                : item.SuggestedLateReason;
+
+                                var editDeductionText = item.SuggestedDeductionAmount.ToString("0.00");
+
+                                var checkInEditTimeText = isAutoAbsentRow && !string.IsNullOrWhiteSpace(item.ShiftStartTimeText) && item.ShiftStartTimeText != "-"
+                                ? item.ShiftStartTimeText
+                                : rawCheckInTimeText;
+                                var checkOutEditTimeText = item.CheckOutAt.HasValue && hasCheckOutImage
+                                ? item.CheckOutAt.Value.ToString("HH:mm")
+                                : "";
+                                var shiftBlockRowForEmployee = shiftBlockRows == null
+                                ? null
+                                : shiftBlockRows.FirstOrDefault(s =>
+                                    (s.EmployeeName ?? "").Trim() == (item.EmployeeName ?? "").Trim());
+                                <tr class="attendance-data-row"
+                                    data-log-id="@item.Id"
+                                    data-is-auto-absent="@(isAutoAbsentRow ? "true" : "false")"
+                                    data-check-in-time="@checkInEditTimeText"
+                                    data-check-out-time="@checkOutEditTimeText"
+                                    data-deduction-amount="@editDeductionText"
+                                    data-current-deduction-amount="@dailyDeductionText"
+                                    data-advance-amount="@advanceAmountText"
+                                    data-bonus-amount="@bonusAmountText"
+                                    data-shift-start="@item.ShiftStartTimeText"
+                                    data-shift-end="@item.ShiftEndTimeText"
+                                    data-late-reason="@editReasonText">
+                                    <td>
+                                        @if (!isAutoAbsentRow)
+                                        {
+                                            <input type="checkbox" class="record-select-checkbox" value="@item.Id" />
+                                        }
+                                        else
+                                        {
+                                            <span class="shift-block-empty">-</span>
+                                        }
+                                    </td>
+
+                                    <td>
+                                        @if (!isAutoAbsentRow)
+                                        {
+                                            <img src="@checkInImagePath"
+                                                 class="employee-photo attendance-image-click"
+                                                 alt="صورة الدخول"
+                                                 data-image-src="@checkInImagePath"
+                                                 data-image-title="صورة تسجيل الدخول"
+                                                 data-image-time="وقت تسجيل الدخول: @checkInFullTimeText" />
+                                        }
+                                        else
+                                        {
+                                            <span class="shift-block-empty">-</span>
+                                        }
+                                    </td>
+
+                                    <td>
+                                        @if (!isAutoAbsentRow)
+                                        {
+                                            <img src="@checkOutImagePath"
+                                                 class="employee-photo attendance-image-click"
+                                                 alt="صورة الخروج"
+                                                 data-image-src="@checkOutImagePath"
+                                                 data-image-title="صورة تسجيل الخروج"
+                                                 data-image-time="وقت تسجيل الخروج: @checkOutFullTimeText" />
+                                        }
+                                        else
+                                        {
+                                            <span class="shift-block-empty">-</span>
+                                        }
+                                    </td>
+
+                                    <td class="employee-cell">
+                                        <span class="employee-name">
+                                            @(string.IsNullOrWhiteSpace(item.EmployeeName) ? "بدون اسم" : item.EmployeeName)
+                                        </span>
+                                    </td>
+
+                                    <td class="date-cell @attendanceDateClass">@attendanceDateText</td>
+                                    <td class="time-cell @checkInTimeClass">@checkInTimeText</td>
+                                    <td class="time-cell @checkOutTimeClass">@checkOutTimeText</td>
+                                    <td class="shift-cell">@shiftStartDisplayText</td>
+                                    <td class="shift-cell">@shiftEndDisplayText</td>
+
+                                    <td class="status-cell">
+                                        <span class="status-pill @statusClass">
+                                            @statusText
+                                        </span>
+                                    </td>
+
+                                    <td class="shift-block-cell">
+                                        @if (shiftBlockRowForEmployee != null)
+                                        {
+                                            <label class="shift-block-switch attendance-inline-block-switch"
+                                                   title="الأخضر يعني غير بلوك، والرصاصي يعني الموظف متبلك">
+                                                <input type="checkbox"
+                                                       class="shift-block-toggle"
+                                                       data-shift-id="@shiftBlockRowForEmployee.ShiftId"
+                                                @(shiftBlockRowForEmployee.IsLoginBlocked ? "checked" : "") />
+                                                <span class="shift-block-slider"></span>
+                                            </label>
+                                        }
+                                        else
+                                        {
+                                            <span class="shift-block-empty">-</span>
+                                        }
+                                    </td>
+
+                                    <td class="deduction-cell">
+                                        <span class="attendance-money-with-currency">
+                                            <span>@dailyDeductionText</span>
+                                            <span class="attendance-currency-text" data-currency-for="@item.Id">@(string.IsNullOrWhiteSpace(currencyText) ? "" : "- " + currencyText)</span>
+                                        </span>
+                                    </td>
+
+                                    <td class="advance-cell">
+                                        <span class="attendance-money-with-currency">
+                                            <span>@advanceAmountText</span>
+                                            <span class="attendance-currency-text" data-currency-for="@item.Id">@(string.IsNullOrWhiteSpace(currencyText) ? "" : "- " + currencyText)</span>
+                                        </span>
+                                    </td>
+
+                                    <td class="bonus-cell">
+                                        <span class="attendance-money-with-currency">
+                                            <span>@bonusAmountText</span>
+                                            <span class="attendance-currency-text" data-currency-for="@item.Id">@(string.IsNullOrWhiteSpace(currencyText) ? "" : "- " + currencyText)</span>
+                                        </span>
+                                    </td>
+
+                                    <td class="reason-cell">
+                                        @(string.IsNullOrWhiteSpace(item.LateReason) ? "-" : item.LateReason)
+                                    </td>
+
+                                    <td class="ip-location-cell">
+                                        <div class="ip-location-box">
+                                            <div class="ip-location-line">
+                                                <span class="ip-location-label">IP:</span>
+                                                <span dir="ltr" class="@ipHoverClass @ipTextClass" data-ip-history="@ipHistoryTitle">@(string.IsNullOrWhiteSpace(item.CheckInIpAddress) ? "-" : item.CheckInIpAddress)</span>
+                                            </div>
+                                            <div class="ip-location-line">
+                                                <span class="ip-location-label">الموقع:</span>
+                                                <span>@(string.IsNullOrWhiteSpace(item.CheckInLocation) ? "-" : item.CheckInLocation)</span>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <td class="attendance-actions-cell">
+                                        <div class="attendance-row-actions">
+                                            <button type="button" class="attendance-print-row-btn" data-log-id="@item.Id">سجل حركة</button>
+                                            <button type="button" class="attendance-edit-row-btn">تعديل</button>
+                                            <button type="button" class="attendance-delete-row-btn" data-log-id="@item.Id">حذف</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="17" class="empty-row">
+                                    لا توجد سجلات حضور حتى الآن
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="attendanceSelectionAlert" class="attendance-alert-backdrop">
+        <div class="attendance-alert-box">
+            <div class="attendance-alert-body">
+                <div class="attendance-alert-icon">!</div>
+                <div class="attendance-alert-title">تنبيه</div>
+                <div id="attendanceSelectionAlertMessage" class="attendance-alert-message">
+                    يجب اختيار سجل واحد على الأقل
+                </div>
+            </div>
+
+            <div class="attendance-alert-footer">
+                <button type="button" id="attendanceSelectionAlertConfirm" class="attendance-alert-confirm">
+                    تأكيد
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="attendanceImagePopupBackdrop" class="attendance-image-popup-backdrop">
+        <div class="attendance-image-popup">
+            <div class="attendance-image-popup-header">
+                <span id="attendanceImagePopupTitle">صورة التسجيل</span>
+                <button type="button" id="attendanceImagePopupClose" class="attendance-image-popup-close">×</button>
+            </div>
+
+            <div class="attendance-image-popup-body">
+                <img id="attendanceImagePopupImg" src="" alt="صورة التسجيل" class="attendance-image-popup-img" />
+                <div id="attendanceImagePopupTime" class="attendance-image-popup-time"></div>
+            </div>
+        </div>
+    </div>
+
+    <form id="attendanceRowAntiForgeryForm" method="post" style="display:none;">
+        @Html.AntiForgeryToken()
+    </form>
+
+    <div id="attendanceEditPopupBackdrop" class="attendance-edit-popup-backdrop">
+        <div class="attendance-edit-popup">
+            <div class="attendance-edit-popup-header">
+                <div class="attendance-edit-header-main">
+                    <span>تعديل سجل الدوام</span>
+                    <button type="button" id="attendanceEditHistoryToggle" class="attendance-edit-history-toggle-btn" aria-expanded="false">
+                        سجل التعديلات
+                    </button>
+                </div>
+                <button type="button" id="attendanceEditPopupClose" class="attendance-edit-popup-close">×</button>
+            </div>
+
+            <div class="attendance-edit-popup-body">
+                <input type="hidden" id="attendanceEditLogId" />
+
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <label class="attendance-edit-label">وقت الدخول</label>
+                        <div class="attendance-edit-time-control">
+                            <input type="time" id="attendanceEditCheckInTime" class="attendance-edit-input" />
+                            <button type="button" class="attendance-clear-time-btn" data-clear-time-target="attendanceEditCheckInTime">مسح</button>
+                        </div>
+                        <div class="attendance-edit-clear-note">عند مسح وقت الدخول سيتم طلب صورة دخول من الموظف مرة أخرى.</div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="attendance-edit-label">وقت الخروج</label>
+                        <div class="attendance-edit-time-control">
+                            <input type="time" id="attendanceEditCheckOutTime" class="attendance-edit-input" />
+                            <button type="button" class="attendance-clear-time-btn" data-clear-time-target="attendanceEditCheckOutTime">مسح</button>
+                        </div>
+                        <div class="attendance-edit-clear-note">عند مسح وقت الخروج سيتم طلب صورة خروج من الموظف مرة أخرى.</div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="attendance-edit-label">الخصم</label>
+                        <input type="number" step="0.01" min="0" id="attendanceEditDeductionAmount" class="attendance-edit-input" />
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="attendance-edit-label">السلف</label>
+                        <input type="number" step="0.01" min="0" id="attendanceEditAdvanceAmount" class="attendance-edit-input" />
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="attendance-edit-label">المكافأة</label>
+                        <input type="number" step="0.01" min="0" id="attendanceEditBonusAmount" class="attendance-edit-input" />
+                    </div>
+
+                    <div class="col-12">
+                        <label class="attendance-edit-label">السبب</label>
+                        <textarea id="attendanceEditLateReason" class="attendance-edit-input"></textarea>
+                    </div>
+                </div>
+
+                <div id="attendanceEditShiftInfo" class="attendance-edit-shift-info">
+                    <div class="attendance-edit-shift-time-edit">
+                        <label class="attendance-edit-label mb-0">بداية الدوام لهذا اليوم فقط</label>
+                        <input type="time" id="attendanceEditShiftStartTime" class="attendance-edit-input attendance-edit-shift-time-input" />
+                    </div>
+                    <div class="attendance-edit-shift-time-edit">
+                        <label class="attendance-edit-label mb-0">نهاية الدوام لهذا اليوم فقط</label>
+                        <input type="time" id="attendanceEditShiftEndTime" class="attendance-edit-input attendance-edit-shift-time-input" />
+                    </div>
+                    <span class="attendance-edit-shift-note">تعديل الدوام هنا يؤثر على هذا السجل / اليوم فقط، ولا يغير شيفت الموظف الأساسي.</span>
+                    <span style="display:none;">بداية الدوام: <strong id="attendanceEditShiftStart">-</strong></span>
+                    <span style="display:none;">نهاية الدوام: <strong id="attendanceEditShiftEnd">-</strong></span>
+                </div>
+
+                <div id="attendanceEditHistoryBlock" class="attendance-edit-history-block">
+                    <div class="attendance-edit-section-line"></div>
+
+                    <div class="attendance-edit-history-header">
+                        <span>سجل تعديلات هذا السجل</span>
+                        <span id="attendanceEditHistoryCount" class="attendance-edit-history-count">0</span>
+                    </div>
+                    <div id="attendanceEditHistoryList" class="attendance-edit-history-list">
+                        <div class="attendance-edit-history-loading">جاري تحميل سجل التعديلات...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="attendance-edit-popup-footer">
+                <button type="button" id="attendanceSaveRowBtn" class="attendance-save-row-btn">موافقة</button>
+                <button type="button" id="attendanceCancelRowBtn" class="attendance-cancel-row-btn">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <div id="attendanceDeleteConfirmBackdrop" class="attendance-delete-confirm-backdrop">
+        <div class="attendance-delete-confirm-box">
+            <div class="attendance-delete-confirm-body">
+                <div class="attendance-delete-confirm-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM7 9h2v9H7V9zm1 12c-1.1 0-2-.9-2-2V8h12v11c0 1.1-.9 2-2 2H8z"></path>
+                    </svg>
+                </div>
+                <div class="attendance-delete-confirm-title">حذف السجل</div>
+                <div class="attendance-delete-confirm-message">هل متأكد من حذف هذا السجل؟</div>
+            </div>
+            <div class="attendance-delete-confirm-footer">
+                <button type="button" id="attendanceConfirmDeleteBtn" class="attendance-delete-confirm-btn">تأكيد</button>
+                <button type="button" id="attendanceCancelDeleteBtn" class="attendance-delete-cancel-btn">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="attendanceSuccessStatusBackdrop" class="attendance-success-status-backdrop">
+        <div class="attendance-success-status-box">
+            <div class="attendance-success-status-body">
+                <div class="attendance-success-status-icon">✓</div>
+                <p id="attendanceSuccessStatusTitle" class="attendance-success-status-title">تم التعديل</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="attendanceTrashBackdrop" class="attendance-trash-backdrop">
+        <div class="attendance-trash-popup">
+            <div class="attendance-trash-header">
+                <span>سلة محذوفات سجلات الدوام</span>
+                <button type="button" id="attendanceTrashClose" class="attendance-trash-close">×</button>
+            </div>
+
+            <div id="attendanceTrashBody" class="attendance-trash-body">
+                <div class="attendance-trash-empty">جاري تحميل المحذوفات...</div>
+            </div>
+
+            <div class="attendance-trash-footer">
+                <button type="button" id="attendanceRestoreAllBtn" class="attendance-trash-restore-all-btn">
+                    استرداد الكل
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="printArea" style="display:none;"></div>
+    <div id="attendanceIpCloudTooltip" class="attendance-ip-cloud-tooltip"></div>
+
+    <script src="/js/datepicker.min.js"></script>
+
+    <script>
+        (function () {
+        const wantedTitle = 'إدارة  الموظفين';
+        const assignWorkTimesUrl = '/Employee';
+        const assignWorkTimesText = 'اداره الموظفين ';
+        const assignWorkTimesLinkId = 'topAssignWorkTimesLink';
+        const attendanceHeaderLinksId = 'topAttendanceHeaderLinks';
+
+        function replaceEmployeeManagementTitle() {
+        const oldTitles = ['ادارة الموظفين', 'إدارة الموظفين', 'اداره الموظفين', 'إداره الموظفين'];
+        document.title = wantedTitle;
+
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode: function (node) {
+        const value = (node.nodeValue || '').trim();
+
+        if (oldTitles.includes(value)) {
+        return NodeFilter.FILTER_ACCEPT;
+        }
+
+        return NodeFilter.FILTER_REJECT;
+        }
+        });
+
+        const nodesToReplace = [];
+        let currentNode;
+
+        while (currentNode = walker.nextNode()) {
+        nodesToReplace.push(currentNode);
+        }
+
+        nodesToReplace.forEach(function (node) {
+        node.nodeValue = node.nodeValue.replace(/إدارة الموظفين|ادارة الموظفين|إداره الموظفين|اداره الموظفين/g, wantedTitle);
+        });
+        }
+
+        function createHeaderLink(text, url, id) {
+        const link = document.createElement('a');
+        if (id) {
+        link.id = id;
+        }
+        link.href = url;
+        link.className = 'top-assign-work-times-link';
+        link.textContent = text;
+        return link;
+        }
+
+        function createAssignWorkTimesLink() {
+        const container = document.createElement('div');
+        container.id = attendanceHeaderLinksId;
+        container.className = 'top-attendance-header-links';
+        container.appendChild(createHeaderLink(assignWorkTimesText, assignWorkTimesUrl, assignWorkTimesLinkId));
+        container.appendChild(createHeaderLink('إضافة موظف', '/Employee/Create'));
+        container.appendChild(createHeaderLink('إنشاء مكافآت وخصومات', '/EmployeeTransactions/create'));
+        container.appendChild(createHeaderLink('عرض مكافآت وخصومات', '/EmployeeTransactions'));
+        return container;
+        }
+
+        function isInsideAttendancePageContent(node) {
+        return node && node.parentElement && node.parentElement.closest('.attendance-log-full-page');
+        }
+
+        function ensureAssignWorkTimesLinkBesideHeaderTitle() {
+        const existingLink = document.getElementById(assignWorkTimesLinkId);
+
+        if (existingLink) {
+        return;
+        }
+
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode: function (node) {
+        const value = (node.nodeValue || '').trim();
+        const parent = node.parentElement;
+
+        if (!parent) {
+        return NodeFilter.FILTER_REJECT;
+        }
+
+        if (parent.closest('script, style, .attendance-log-full-page, #' + assignWorkTimesLinkId)) {
+        return NodeFilter.FILTER_REJECT;
+        }
+
+        if (isInsideAttendancePageContent(node)) {
+        return NodeFilter.FILTER_REJECT;
+        }
+
+        return value === wantedTitle
+        ? NodeFilter.FILTER_ACCEPT
+        : NodeFilter.FILTER_REJECT;
+        }
+        });
+
+        const titleNode = walker.nextNode();
+
+        if (!titleNode || !titleNode.parentNode) {
+        return;
+        }
+
+        const headerParent = titleNode.parentElement;
+
+        if (headerParent) {
+        headerParent.style.position = 'relative';
+        headerParent.style.minHeight = headerParent.style.minHeight || '36px';
+        }
+
+        const link = createAssignWorkTimesLink();
+        titleNode.parentNode.appendChild(link);
+        }
+
+        function applyHeaderTitleUpdates() {
+        replaceEmployeeManagementTitle();
+        ensureAssignWorkTimesLinkBesideHeaderTitle();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+        applyHeaderTitleUpdates();
+        setTimeout(applyHeaderTitleUpdates, 100);
+        setTimeout(applyHeaderTitleUpdates, 500);
+        setTimeout(applyHeaderTitleUpdates, 1200);
+        });
+        })();
+    </script>
+
+    <script>
+        (function () {
+        const filterForm = document.getElementById('attendanceFilterForm');
+        const dateInput = document.getElementById('custom-datepicker');
+        const startInput = document.getElementById('startDate');
+        const endInput = document.getElementById('endDate');
+        const autoPeriodInput = document.getElementById('useAutoPeriodInput');
+        const pageRoot = document.querySelector('.attendance-log-full-page');
+        let submitTimer = null;
+        let isRefreshingAttendanceTable = false;
+
+        function disableAutoPeriodBecauseUserSelectedOldRange() {
+        if (autoPeriodInput) {
+        autoPeriodInput.value = 'false';
+        }
+        }
+
+        function buildAttendanceFilterUrl() {
+        const url = new URL('/EmployeeAttendance/AttendanceLog', window.location.origin);
+
+        if (filterForm) {
+        const formData = new FormData(filterForm);
+
+        formData.forEach(function (value, key) {
+        const textValue = String(value || '').trim();
+
+        if (textValue !== '') {
+        url.searchParams.set(key, textValue);
+        }
+        });
+        }
+
+        return url.toString();
+        }
+
+        function updateSelectedEmployeeUiToAll() {
+        const hiddenInput = document.getElementById('employeeIdInput');
+        const selectedText = document.getElementById('selectedEmployeeText');
+        const selectedImage = document.getElementById('selectedEmployeeImage');
+        const selectedPlaceholder = document.getElementById('selectedEmployeePlaceholder');
+
+        if (hiddenInput) hiddenInput.value = '';
+        if (selectedText) selectedText.innerText = 'كل الموظفين';
+        if (selectedImage) {
+        selectedImage.removeAttribute('src');
+        selectedImage.style.display = 'none';
+        }
+        if (selectedPlaceholder) selectedPlaceholder.style.display = 'inline-flex';
+
+        document.querySelectorAll('.employee-option').forEach(function (item) {
+        item.classList.toggle('active', (item.getAttribute('data-value') || '') === '');
+        });
+        }
+
+        function loadAttendanceCurrenciesForCurrentRows() {
+        const rows = Array.from(document.querySelectorAll('tr.attendance-data-row[data-log-id]'));
+        const ids = rows
+        .map(function (row) { return row.getAttribute('data-log-id'); })
+        .filter(function (id) { return id && id.trim() !== '' && parseInt(id, 10) > 0; });
+
+        if (!ids.length) {
+        return;
+        }
+
+        fetch('/EmployeeAttendance/GetAttendanceLogCurrencies?ids=' + encodeURIComponent(ids.join(',')), {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store',
+        credentials: 'same-origin'
+        })
+        .then(function (response) { return response.json(); })
+        .then(function (result) {
+        if (!result || !result.success || !result.currencies) {
+        return;
+        }
+
+        Object.keys(result.currencies).forEach(function (id) {
+        const currency = (result.currencies[id] || '').trim();
+        document.querySelectorAll('[data-currency-for="' + id + '"]').forEach(function (span) {
+        span.innerText = currency ? '- ' + currency : '';
+        });
+        });
+        })
+        .catch(function () { });
+        }
+
+        function updateSelectAllAfterTableRefresh() {
+        const selectAll = document.getElementById('selectAllAttendanceRecords');
+        if (selectAll) {
+        selectAll.checked = false;
+        selectAll.indeterminate = false;
+        }
+        }
+
+        async function refreshAttendanceLogTableOnly(url, pushState) {
+        if (isRefreshingAttendanceTable) {
+        return;
+        }
+
+        isRefreshingAttendanceTable = true;
+
+        if (pageRoot) {
+        pageRoot.classList.add('is-attendance-table-loading');
+        }
+
+        try {
+        const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        cache: 'no-store',
+        credentials: 'same-origin'
+        });
+
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        const newTbody = doc.querySelector('#attendanceTable tbody');
+        const currentTbody = document.querySelector('#attendanceTable tbody');
+        if (newTbody && currentTbody) {
+        currentTbody.innerHTML = newTbody.innerHTML;
+        }
+
+        const newSummary = doc.querySelector('.attendance-summary-grid');
+        const currentSummary = document.querySelector('.attendance-summary-grid');
+        if (newSummary && currentSummary) {
+        currentSummary.innerHTML = newSummary.innerHTML;
+        }
+
+        const newCount = doc.querySelector('.attendance-log-count');
+        const currentCount = document.querySelector('.attendance-log-count');
+        if (newCount && currentCount) {
+        currentCount.innerHTML = newCount.innerHTML;
+        }
+
+        const newTrashBody = doc.querySelector('#attendanceTrashBody');
+        const currentTrashBody = document.querySelector('#attendanceTrashBody');
+        if (newTrashBody && currentTrashBody) {
+        currentTrashBody.innerHTML = newTrashBody.innerHTML;
+        }
+
+        updateSelectAllAfterTableRefresh();
+        loadAttendanceCurrenciesForCurrentRows();
+
+        if (pushState !== false) {
+        window.history.pushState({}, '', url);
+        }
+        } catch (error) {
+        if (filterForm) {
+        filterForm.submit();
+        }
+        } finally {
+        isRefreshingAttendanceTable = false;
+
+        if (pageRoot) {
+        pageRoot.classList.remove('is-attendance-table-loading');
+        }
+        }
+        }
+
+        function submitAttendanceFilterForm() {
+        if (!filterForm) {
+        return;
+        }
+
+        if (submitTimer) {
+        clearTimeout(submitTimer);
+        }
+
+        submitTimer = setTimeout(function () {
+        refreshAttendanceLogTableOnly(buildAttendanceFilterUrl(), true);
+        }, 80);
+        }
+
+        window.submitAttendanceLogFilter = submitAttendanceFilterForm;
+        window.refreshAttendanceLogTableOnly = refreshAttendanceLogTableOnly;
+        window.loadAttendanceLogCurrencies = loadAttendanceCurrenciesForCurrentRows;
+
+        if (filterForm) {
+        filterForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        submitAttendanceFilterForm();
+        });
+        }
+
+        document.addEventListener('click', function (event) {
+        const resetLink = event.target.closest('.reset-btn');
+        if (!resetLink) {
+        return;
+        }
+
+        event.preventDefault();
+
+        if (startInput) startInput.value = '';
+        if (endInput) endInput.value = '';
+        if (autoPeriodInput) autoPeriodInput.value = 'true';
+        if (dateInput) dateInput.value = '';
+        updateSelectedEmployeeUiToAll();
+
+        refreshAttendanceLogTableOnly('/EmployeeAttendance/AttendanceLog?useAutoPeriod=true', true);
+        });
+
+        function initializeAttendanceDateFilter() {
+        if (!dateInput) {
+        return;
+        }
+
+        if (typeof initializeLitepicker === 'function') {
+        initializeLitepicker('.custom-datepicker', function () {
+        disableAutoPeriodBecauseUserSelectedOldRange();
+        submitAttendanceFilterForm();
+        });
+        return;
+        }
+
+        // Fallback: keep the field usable if the shared datepicker script is not loaded.
+        dateInput.removeAttribute('readonly');
+        dateInput.addEventListener('change', function () {
+        disableAutoPeriodBecauseUserSelectedOldRange();
+        const value = (dateInput.value || '').trim();
+        const parts = value.split(' - ');
+
+        if (parts.length >= 2) {
+        if (startInput) startInput.value = parts[0].trim();
+        if (endInput) endInput.value = parts[1].trim();
+        } else if (parts.length === 1 && parts[0]) {
+        if (startInput) startInput.value = parts[0].trim();
+        if (endInput) endInput.value = parts[0].trim();
+        }
+
+        submitAttendanceFilterForm();
+        });
+        }
+
+        if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeAttendanceDateFilter);
+        } else {
+        initializeAttendanceDateFilter();
+        }
+
+        loadAttendanceCurrenciesForCurrentRows();
+        })();
+    </script>
+
+    <script>
+        (function () {
+        const autoPeriodInput = document.getElementById('useAutoPeriodInput');
+
+        if (!autoPeriodInput || String(autoPeriodInput.value).toLowerCase() !== 'true') {
+        return;
+        }
+
+        function getNextTenAm() {
+        const now = new Date();
+        const nextTen = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 0, 0, 0);
+
+        if (now >= nextTen) {
+        nextTen.setDate(nextTen.getDate() + 1);
+        }
+
+        return nextTen;
+        }
+
+        function reloadAutoPeriodAtTen() {
+        const nextTen = getNextTenAm();
+        const delay = Math.max(1000, nextTen.getTime() - Date.now());
+
+        setTimeout(function () {
+        const url = new URL(window.location.href);
+        url.searchParams.set('useAutoPeriod', 'true');
+        url.searchParams.delete('fromDate');
+        url.searchParams.delete('toDate');
+        window.location.href = url.toString();
+        }, delay);
+        }
+
+        reloadAutoPeriodAtTen();
+        })();
+    </script>
+
+    <script>
+        (function () {
+        const dropdown = document.getElementById('employeeCustomDropdown');
+        const button = document.getElementById('selectedEmployeeButton');
+        const selectedText = document.getElementById('selectedEmployeeText');
+        const selectedImage = document.getElementById('selectedEmployeeImage');
+        const selectedPlaceholder = document.getElementById('selectedEmployeePlaceholder');
+        const hiddenInput = document.getElementById('employeeIdInput');
+        const options = Array.from(document.querySelectorAll('.employee-option'));
+
+        if (!dropdown || !button || !selectedText || !hiddenInput) {
+        return;
+        }
+
+        function closeDropdown() {
+        dropdown.classList.remove('open');
+        }
+
+        function toggleDropdown() {
+        dropdown.classList.toggle('open');
+        }
+
+        button.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleDropdown();
+        });
+
+        button.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        toggleDropdown();
+        }
+
+        if (event.key === 'Escape') {
+        closeDropdown();
+        }
+        });
+
+        options.forEach(function (option) {
+        option.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const value = option.getAttribute('data-value') || "";
+        const text = option.getAttribute('data-text') || "كل الموظفين";
+        const image = option.getAttribute('data-image') || "";
+
+        hiddenInput.value = value;
+        selectedText.innerText = text;
+
+        if (selectedImage && selectedPlaceholder) {
+        if (image) {
+        selectedImage.src = image;
+        selectedImage.alt = text;
+        selectedImage.style.display = 'inline-block';
+        selectedPlaceholder.style.display = 'none';
+        } else {
+        selectedImage.removeAttribute('src');
+        selectedImage.alt = text;
+        selectedImage.style.display = 'none';
+        selectedPlaceholder.style.display = 'inline-flex';
+        }
+        }
+
+        options.forEach(function (item) {
+        item.classList.remove('active');
+        });
+
+        option.classList.add('active');
+
+        closeDropdown();
+
+        if (typeof window.submitAttendanceLogFilter === 'function') {
+        window.submitAttendanceLogFilter();
+        } else {
+        const filterForm = document.getElementById('attendanceFilterForm');
+        if (filterForm) {
+        filterForm.submit();
+        }
+        }
+        });
+        });
+
+        document.addEventListener('click', function (event) {
+        if (!dropdown.contains(event.target)) {
+        closeDropdown();
+        }
+        });
+        })();
+    </script>
+
+    <script>
+        (function () {
+        const imageBackdrop = document.getElementById('attendanceImagePopupBackdrop');
+        const imagePopupImg = document.getElementById('attendanceImagePopupImg');
+        const imagePopupTitle = document.getElementById('attendanceImagePopupTitle');
+        const imagePopupTime = document.getElementById('attendanceImagePopupTime');
+        const imagePopupClose = document.getElementById('attendanceImagePopupClose');
+
+        function openImagePopup(imageSrc, imageTitle, imageTime) {
+        if (!imageBackdrop || !imagePopupImg || !imagePopupTitle || !imagePopupTime) {
+        return;
+        }
+
+        imagePopupImg.src = imageSrc || "";
+        imagePopupTitle.innerText = imageTitle || "صورة التسجيل";
+        imagePopupTime.innerText = imageTime || "";
+        imageBackdrop.style.display = "flex";
+        }
+
+        function closeImagePopup() {
+        if (!imageBackdrop) {
+        return;
+        }
+
+        imageBackdrop.style.display = "none";
+
+        if (imagePopupImg) {
+        imagePopupImg.src = "";
+        }
+        }
+
+        document.addEventListener('click', function (event) {
+        const image = event.target.closest('.attendance-image-click');
+        if (!image) {
+        return;
+        }
+
+        openImagePopup(
+        image.getAttribute('data-image-src'),
+        image.getAttribute('data-image-title'),
+        image.getAttribute('data-image-time')
+        );
+        });
+
+        if (imagePopupClose) {
+        imagePopupClose.addEventListener('click', closeImagePopup);
+        }
+
+        if (imageBackdrop) {
+        imageBackdrop.addEventListener('click', function (event) {
+        if (event.target === imageBackdrop) {
+        closeImagePopup();
+        }
+        });
+        }
+
+        document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+        closeImagePopup();
+        }
+        });
+        })();
+    </script>
+
+    <script>
+        (function () {
+        const rows = Array.from(document.querySelectorAll('tr.attendance-data-row[data-log-id]'));
+        const ids = rows
+        .map(function (row) { return row.getAttribute('data-log-id'); })
+        .filter(function (id) { return id && id.trim() !== '' && parseInt(id, 10) > 0; });
+
+        if (!ids.length) {
+        return;
+        }
+
+        fetch('/EmployeeAttendance/GetAttendanceLogCurrencies?ids=' + encodeURIComponent(ids.join(',')), {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store'
+        })
+        .then(function (response) { return response.json(); })
+        .then(function (result) {
+        if (!result || !result.success || !result.currencies) {
+        return;
+        }
+
+        Object.keys(result.currencies).forEach(function (id) {
+        const currency = (result.currencies[id] || '').trim();
+        document.querySelectorAll('[data-currency-for="' + id + '"]').forEach(function (span) {
+        span.innerText = currency ? '- ' + currency : '';
+        });
+        });
+        })
+        .catch(function () {
+        // لو فشل تحميل العملة، نتركها فاضية بدل ما تظهر EGP بالغلط.
+        });
+        })();
+    </script>
+
+    <script>
+        (function () {
+        const tooltip = document.getElementById('attendanceIpCloudTooltip');
+
+        if (!tooltip) {
+        return;
+        }
+
+        function showIpTooltip(target) {
+        const text = target.getAttribute('data-ip-history') || '';
+
+        if (!text.trim()) {
+        return;
+        }
+
+        tooltip.innerText = text;
+        tooltip.style.display = 'block';
+
+        const rect = target.getBoundingClientRect();
+        const tipRect = tooltip.getBoundingClientRect();
+        let left = rect.left + (rect.width / 2) - (tipRect.width / 2);
+        let top = rect.top - tipRect.height - 14;
+
+        if (top < 8) {
+        top = rect.bottom + 14;
+        }
+
+        if (left < 8) {
+        left = 8;
+        }
+
+        if (left + tipRect.width > window.innerWidth - 8) {
+        left = window.innerWidth - tipRect.width - 8;
+        }
+
+        tooltip.style.left = left + 'px';
+        tooltip.style.top = top + 'px';
+        }
+
+        function hideIpTooltip() {
+        tooltip.style.display = 'none';
+        tooltip.innerText = '';
+        }
+
+        document.addEventListener('mouseover', function (event) {
+        const item = event.target.closest('.attendance-ip-hover.has-ip-history');
+        if (item) {
+        showIpTooltip(item);
+        }
+        });
+
+        document.addEventListener('mouseout', function (event) {
+        const item = event.target.closest('.attendance-ip-hover.has-ip-history');
+        if (item) {
+        hideIpTooltip();
+        }
+        });
+
+        document.addEventListener('focusin', function (event) {
+        const item = event.target.closest('.attendance-ip-hover.has-ip-history');
+        if (item) {
+        showIpTooltip(item);
+        }
+        });
+
+        document.addEventListener('focusout', function (event) {
+        const item = event.target.closest('.attendance-ip-hover.has-ip-history');
+        if (item) {
+        hideIpTooltip();
+        }
+        });
+
+        window.addEventListener('scroll', hideIpTooltip, true);
+        window.addEventListener('resize', hideIpTooltip);
+        })();
+    </script>
+
+    <script>
+        (function () {
+        const editBackdrop = document.getElementById('attendanceEditPopupBackdrop');
+        const editClose = document.getElementById('attendanceEditPopupClose');
+        const cancelBtn = document.getElementById('attendanceCancelRowBtn');
+        const saveBtn = document.getElementById('attendanceSaveRowBtn');
+
+        const idInput = document.getElementById('attendanceEditLogId');
+        const checkInInput = document.getElementById('attendanceEditCheckInTime');
+        const checkOutInput = document.getElementById('attendanceEditCheckOutTime');
+        const deductionInput = document.getElementById('attendanceEditDeductionAmount');
+        const advanceInput = document.getElementById('attendanceEditAdvanceAmount');
+        const bonusInput = document.getElementById('attendanceEditBonusAmount');
+        const reasonInput = document.getElementById('attendanceEditLateReason');
+        const shiftStartText = document.getElementById('attendanceEditShiftStart');
+        const shiftEndText = document.getElementById('attendanceEditShiftEnd');
+        const shiftStartInput = document.getElementById('attendanceEditShiftStartTime');
+        const shiftEndInput = document.getElementById('attendanceEditShiftEndTime');
+        const historyCount = document.getElementById('attendanceEditHistoryCount');
+        const historyList = document.getElementById('attendanceEditHistoryList');
+        const historyToggle = document.getElementById('attendanceEditHistoryToggle');
+        const historyBlock = document.getElementById('attendanceEditHistoryBlock');
+
+        function getAntiForgeryToken() {
+        const tokenInput = document.querySelector('#attendanceRowAntiForgeryForm input[name="__RequestVerificationToken"]');
+        return tokenInput ? tokenInput.value : '';
+        }
+
+        function showMessage(message) {
+        const selectionAlert = document.getElementById('attendanceSelectionAlert');
+        const selectionAlertMessage = document.getElementById('attendanceSelectionAlertMessage');
+        const selectionAlertConfirm = document.getElementById('attendanceSelectionAlertConfirm');
+
+        if (!selectionAlert || !selectionAlertMessage) {
+        alert(message);
+        return;
+        }
+
+        selectionAlertMessage.innerText = message;
+        selectionAlert.style.display = 'flex';
+
+        if (selectionAlertConfirm) {
+        selectionAlertConfirm.onclick = function () {
+        selectionAlert.style.display = 'none';
+        };
+        }
+
+        setTimeout(function () {
+        selectionAlert.style.display = 'none';
+        }, 2500);
+        }
+
+        function hideAttendanceEditHistoryBlock() {
+        if (historyBlock) {
+        historyBlock.classList.remove('is-visible');
+        }
+        if (historyToggle) {
+        historyToggle.classList.remove('is-active');
+        historyToggle.setAttribute('aria-expanded', 'false');
+        }
+        }
+
+        function toggleAttendanceEditHistoryBlock() {
+        if (!historyBlock || !historyToggle) {
+        return;
+        }
+
+        const willShow = !historyBlock.classList.contains('is-visible');
+        historyBlock.classList.toggle('is-visible', willShow);
+        historyToggle.classList.toggle('is-active', willShow);
+        historyToggle.setAttribute('aria-expanded', willShow ? 'true' : 'false');
+        }
+
+        if (historyToggle) {
+        historyToggle.addEventListener('click', function (event) {
+        event.preventDefault();
+        toggleAttendanceEditHistoryBlock();
+        });
+        }
+
+
+        document.addEventListener('click', function (event) {
+        const clearButton = event.target.closest('.attendance-clear-time-btn[data-clear-time-target]');
+        if (!clearButton) {
+        return;
+        }
+
+        event.preventDefault();
+        const targetId = clearButton.getAttribute('data-clear-time-target') || '';
+        const targetInput = document.getElementById(targetId);
+        if (targetInput) {
+        targetInput.value = '';
+        targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+        targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        });
+
+        function escapeAttendanceEditHistoryHtml(value) {
+        return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+        }
+
+        function setAttendanceEditHistoryLoading() {
+        if (historyCount) {
+        historyCount.innerText = '0';
+        }
+
+        if (historyList) {
+        historyList.innerHTML = '<div class="attendance-edit-history-loading">جاري تحميل سجل التعديلات...</div>';
+        }
+        }
+
+        function renderAttendanceEditHistory(items, totalCount) {
+        if (historyCount) {
+        historyCount.innerText = String(totalCount || 0);
+        }
+
+        if (!historyList) {
+        return;
+        }
+
+        if (!items || !items.length) {
+        historyList.innerHTML = '<div class="attendance-edit-history-empty">لا يوجد سجل تعديلات حتى الآن</div>';
+        return;
+        }
+
+        historyList.innerHTML = items.map(function (item) {
+        const changes = (item.changes || []).map(function (change) {
+        return '<div class="attendance-edit-history-change">' +
+        '<span class="attendance-edit-history-field">' + escapeAttendanceEditHistoryHtml(change.fieldName) + '</span>' +
+        '<span class="attendance-edit-history-old">' + escapeAttendanceEditHistoryHtml(change.oldValue) + '</span>' +
+        '<span class="attendance-edit-history-arrow">بعد</span>' +
+        '<span class="attendance-edit-history-new">' + escapeAttendanceEditHistoryHtml(change.newValue) + '</span>' +
+        '</div>';
+        }).join('');
+
+        return '<div class="attendance-edit-history-item">' +
+        '<div class="attendance-edit-history-top">' +
+        '<div class="attendance-edit-history-user"><div>' + escapeAttendanceEditHistoryHtml(item.editorName) + '</div><div class="attendance-edit-history-meta">' + escapeAttendanceEditHistoryHtml(item.changesCount) + ' تعديلات</div><div class="attendance-edit-history-meta">الدوام: ' + escapeAttendanceEditHistoryHtml(item.shiftStart) + ' - ' + escapeAttendanceEditHistoryHtml(item.shiftEnd) + '</div></div>' +
+        '<div class="attendance-edit-history-time"><div>' + escapeAttendanceEditHistoryHtml(item.time) + '</div><div class="attendance-edit-history-date">' + escapeAttendanceEditHistoryHtml(item.date) + '</div></div>' +
+        '</div>' + changes + '</div>';
+        }).join('');
+        }
+
+        async function loadAttendanceEditHistory(logId) {
+        setAttendanceEditHistoryLoading();
+
+        if (!logId) {
+        renderAttendanceEditHistory([], 0);
+        return;
+        }
+
+        try {
+        const response = await fetch('/EmployeeAttendance/AttendanceEditHistory?id=' + encodeURIComponent(logId), {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store'
+        });
+
+        const result = await response.json();
+
+        if (result && result.success) {
+        if (shiftStartText && result.shiftStart) {
+        shiftStartText.innerText = result.shiftStart;
+        }
+        if (shiftStartInput && result.shiftStart) {
+        shiftStartInput.value = result.shiftStart === '-' ? '' : result.shiftStart;
+        }
+        if (shiftEndText && result.shiftEnd) {
+        shiftEndText.innerText = result.shiftEnd;
+        }
+        if (shiftEndInput && result.shiftEnd) {
+        shiftEndInput.value = result.shiftEnd === '-' ? '' : result.shiftEnd;
+        }
+        renderAttendanceEditHistory(result.items || [], result.totalCount || 0);
+        return;
+        }
+
+        renderAttendanceEditHistory([], 0);
+        } catch (error) {
+        if (historyList) {
+        historyList.innerHTML = '<div class="attendance-edit-history-empty">تعذر تحميل سجل التعديلات</div>';
+        }
+        }
+        }
+
+        function openEditPopup(row) {
+        if (!row || !editBackdrop) {
+        return;
+        }
+
+        idInput.value = row.getAttribute('data-log-id') || '';
+        checkInInput.value = row.getAttribute('data-check-in-time') || '';
+        checkOutInput.value = row.getAttribute('data-check-out-time') || '';
+        deductionInput.value = String(row.getAttribute('data-deduction-amount') || '0.00').replace(/,/g, '');
+        advanceInput.value = String(row.getAttribute('data-advance-amount') || '0.00').replace(/,/g, '');
+        if (bonusInput) {
+        bonusInput.value = String(row.getAttribute('data-bonus-amount') || '0.00').replace(/,/g, '');
+        }
+        reasonInput.value = row.getAttribute('data-late-reason') || '';
+
+        var rowShiftStart = row.getAttribute('data-shift-start') || '';
+        var rowShiftEnd = row.getAttribute('data-shift-end') || '';
+
+        if (shiftStartText) {
+        shiftStartText.innerText = rowShiftStart || '-';
+        }
+
+        if (shiftEndText) {
+        shiftEndText.innerText = rowShiftEnd || '-';
+        }
+
+        if (shiftStartInput) {
+        shiftStartInput.value = rowShiftStart === '-' ? '' : rowShiftStart;
+        }
+
+        if (shiftEndInput) {
+        shiftEndInput.value = rowShiftEnd === '-' ? '' : rowShiftEnd;
+        }
+
+        hideAttendanceEditHistoryBlock();
+        loadAttendanceEditHistory(idInput.value);
+
+        editBackdrop.style.display = 'flex';
+        }
+
+        function closeEditPopup() {
+        if (editBackdrop) {
+        editBackdrop.style.display = 'none';
+        }
+        }
+
+        document.addEventListener('click', function (event) {
+        const button = event.target.closest('.attendance-edit-row-btn');
+        if (!button) {
+        return;
+        }
+
+        event.preventDefault();
+        openEditPopup(button.closest('tr.attendance-data-row'));
+        });
+
+        const deleteConfirmBackdrop = document.getElementById('attendanceDeleteConfirmBackdrop');
+        const confirmDeleteBtn = document.getElementById('attendanceConfirmDeleteBtn');
+        const cancelDeleteBtn = document.getElementById('attendanceCancelDeleteBtn');
+        const successStatusBackdrop = document.getElementById('attendanceSuccessStatusBackdrop');
+        const successStatusTitle = document.getElementById('attendanceSuccessStatusTitle');
+        let pendingDeleteButton = null;
+        let pendingDeleteLogId = '';
+
+        function showSuccessStatus(message) {
+        if (!successStatusBackdrop || !successStatusTitle) {
+        showMessage(message);
+        return;
+        }
+
+        successStatusTitle.innerText = message;
+        successStatusBackdrop.style.display = 'flex';
+
+        setTimeout(function () {
+        successStatusBackdrop.style.display = 'none';
+        }, 1200);
+        }
+
+        function openDeleteConfirmPopup(button) {
+        const logId = button.getAttribute('data-log-id') || '';
+
+        if (!logId) {
+        showMessage('لم يتم العثور على رقم السجل');
+        return;
+        }
+
+        pendingDeleteButton = button;
+        pendingDeleteLogId = logId;
+
+        if (deleteConfirmBackdrop) {
+        deleteConfirmBackdrop.style.display = 'flex';
+        }
+        }
+
+        function closeDeleteConfirmPopup() {
+        if (deleteConfirmBackdrop) {
+        deleteConfirmBackdrop.style.display = 'none';
+        }
+
+        pendingDeleteButton = null;
+        pendingDeleteLogId = '';
+
+        if (confirmDeleteBtn) {
+        confirmDeleteBtn.disabled = false;
+        confirmDeleteBtn.innerText = 'تأكيد';
+        }
+        }
+
+        document.addEventListener('click', function (event) {
+        const button = event.target.closest('.attendance-delete-row-btn');
+        if (!button) {
+        return;
+        }
+
+        event.preventDefault();
+        openDeleteConfirmPopup(button);
+        });
+
+        if (cancelDeleteBtn) {
+        cancelDeleteBtn.addEventListener('click', closeDeleteConfirmPopup);
+        }
+
+        if (deleteConfirmBackdrop) {
+        deleteConfirmBackdrop.addEventListener('click', function (event) {
+        if (event.target === deleteConfirmBackdrop) {
+        closeDeleteConfirmPopup();
+        }
+        });
+        }
+
+        if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', async function () {
+        if (!pendingDeleteLogId || !pendingDeleteButton) {
+        showMessage('لم يتم العثور على رقم السجل');
+        closeDeleteConfirmPopup();
+        return;
+        }
+
+        confirmDeleteBtn.disabled = true;
+        confirmDeleteBtn.innerText = 'جاري الحذف...';
+        pendingDeleteButton.disabled = true;
+
+        try {
+        const response = await fetch('/EmployeeAttendance/DeleteAttendanceLogRow', {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        'RequestVerificationToken': getAntiForgeryToken()
+        },
+        body: JSON.stringify({ id: parseInt(pendingDeleteLogId, 10) })
+        });
+
+        const result = await response.json();
+
+        if (result && result.success) {
+        const row = pendingDeleteButton.closest('tr.attendance-data-row');
+        if (row) {
+        row.remove();
+        }
+
+        closeDeleteConfirmPopup();
+        showSuccessStatus(result.message || 'تم النقل لسلة المحذوفات');
+        setTimeout(function () { window.refreshAttendanceLogTableOnly ? window.refreshAttendanceLogTableOnly(window.location.href, false) : window.location.reload(); }, 900);
+        return;
+        }
+
+        pendingDeleteButton.disabled = false;
+        confirmDeleteBtn.disabled = false;
+        confirmDeleteBtn.innerText = 'تأكيد';
+        showMessage(result && result.message ? result.message : 'تعذر حذف السجل');
+        } catch (error) {
+        pendingDeleteButton.disabled = false;
+        confirmDeleteBtn.disabled = false;
+        confirmDeleteBtn.innerText = 'تأكيد';
+        showMessage('حدث خطأ أثناء حذف السجل');
+        }
+        });
+        }
+
+        if (editClose) {
+        editClose.addEventListener('click', closeEditPopup);
+        }
+
+        if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeEditPopup);
+        }
+
+        if (editBackdrop) {
+        editBackdrop.addEventListener('click', function (event) {
+        if (event.target === editBackdrop) {
+        closeEditPopup();
+        }
+        });
+        }
+
+        if (saveBtn) {
+        saveBtn.addEventListener('click', async function () {
+        const payload = {
+        id: parseInt(idInput.value || '0', 10),
+        checkInTime: checkInInput.value || '',
+        checkOutTime: checkOutInput.value || '',
+        clearCheckInTime: !checkInInput.value,
+        clearCheckOutTime: !checkOutInput.value,
+        shiftStartTime: shiftStartInput ? (shiftStartInput.value || '') : '',
+        shiftEndTime: shiftEndInput ? (shiftEndInput.value || '') : '',
+        deductionAmount: parseFloat(deductionInput.value || '0'),
+        advanceAmount: parseFloat(advanceInput.value || '0'),
+        bonusAmount: parseFloat(bonusInput ? (bonusInput.value || '0') : '0'),
+        lateReason: reasonInput.value || ''
+        };
+
+        if (!payload.id) {
+        showMessage('لم يتم العثور على رقم السجل');
+        return;
+        }
+
+        if ((payload.shiftStartTime && !payload.shiftEndTime) || (!payload.shiftStartTime && payload.shiftEndTime)) {
+        showMessage('يجب إدخال بداية ونهاية الدوام معًا');
+        return;
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.innerText = 'جاري الموافقة...';
+
+        try {
+        const response = await fetch('/EmployeeAttendance/UpdateAttendanceLogRow', {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        'RequestVerificationToken': getAntiForgeryToken()
+        },
+        body: JSON.stringify(payload)
+        });
+
+        const responseText = await response.text();
+        let result = null;
+
+        try {
+        result = responseText ? JSON.parse(responseText) : null;
+        } catch (parseError) {
+        result = null;
+        }
+
+        if (response.ok && result && result.success) {
+        closeEditPopup();
+        showSuccessStatus('تم التعديل');
+        setTimeout(function () { window.refreshAttendanceLogTableOnly ? window.refreshAttendanceLogTableOnly(window.location.href, false) : window.location.reload(); }, 900);
+        return;
+        }
+
+        if (result && result.message) {
+        showMessage(result.message);
+        } else {
+        showMessage('تعذر تعديل السجل - كود الخطأ: ' + response.status + (responseText ? (' - ' + responseText.substring(0, 180)) : ''));
+        }
+        } catch (error) {
+        showMessage('حدث خطأ أثناء تعديل السجل: ' + (error && error.message ? error.message : ''));
+        } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerText = 'موافقة';
+        }
+        });
+        }
+        })();
+    </script>
+
+
+    <script>
+        (function () {
+        const trashBtn = document.getElementById('attendanceTrashBtn');
+        const trashBackdrop = document.getElementById('attendanceTrashBackdrop');
+        const trashClose = document.getElementById('attendanceTrashClose');
+        const trashBody = document.getElementById('attendanceTrashBody');
+        const restoreAllBtn = document.getElementById('attendanceRestoreAllBtn');
+
+        if (!trashBtn || !trashBackdrop || !trashBody) {
+        return;
+        }
+
+        function getAntiForgeryTokenForTrash() {
+        const tokenInput = document.querySelector('#attendanceRowAntiForgeryForm input[name="__RequestVerificationToken"]');
+        return tokenInput ? tokenInput.value : '';
+        }
+
+        function setTrashLoading() {
+        trashBody.innerHTML = '<div class="attendance-trash-empty">جاري تحميل المحذوفات...</div>';
+        if (restoreAllBtn) {
+        restoreAllBtn.style.display = 'none';
+        restoreAllBtn.disabled = false;
+        restoreAllBtn.innerText = 'استرداد الكل';
+        }
+        }
+
+        function escapeHtml(value) {
+        return String(value === undefined || value === null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+        }
+
+        function renderTrashItems(items) {
+        items = Array.isArray(items) ? items : [];
+
+        if (!items.length) {
+        trashBody.innerHTML = '<div class="attendance-trash-empty">لا توجد سجلات محذوفة</div>';
+        if (restoreAllBtn) restoreAllBtn.style.display = 'none';
+        return;
+        }
+
+        trashBody.innerHTML = items.map(function (item) {
+        return '<div class="attendance-trash-item" data-trash-id="' + escapeHtml(item.id) + '">' +
+        '<div class="attendance-trash-info">' +
+        '<div class="attendance-trash-name">' + escapeHtml(item.employeeName || 'بدون اسم') + '</div>' +
+        '<div>التاريخ: ' + escapeHtml(item.date || '-') + ' | الدخول: ' + escapeHtml(item.checkInTime || '-') + ' | الخروج: ' + escapeHtml(item.checkOutTime || '-') + '</div>' +
+        '<div>الخصم: ' + escapeHtml(item.deductionAmount || '0.00') + ' | السبب: ' + escapeHtml(item.reason || '-') + '</div>' +
+        '<div>تاريخ الحذف: ' + escapeHtml(item.deletedAt || '-') + '</div>' +
+        '</div>' +
+        '<button type="button" class="attendance-trash-restore-btn" data-trash-id="' + escapeHtml(item.id) + '">استرداد</button>' +
+        '</div>';
+        }).join('');
+
+        if (restoreAllBtn) restoreAllBtn.style.display = 'inline-flex';
+        }
+
+        async function loadTrashItems() {
+        setTrashLoading();
+
+        try {
+        const response = await fetch('/EmployeeAttendance/DeletedAttendanceLogs', {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store'
+        });
+
+        const result = await response.json();
+
+        if (!result || !result.success) {
+        trashBody.innerHTML = '<div class="attendance-trash-empty">تعذر تحميل المحذوفات</div>';
+        return;
+        }
+
+        renderTrashItems(result.items || []);
+        } catch (error) {
+        trashBody.innerHTML = '<div class="attendance-trash-empty">حدث خطأ أثناء تحميل المحذوفات</div>';
+        }
+        }
+
+        function openTrashPopup() {
+        trashBackdrop.style.display = 'flex';
+        loadTrashItems();
+        }
+
+        function closeTrashPopup() {
+        trashBackdrop.style.display = 'none';
+        }
+
+        trashBtn.addEventListener('click', openTrashPopup);
+
+        if (trashClose) {
+        trashClose.addEventListener('click', closeTrashPopup);
+        }
+
+        trashBackdrop.addEventListener('click', function (event) {
+        if (event.target === trashBackdrop) {
+        closeTrashPopup();
+        }
+        });
+
+        trashBody.addEventListener('click', async function (event) {
+        const button = event.target.closest('.attendance-trash-restore-btn');
+        if (!button) return;
+
+        const id = parseInt(button.getAttribute('data-trash-id') || '0', 10);
+        if (!id) return;
+
+        button.disabled = true;
+        button.innerText = 'جاري الاسترداد...';
+
+        try {
+        const response = await fetch('/EmployeeAttendance/RestoreAttendanceLogRow', {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        'RequestVerificationToken': getAntiForgeryTokenForTrash()
+        },
+        body: JSON.stringify({ id: id })
+        });
+
+        const result = await response.json();
+
+        if (result && result.success) {
+        if (typeof showSuccessStatus === 'function') {
+        showSuccessStatus(result.message || 'تم استرداد السجل');
+        }
+        setTimeout(function () { window.refreshAttendanceLogTableOnly ? window.refreshAttendanceLogTableOnly(window.location.href, false) : window.location.reload(); }, 800);
+        return;
+        }
+
+        button.disabled = false;
+        button.innerText = 'استرداد';
+        alert(result && result.message ? result.message : 'تعذر استرداد السجل');
+        } catch (error) {
+        button.disabled = false;
+        button.innerText = 'استرداد';
+        alert('حدث خطأ أثناء استرداد السجل');
+        }
+        });
+
+        if (restoreAllBtn) {
+        restoreAllBtn.addEventListener('click', async function () {
+        restoreAllBtn.disabled = true;
+        restoreAllBtn.innerText = 'جاري الاسترداد...';
+
+        try {
+        const response = await fetch('/EmployeeAttendance/RestoreAllDeletedAttendanceLogs', {
+        method: 'POST',
+        headers: { 'RequestVerificationToken': getAntiForgeryTokenForTrash() }
+        });
+
+        const result = await response.json();
+
+        if (result && result.success) {
+        if (typeof showSuccessStatus === 'function') {
+        showSuccessStatus(result.message || 'تم استرداد الكل');
+        }
+        setTimeout(function () { window.refreshAttendanceLogTableOnly ? window.refreshAttendanceLogTableOnly(window.location.href, false) : window.location.reload(); }, 800);
+        return;
+        }
+
+        restoreAllBtn.disabled = false;
+        restoreAllBtn.innerText = 'استرداد الكل';
+        alert(result && result.message ? result.message : 'تعذر استرداد الكل');
+        } catch (error) {
+        restoreAllBtn.disabled = false;
+        restoreAllBtn.innerText = 'استرداد الكل';
+        alert('حدث خطأ أثناء استرداد الكل');
+        }
+        });
+        }
+        })();
+    </script>
+
+    <script>
+        (function () {
+        const printBtn = document.getElementById('printSelectedRecordsBtn');
+        const table = document.getElementById('attendanceTable');
+        const selectAllCheckbox = document.getElementById('selectAllAttendanceRecords');
+
+        if (!printBtn || !table) {
+        return;
+        }
+
+        function getRowCheckboxes() {
+        return Array.from(table.querySelectorAll('tbody tr.attendance-data-row input.record-select-checkbox'));
+        }
+
+        function updateSelectAllState() {
+        if (!selectAllCheckbox) {
+        return;
+        }
+
+        const rowCheckboxes = getRowCheckboxes();
+        const checkedCount = rowCheckboxes.filter(function (checkbox) {
+        return checkbox.checked;
+        }).length;
+
+        selectAllCheckbox.checked = rowCheckboxes.length > 0 && checkedCount === rowCheckboxes.length;
+        selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < rowCheckboxes.length;
+        }
+
+        if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function () {
+        const rowCheckboxes = getRowCheckboxes();
+
+        rowCheckboxes.forEach(function (checkbox) {
+        checkbox.checked = selectAllCheckbox.checked;
+        });
+
+        updateSelectAllState();
+        });
+        }
+
+        getRowCheckboxes().forEach(function (checkbox) {
+        checkbox.addEventListener('change', updateSelectAllState);
+        });
+
+        updateSelectAllState();
+
+        const selectionAlert = document.getElementById('attendanceSelectionAlert');
+        const selectionAlertMessage = document.getElementById('attendanceSelectionAlertMessage');
+        const selectionAlertConfirm = document.getElementById('attendanceSelectionAlertConfirm');
+        let selectionAlertTimer = null;
+
+        function closeAttendanceSelectionAlert() {
+        if (selectionAlert) {
+        selectionAlert.style.display = 'none';
+        }
+
+        if (selectionAlertTimer) {
+        clearTimeout(selectionAlertTimer);
+        selectionAlertTimer = null;
+        }
+        }
+
+        function showAttendanceSelectionAlert(message) {
+        if (!selectionAlert) {
+        alert(message);
+        return;
+        }
+
+        if (selectionAlertMessage) {
+        selectionAlertMessage.innerText = message;
+        }
+
+        selectionAlert.style.display = 'flex';
+
+        if (selectionAlertTimer) {
+        clearTimeout(selectionAlertTimer);
+        }
+
+        selectionAlertTimer = setTimeout(closeAttendanceSelectionAlert, 3000);
+        }
+
+        if (selectionAlertConfirm) {
+        selectionAlertConfirm.addEventListener('click', closeAttendanceSelectionAlert);
+        }
+
+        printBtn.addEventListener('click', function (event) {
+        event.preventDefault();
+
+        const selectedIds = getRowCheckboxes()
+        .filter(function (checkbox) {
+        return checkbox.checked;
+        })
+        .map(function (checkbox) {
+        return checkbox.value;
+        })
+        .filter(function (value) {
+        return value && value.trim() !== '';
+        });
+
+        if (selectedIds.length === 0) {
+        showAttendanceSelectionAlert('يجب اختيار سجل واحد على الأقل قبل سحب الكشف');
+        return;
+        }
+
+        const pdfUrl = '/Pdf/PrintAttendanceLog?ids=' + encodeURIComponent(selectedIds.join(','));
+        window.open(pdfUrl, '_blank');
+        });
+
+        document.addEventListener('click', function (event) {
+        const button = event.target.closest('.attendance-print-row-btn');
+        if (!button) {
+        return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const logId = button.getAttribute('data-log-id') || '';
+
+        if (!logId || logId.trim() === '' || parseInt(logId, 10) <= 0) {
+        showAttendanceSelectionAlert('لم يتم العثور على رقم السجل');
+        return;
+        }
+
+        const pdfUrl = '/Pdf/PrintAttendanceLog?ids=' + encodeURIComponent(logId);
+        window.open(pdfUrl, '_blank');
+        });
+        })();
+
+        (function setupShiftBlockToggles() {
+        const toggles = Array.from(document.querySelectorAll('.shift-block-toggle'));
+        const messageBox = document.getElementById('shiftBlockMessage');
+        const tokenInput = document.querySelector('#shiftBlockAntiForgeryForm input[name="__RequestVerificationToken"]');
+
+        function showShiftBlockMessage(message, type) {
+        if (!messageBox) {
+        return;
+        }
+
+        messageBox.textContent = message || '';
+        messageBox.className = 'shift-block-message ' + (type === 'error' ? 'error' : 'success');
+
+        window.setTimeout(function () {
+        if (messageBox) {
+        messageBox.className = 'shift-block-message';
+        messageBox.textContent = '';
+        }
+        }, 3500);
+        }
+
+        function setShiftBlockRowState(shiftId, isBlocked, noteText) {
+        const status = document.querySelector('[data-shift-block-status="' + shiftId + '"]');
+        const note = document.querySelector('[data-shift-block-note="' + shiftId + '"]');
+
+        document.querySelectorAll('.shift-block-toggle[data-shift-id="' + shiftId + '"]').forEach(function (rowToggle) {
+        rowToggle.checked = isBlocked;
+        });
+
+        if (status) {
+        status.textContent = isBlocked ? 'بلوك' : 'مفتوح';
+        status.classList.toggle('is-blocked', isBlocked);
+        status.classList.toggle('is-open', !isBlocked);
+        }
+
+        if (note) {
+        note.textContent = noteText || '-';
+        }
+        }
+
+        document.addEventListener('change', async function (event) {
+        const toggle = event.target.closest('.shift-block-toggle');
+        if (!toggle) {
+        return;
+        }
+        const shiftId = parseInt(toggle.getAttribute('data-shift-id') || '0', 10);
+        const newBlockedState = toggle.checked;
+        const previousState = !newBlockedState;
+
+        if (!shiftId) {
+        toggle.checked = previousState;
+        showShiftBlockMessage('لم يتم العثور على الشيفت المطلوب', 'error');
+        return;
+        }
+
+        toggle.disabled = true;
+
+        try {
+        const response = await fetch('/EmployeeAttendance/ToggleEmployeeLoginBlock', {
+        method: 'POST',
+        cache: 'no-store',
+        credentials: 'same-origin',
+        headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'RequestVerificationToken': tokenInput ? tokenInput.value : ''
+        },
+        body: JSON.stringify({
+        shiftId: shiftId,
+        isBlocked: newBlockedState
+        })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result || result.success === false) {
+        throw new Error(result && result.message ? result.message : 'فشل تحديث حالة البلوك');
+        }
+
+        toggle.checked = result.isBlocked === true;
+
+        const noteText = result.isBlocked
+        ? 'تم عمل بلوك يدوي من الإدارة'
+        : (result.adminUnblockedUntil ? ('مسموح حتى ' + result.adminUnblockedUntil) : 'تم فك البلوك يدويًا');
+
+        setShiftBlockRowState(shiftId, result.isBlocked === true, noteText);
+        showShiftBlockMessage(result.message || 'تم تحديث حالة البلوك بنجاح', 'success');
+
+        if (result.refreshAttendanceLog === true || result.isBlocked === true) {
+        window.setTimeout(function () {
+        window.refreshAttendanceLogTableOnly ? window.refreshAttendanceLogTableOnly(window.location.href, false) : window.location.reload();
+        }, 650);
+        }
+        } catch (error) {
+        toggle.checked = previousState;
+        showShiftBlockMessage(error && error.message ? error.message : 'فشل تحديث حالة البلوك', 'error');
+        } finally {
+        toggle.disabled = false;
+        }
+        });
+        })();
+
+        // تم إيقاف التحديث التلقائي لجدول تسجيل الدوام.
+        // الجدول يلود مرة واحدة فقط، وأي تعديل جديد يظهر عند عمل Refresh يدوي للصفحة.
+        // سبب الإلغاء: منع الوميض/إعادة تحميل الجدول كل 5 ثواني.
+
+
+    </script>
+
+</div>

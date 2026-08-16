@@ -1,0 +1,729 @@
+﻿@using lotus_blue.Models
+@model lotus_blue.Models.ViewModel.FinancialManufacturingCompanyViewModel
+
+@using lotus_blue.Services
+@{
+    bool isAdmin = User.IsInRole("Admin");
+    ViewData["Title"] = "إجمالي السعر للطلبات حسب شركة التوصيل";
+}
+
+@if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+{
+    <div class="d-flex  mb-2 mx-3 justify-content-center ps-0 pe-0">
+
+        <div class="  ps-5 x custom-design-white pe-4  align-items-center text-nowrap          text-white background-green ">
+            <div class="d-flex justify-content-between">
+                <div id="details">
+                    @Model.NumberOfOrders
+                    عدد الطلبات
+                </div>
+                <div>
+                </div>
+                <div id="local">
+                    @Model.TotalLocalCurrenyPrice @Model.Currency
+                </div>
+
+
+            </div>
+        </div>
+        <div class="  ps-5 me-3 pe-4 custom-design-white  align-items-center text-nowrap text-white background-green ">
+
+            <div class="d-flex justify-content-between">
+                <div id="TotaltlPrice">
+                    @Model.ToTalPriceTl TRY
+
+                </div>
+                <div>
+                </div>
+                <div id="TotalUSDPrice" class="pe-2">
+                    @Model.TotalPriceDollar USD
+
+                </div>
+
+            </div>
+
+
+        </div>
+
+    </div>
+}
+
+@if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+{
+    <div class="row mx-3">
+        <div class="d-flex ps-0 pe-0 justify-content-center ">
+            <div class="w-50 pe-0 ps-0">
+                <select id="CountryId" name="Country" class="form-control  drop-down-design" required>
+                </select>
+            </div>
+
+
+
+            <div class="w-50 pe-0 ps-0 me-3">
+                <select id="CityId" name="City" class="form-control drop-down-design" required>
+                </select>
+            </div>
+
+
+            <div class="w-50 pe-0 ps-0 me-3">
+                <select id="DeliveryRepresentativeId" name="DeliveryRepresentativeId" class="form-control drop-down-design" required>
+                </select>
+            </div>
+
+            <div class="w-50 pe-0 ps-0 me-3">
+                <select id="ManufacturingCompanyId" name="ManufacturingCompanyId" class="form-control drop-down-design" required>
+                </select>
+            </div>
+        </div>
+    </div>
+
+
+}
+
+
+<div id="filteredDataContainer" class="">
+    @foreach (var manufacturingCompanyInfo in Model.ManufacturingCompanyData.OrderBy(m => m.ManufacturingCompany.Name))
+    {
+        foreach (var deliveryCompanyInfo in manufacturingCompanyInfo.DeliveryCompanies.OrderBy(d => d.Name))
+        {
+            <div class="row pointer mx-3"
+                 data-country="@deliveryCompanyInfo.Country"
+                 data-country-flag="@Common.GetImageUrlByCountryName(deliveryCompanyInfo.Country.ToString())"
+                 data-manufacturing-company-id="@manufacturingCompanyInfo.ManufacturingCompany.Id"
+                 data-manufacturing-company-name="@manufacturingCompanyInfo.ManufacturingCompany.Name"
+                 data-manufacturing-company-logo="/@manufacturingCompanyInfo.ManufacturingCompany.LogoUrl"
+                 data-delivery-company-name="@deliveryCompanyInfo.Name"
+                 data-delivery-company-logo="/@deliveryCompanyInfo.LogoUrl"
+                 data-delivery-company-id="@deliveryCompanyInfo.Id"
+                 data-ongoing-account-difference="@deliveryCompanyInfo.OnGoingAccountDifference"
+                 data-manufacturing-company-id="@manufacturingCompanyInfo.ManufacturingCompany.Id">
+        
+       
+
+
+                <div class="d-inline-flex align-items-center">
+                    <img load="lazy" class="ms-2" width="17" height="17" src="@Common.GetImageUrlByCountryName(deliveryCompanyInfo.Country.ToString())">
+                    <div class="country text-green">@deliveryCompanyInfo.Country</div>
+                </div>
+
+                <div class="d-inline-flex align-items-center">
+                    <img load="lazy" class="ms-2" width="17" height="17" src="/@manufacturingCompanyInfo.ManufacturingCompany.LogoUrl">
+                    <div class="name">@manufacturingCompanyInfo.ManufacturingCompany.Name</div>
+                </div>
+
+                <div class="d-inline-flex align-items-center">
+                    <img load="lazy" class="ms-2" width="17" height="17" src="/@deliveryCompanyInfo.LogoUrl">
+                    <div class="name">@deliveryCompanyInfo.Name</div>
+                </div>
+
+                <div class="d-flex justify-content-center ps-0 pe-0">
+                    @{
+                        var deliveryCompanyId = @deliveryCompanyInfo.Id;
+                        var manufacturingCompanyId = @manufacturingCompanyInfo.ManufacturingCompany.Id;
+                    }
+
+                    <div class="mb-2 ps-5 d-flex custom-design-white pe-4 justify-content-between align-items-center text-nowrap"
+                    @if (isAdmin)
+                    {
+                        @:onclick="window.location='/Financial/OrderByManafactureCompanyThenDeliveryCompany?country=&deliveryCompanyId=@deliveryCompanyId&manafacturecompanyId=@manufacturingCompanyId';"
+                    }>
+                        <div class="flex-column d-flex align-content-center">
+                            <img src="/static/banklogo.svg" width="35" height="35" class="text-green me-4" />
+                            <div class="ltr">
+                                <h6 class="pe-2 f-s-1-35rem mb-1 h5 me-2 text-end">
+                                    @deliveryCompanyInfo.OnGoingAccountDifference
+                                    <span class="code f-s-14">@deliveryCompanyInfo.Currency</span>
+                                </h6>
+                            </div>
+                            <h6 class="pe-2">الحساب الجاري</h6>
+                        </div>
+
+                        
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <button onclick="event.stopPropagation(); showModal(
+                                '@deliveryCompanyInfo.Country',
+                                '@deliveryCompanyInfo.Id',
+                                '@manufacturingCompanyInfo.ManufacturingCompany.Id',
+                                '@deliveryCompanyInfo.OnGoingAccountDifference',
+                                '@Common.GetCurrencyByCountryName(deliveryCompanyInfo.Country.ToString())',
+                                '@deliveryCompanyInfo.Country',
+                                '@Common.GetImageUrlByCountryName(deliveryCompanyInfo.Country.ToString())',
+                                '@manufacturingCompanyInfo.ManufacturingCompany.Name',
+                                '@deliveryCompanyInfo.Name',
+                                '@manufacturingCompanyInfo.ManufacturingCompany.LogoUrl',
+                                '@deliveryCompanyInfo.LogoUrl'
+                            );" class="btn rounded-pill f-s-16 btn-success">
+                                استحقاق المبلغ
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn f-s-16 rounded-pill btn-success">المستحقات</button>
+                        }
+                    </div>
+
+
+
+
+                    <div class="mb-2 ps-5 me-3 d-flex custom-design-white pe-4 justify-content-between align-items-center text-nowrap"
+                    @if (isAdmin)
+                    {
+                        @:onclick="window.location='/Financial/OrderByManafactureCompanyThenDeliveryCompany?country=&deliveryCompanyId=@deliveryCompanyId&manafacturecompanyId=@manufacturingCompanyId';"
+                    }>
+                        <div class="flex-column d-flex align-content-center">
+                            <img src="/static/banklogo.svg" width="35" height="35" class="text-green me-4" />
+                            <div class="ltr">
+                                <h6 class="pe-2 f-s-1-35rem mb-1 h5 me-2 text-end">
+                                    @deliveryCompanyInfo.OnGoingAccountDeliveryCompanyPrice
+                                    <span class="code f-s-14">@deliveryCompanyInfo.Currency</span>
+                                </h6>
+                            </div>
+                        </div>
+
+
+
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <button class="btn f-s-16 btn-success rounded-pill text-white">
+                                أجور التوصيل
+                            </button>
+
+                        }
+                        else
+                        {
+                            <button class="btn f-s-16 rounded-pill btn-success">المستحقات</button>
+                        }
+                    </div>
+
+
+
+
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <div class="mb-2 d-flex ps-5 me-3 pe-4 custom-design-white justify-content-between align-items-center text-nowrap">
+                            <div class="flex-column d-flex align-content-center">
+                                <img src="/static/banklogo-2.svg" width="35" height="35" class="text-green me-4" />
+                                <div class="ltr">
+                                    <h6 class="pe-2 mb-1 f-s-1-35rem h5 me-2 text-end">
+                                        @deliveryCompanyInfo.DeferredDifference
+                                        <span class="code f-s-14">@deliveryCompanyInfo.Currency</span>
+                                    </h6>
+                                </div>
+                            </div>
+
+
+                            <button class="btn f-s-16 btn-yellow-v3 rounded-pill text-white">قيد التحصيل</button>
+                        </div>
+
+
+
+                        <div class="mb-2 d-flex ps-5 me-3 pe-4 custom-design-white justify-content-between align-items-center text-nowrap">
+                            <div class="flex-column d-flex align-content-center">
+                                <img src="/static/banklogo-2.svg" width="35" height="35" class="text-green me-4" />
+                                <div class="ltr">
+                                    <h6 class="pe-2 mb-1 f-s-1-35rem h5 me-2 text-end">
+                                        @deliveryCompanyInfo.DeferredDeliveryCompanyPrice
+                                        <span class="code f-s-14">@deliveryCompanyInfo.Currency</span>
+                                    </h6>
+                                </div>
+                            </div>
+
+
+                            <button class="btn f-s-16 btn-yellow-v3 rounded-pill text-white"> أجور التوصيل </button>
+                        </div>
+
+
+
+                    }
+                    else
+                    {
+                        <div class="mb-2 d-flex ps-5 me-3 pe-4 custom-design-white justify-content-between align-items-center text-nowrap">
+                            <div class="flex-column d-flex align-items-center">
+                                <img src="/static/banklogo-2.svg" width="35" height="35" />
+                                <div class="ltr">
+                                    <h6 class="pe-2 f-s-1-35rem mb-1 h5 me-2 text-end">
+                                        @deliveryCompanyInfo.OnGoingAccountDeliveryCompanyPrice
+                                        <span class="code f-s-14">@deliveryCompanyInfo.Currency</span>
+                                    </h6>
+                                </div>
+                                <h6 class="pe-3">الرصيد الحالي</h6>
+                            </div>
+                            <button class="btn btn-green-v2 f-s-14 text-white">اجور التوصيل</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+
+<!-- Modal Structure -->
+<div class="modal fade" id="paymentModals" tabindex="-1" aria-labelledby="paymentModalsLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <button type="button" class="btn head-16 text-green" data-bs-dismiss="modal" aria-label="Close"> تراجع</button>
+                <h5 class="modal-title head text-center text-dark" id="headertext"> جميع المتاجر </h5>
+                <button type="button" class="btn head-16 text-green" data-bs-dismiss="modal" aria-label="Close"> انتهى</button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Modal Content will be injected here -->
+                <div id="modalContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<style>
+
+    .custom-design-white {
+        border-radius: 8px;
+        background-color: #ffffff;
+        padding-top: 5px;
+        padding-bottom: 5px;
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2);
+        width: 50%;
+    }
+
+   
+
+</style>
+
+
+<script>
+
+    function showModal(country, deliveryCompanyId, manufactureCompanyId, ongoingAccount, currency, countryName, countryFlagUrl, manufactureCompanyName, deliveryCompanyName, manufactureCompanyLogoUrl, deliveryCompanyLogoUrl) {
+        // Format the ongoing account with the provided currency
+        var formattedOngoingAccount = ongoingAccount + " " + currency;
+
+        // Create the content to be injected into the modal
+        var modalContent = `
+                            <div class="text-center">
+                                <!-- Display Country Flag and Name -->
+                                        <img src="${countryFlagUrl}" alt="${countryName} Flag" class="mb-2 mb-2" style="width:  20px; height: auto;">
+                                    <h4 class="text-dark">${countryName}</h4>
+
+                                <!-- Display Manufacturing Company Logo and Name -->
+                                <div class="d-inline-flex align-items-center mb-2">
+                                    <img src="/${manufactureCompanyLogoUrl}" alt="${manufactureCompanyName} Logo" class="ms-2 mb-2" style="width: 20px; height: auto;">
+                                    <h4 class="text-dark">${manufactureCompanyName}</h4>
+                                </div>
+
+                                <!-- Display Delivery Company Logo and Name -->
+                                <div class="d-inline-flex align-items-center mb-2">
+                                            <img src="/${deliveryCompanyLogoUrl}" alt="${deliveryCompanyName} Logo" class="ms-2 mb-2" style="width: 20px; height: auto;">
+                                    <h4 class="text-dark">${deliveryCompanyName}</h4>
+                                </div>
+
+                                <!-- Display Ongoing Account with Currency -->
+                                <h2 class="text-center text-dark">${formattedOngoingAccount}</h2>
+
+                                <div class="d-flex justify-content-center align-items-center my-auto">
+                                    <form action="/Financial/MarkAsPaid" method="post">
+                                        <input type="hidden" name="deliveryCompanyId" value="${deliveryCompanyId}" />
+                                        <input type="hidden" name="manufactureCompanyId" value="${manufactureCompanyId}" />
+                                            <button type="submit" id="receiveButton" class="btn text-nowrap btn-success me-4">  استحقاق المبلغ</button>
+                                    </form>
+                                </div>
+                            </div>
+                        `;
+
+        // Inject the content into the modal
+        document.getElementById('modalContent').innerHTML = modalContent;
+
+        // Show the modal
+        var modal = new bootstrap.Modal(document.getElementById('paymentModals'));
+        modal.show();
+    }
+
+
+    $('#paymentModals').on('hidden.bs.modal', function () {
+        $('.modal-backdrop').remove();  // Remove any lingering modal backdrop
+    });
+
+    $(document).ready(function () {
+        // Function to fetch data based on selected filters
+        function fetchData() {
+            var country = $('#CountryId').val();
+            var deliveryCompanyId = $('#DeliveryRepresentativeId').val();
+            var storeId = $('#ManufacturingCompanyId').val();
+            var cityId = $('#CityId').val();
+
+            // Log the current values of the dropdowns to the console
+            console.log("Selected Country: ", country, "Selected Delivery Company ID: ", deliveryCompanyId);
+
+            $.ajax({
+                url: '@Url.Action("OrderByManfacturingCompanyOnGoingDeliveryRepresntaitve", "Financial")',
+                type: 'GET',
+                data: {
+                    countryId: country,
+                    deliveryCompanyId: deliveryCompanyId,
+                    storeId: storeId,
+                    cityId: cityId
+                },
+                success: function (response) {
+                    // Replace relevant sections of the page with the response
+                    $('#filteredDataContainer').html($(response).find('#filteredDataContainer').html());
+                    $('#dollar').html($(response).find('#dollar').html());
+                    $('#lira').html($(response).find('#lira').html());
+                    $('#local').html($(response).find('#local').html());
+                    $('#numberoforders').html($(response).find('#numberoforders').html());
+                    $('#TotaltlPrice').html($(response).find('#TotaltlPrice').html());
+                    $('#TotalUSDPrice').html($(response).find('#TotalUSDPrice').html());
+                    $('#details').html($(response).find('#details').html());
+
+                    // Reinitialize modal-related content after the fetch
+                    if (cityId) {
+                        // If country is selected, update and show the country modal
+                        updateMarkAsPaidByCityButton();
+                    } else if (deliveryCompanyId) {
+                        // If delivery company is selected, update and show the delivery company modal
+                        updateMarkAsPaidButton();
+                    }
+
+                },
+                error: function (xhr, status, error) {
+                    $('#filteredDataContainer').html('Error: ' + error);
+                }
+            });
+        }
+
+
+        // Function to update and show modal based on selected delivery company
+        function updateMarkAsPaidButton() {
+            var selectedDeliveryRepresentativeId = $('#DeliveryRepresentativeId').val();
+
+            if (selectedDeliveryRepresentativeId) {
+                var selectedRow = $('#filteredDataContainer .row').filter(function () {
+                    return $(this).data('delivery-company-id') == selectedDeliveryRepresentativeId;
+                });
+
+                if (selectedRow.length > 0) {
+                    var countryName = selectedRow.data('country');
+                    var countryFlagUrl = selectedRow.data('country-flag');
+                    var deliveryCompanyName = selectedRow.data('delivery-company-name');
+                    var deliveryCompanyLogoUrl = selectedRow.data('delivery-company-logo');
+
+                    var manufacturingCompanies = [];
+                    selectedRow.each(function () {
+                        manufacturingCompanies.push({
+                            id: $(this).data('manufacturing-company-id'),
+                            name: $(this).data('manufacturing-company-name'),
+                            ongoingAccountDifference: parseFloat(($(this).data('ongoing-account-difference') || "0").toString().replace(/,/g, '')) || 0
+                        });
+                    });
+
+                    // Calculate initial sum of ongoing account differences
+                    var totalOngoingAccountDifference = manufacturingCompanies.reduce(function (sum, company) {
+                        return sum + company.ongoingAccountDifference;
+                    }, 0);
+
+                    // Create modal content with checkboxes for each manufacturing company
+                    var modalContent = `
+                <div class="text-center">
+                    <div class="mb-2">
+                        <img src="${countryFlagUrl}" alt="${countryName} Flag" class="mb-2" style="width: 20px; height: auto;">
+                        <h4 class="text-dark">${countryName}</h4>
+                    </div>
+                    <div class="mb-2">
+                        <img src="${deliveryCompanyLogoUrl}" alt="${deliveryCompanyName} Logo" class="mb-2" style="width: 20px; height: auto;">
+                        <h4 class="text-dark">${deliveryCompanyName}</h4>
+                    </div>
+                    <div class="mb-4">
+                        <h5 class="text-dark">شركات التصنيع والحساب الجاري:</h5>
+                        ${manufacturingCompanies.map(function (company) {
+                        return `
+                                <div class="mb-2 text-dark">
+                                    <input type="checkbox" name="manufacturingCompanyIds" value="${company.id}" class="manufacturing-checkbox" data-ongoing-difference="${company.ongoingAccountDifference}" checked>
+                                    <label>${company.name}</label>
+                                    <p>الحساب الجاري: ${company.ongoingAccountDifference.toLocaleString('en-US')}</p>
+                                </div>
+                            `;
+                    }).join('')}
+                        <h5 class="text-dark">إجمالي الحساب الجاري: <span id="totalOngoingAccountDifference">${totalOngoingAccountDifference.toLocaleString('en-US')}</span></h5>
+                    </div>
+                    <div class="d-flex justify-content-center align-items-center my-auto">
+                        <button type="button" class="btn text-nowrap btn-success me-4" id="submitMarkAsPaid">استحقاق المبلغ</button>
+                    </div>
+                </div>
+            `;
+
+                    // Inject modal content
+                    $('#modalContent').html(modalContent);
+                    var modal = new bootstrap.Modal(document.getElementById('paymentModals'));
+                    modal.show();
+
+                    // Update total ongoing account difference on checkbox change
+                    $('input[name="manufacturingCompanyIds"]').on('change', function () {
+                        var newTotal = 0;
+                        $('input[name="manufacturingCompanyIds"]:checked').each(function () {
+                            // Parse ongoing difference from checked checkboxes and ensure it's valid
+                            var ongoingDifference = parseFloat($(this).data('ongoing-difference')) || 0;
+                            newTotal += ongoingDifference;
+                        });
+                        // Format the new total with commas
+                        $('#totalOngoingAccountDifference').text(newTotal.toLocaleString('en-US'));
+                    });
+
+                    // Handle form submission when the button is clicked
+                    $('#submitMarkAsPaid').on('click', function () {
+                        var selectedManufacturingCompanyIds = [];
+                        $('input[name="manufacturingCompanyIds"]:checked').each(function () {
+                            selectedManufacturingCompanyIds.push($(this).val());
+                        });
+
+                        // Show the notification for confirmation
+                        // Show the notification for confirmation before proceeding
+                        showNotification(
+                            "هل أنت متأكد من أنك تريد استحقاق المبلغ؟",  // Confirmation message in Arabic
+                            function () {  // Confirm action
+                                // If user confirms, proceed with the AJAX request
+                                $.ajax({
+                                    url: '/Financial/MarkAsPaidAll',
+                                    method: 'POST',
+                                    data: {
+                                        deliveryCompanyId: selectedDeliveryRepresentativeId,
+                                        manufacturingCompanyIds: selectedManufacturingCompanyIds,
+                                    },
+                                    success: function (response) {
+                                        if (response.success) {
+                                            alert('Orders updated successfully!');
+                                            window.location.reload();
+
+                                        } else {
+                                            alert(response.message);
+                                        }
+                                    },
+                                    error: function () {
+                                        alert('An error occurred while updating orders.');
+                                    }
+                                });
+                            },
+                            "/static/trash-can-regular.svg"  // Image to display in the notification
+                        );
+                    });
+
+
+                }
+            }
+        }
+
+        // Function to update and show modal based on selected country
+        function updateMarkAsPaidByCityButton() {
+            var selectedCountryId = $('#CountryId').val();
+            var selectedCityId = $('#CityId').val();
+
+            var selectedCountryOption = $('#CountryId').find('option:selected');
+            var countryName = selectedCountryOption.text();
+            var countryFlagUrl = selectedCountryOption.data('image');
+
+            if (selectedCityId) {
+                var matchingRows = $('#filteredDataContainer .row').filter(function () {
+                    return $(this).data('country') == countryName;
+                });
+
+                if (matchingRows.length > 0) {
+                    var deliveryCompanies = {};
+                    var totalOngoingDifference = 0;
+
+                    matchingRows.each(function () {
+                        var deliveryCompanyId = $(this).data('delivery-company-id');
+                        var deliveryCompanyName = $(this).data('delivery-company-name');
+                        var deliveryCompanyLogo = $(this).data('delivery-company-logo');
+
+                        if (!deliveryCompanies[deliveryCompanyId]) {
+                            deliveryCompanies[deliveryCompanyId] = {
+                                id: deliveryCompanyId,
+                                name: deliveryCompanyName,
+                                logo: deliveryCompanyLogo,
+                                manufacturingCompanies: []
+                            };
+                        }
+
+                        deliveryCompanies[deliveryCompanyId].manufacturingCompanies.push({
+                            id: $(this).data('manufacturing-company-id'),
+                            name: $(this).data('manufacturing-company-name'),
+                            ongoingAccountDifference: $(this).data('ongoing-account-difference')
+                        });
+                    });
+
+                    // Build modal content
+                    var modalContent = `
+            <div class="text-center">
+                <div class="mb-2">
+                    <img src="${countryFlagUrl}" alt="${countryName} Flag" class="mb-2" style="width: 20px; height: auto;">
+                    <h4 class="text-dark">${countryName}</h4>
+                </div>
+                <div class="mb-4">`;
+
+                    // Iterate through each delivery company and its manufacturing companies
+                    for (const deliveryCompanyId in deliveryCompanies) {
+                        var company = deliveryCompanies[deliveryCompanyId];
+                        modalContent += `
+                <div class="mb-2 text-dark">
+                    <div class="d-inline-flex align-items-center mb-2">
+                        <input type="checkbox" name="deliveryCompanyIds" class="delivery-company-checkbox" value="${company.id}" data-delivery-id="${company.id}" checked>
+                        <img src="${company.logo}" alt="${company.name} Logo" class="ms-2 mb-2" style="width: 20px; height: auto;">
+                        <h5>${company.name}</h5>
+                    </div>`;
+
+                        // Add manufacturing companies to the modal
+                        company.manufacturingCompanies.forEach(function (manufacture) {
+                            modalContent += `
+                    <div class="mb-2">
+                        <input type="checkbox" name="manufacturingCompanyIds" class="manufacturing-company-checkbox" value="${manufacture.id}" data-delivery-id="${company.id}" checked>
+                        <h6>${manufacture.name}</h6>
+                        <p>الحساب الجاري: ${manufacture.ongoingAccountDifference.toLocaleString('en-US')}</p>
+                    </div>`;
+
+                            // Add to total ongoing account difference (ensuring the value is a number)
+                            var cleanedOngoingAccount = parseFloat(manufacture.ongoingAccountDifference.toString().replace(/,/g, ''));
+                            if (!isNaN(cleanedOngoingAccount)) {
+                                totalOngoingDifference += cleanedOngoingAccount;
+                            }
+                        });
+
+                        modalContent += `</div>`;
+                    }
+
+                    modalContent += `
+            </div>
+            <div class="d-flex justify-content-center align-items-center my-auto">
+                <h5 class="text-dark" >إجمالي الحساب الجاري: <span id="totalOngoingDifference">${totalOngoingDifference.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></h5>
+            </div>
+            <div class="d-flex justify-content-center align-items-center my-auto">
+                <button type="button" class="btn text-nowrap btn-success me-4" id="submitMarkAsPaid">استحقاق المبلغ</button>
+            </div>
+        </div>`;
+
+                    // Inject modal content and display modal
+                    $('#modalContent').html(modalContent);
+                    var modal = new bootstrap.Modal(document.getElementById('paymentModals'));
+                    modal.show();
+
+                    // Automatically check/uncheck manufacturing companies when a delivery company is selected/unselected
+                    $('.delivery-company-checkbox').on('change', function () {
+                        var deliveryId = $(this).data('delivery-id');
+                        var isChecked = $(this).is(':checked');
+
+                        // Select or deselect all manufacturing companies under this delivery company
+                        $(`.manufacturing-company-checkbox[data-delivery-id='${deliveryId}']`).prop('checked', isChecked);
+
+                        updateTotalOngoingDifference();
+                    });
+
+                    // Update delivery company checkbox when manufacturing companies are selected/unselected
+                    $('.manufacturing-company-checkbox').on('change', function () {
+                        var deliveryId = $(this).data('delivery-id');
+                        var allManufacturingChecked = $(`.manufacturing-company-checkbox[data-delivery-id='${deliveryId}']:checked`).length > 0;
+                        $(`.delivery-company-checkbox[data-delivery-id='${deliveryId}']`).prop('checked', allManufacturingChecked);
+
+                        updateTotalOngoingDifference();
+                    });
+
+                    // Handle form submission when the button is clicked
+                    $('#submitMarkAsPaid').on('click', function () {
+                        var selectedDeliveryRepresentativeIds = [];
+                        var selectedManufacturingCompanyIds = [];
+
+                        // Get selected delivery companies and manufacturing companies
+                        $('input[name="deliveryCompanyIds"]:checked').each(function () {
+                            selectedDeliveryRepresentativeIds.push($(this).val());
+                        });
+
+                        $('input[name="manufacturingCompanyIds"]:checked').each(function () {
+                            selectedManufacturingCompanyIds.push($(this).val());
+                        });
+
+                        // Log selected companies for debugging
+                        console.log("Selected Delivery Company IDs:", selectedDeliveryRepresentativeIds);
+                        console.log("Selected Manufacturing Company IDs:", selectedManufacturingCompanyIds);
+
+                        // Show the notification for confirmation before proceeding
+                        showNotification(
+                            "هل أنت متأكد من أنك تريد استحقاق المبلغ؟",  // Confirmation message in Arabic
+                            function () {  // Confirm action
+                                // If user confirms, proceed with the AJAX request
+                                $.ajax({
+                                    url: '/Financial/MarkAsPaidAllByCity',
+                                    method: 'POST',
+                                    data: {
+                                        countryId: $('#CountryId').val(),  // Selected country ID
+                                        deliveryCompanyIds: selectedDeliveryRepresentativeIds,
+                                        manufacturingCompanyIds: selectedManufacturingCompanyIds,
+                                        cityId: $('#CityId').val()  // Selected city ID
+                                    },
+                                    success: function (response) {
+                                        if (response.success) {
+                                            alert('Orders updated successfully!');
+                                            window.location.reload();
+
+                                        } else {
+                                            alert(response.message);
+                                        }
+                                    },
+                                    error: function () {
+                                        alert('An error occurred while updating orders.');
+                                    }
+                                });
+                            },
+                            "/static/trash-can-regular.svg"  // Image to display in the notification
+                        );
+                    });
+
+
+                    // Update total ongoing account difference
+                    function updateTotalOngoingDifference() {
+                        var newTotal = 0;
+
+                        // Loop through each checked manufacturing company
+                        $('input[name="manufacturingCompanyIds"]:checked').each(function () {
+                            // Extract the ongoing account difference from the closest <p> tag
+                            var accountDifferenceText = $(this).closest('div').find('p').text().split(': ')[1];
+
+                            // Remove commas from the string and convert it to a float number
+                            var cleanedAccountDifference = accountDifferenceText.replace(/,/g, ''); // Remove commas
+                            var accountDifference = parseFloat(cleanedAccountDifference); // Convert to float
+
+                            // Check if the parsed number is valid and add it to the total
+                            if (!isNaN(accountDifference)) {
+                                newTotal += accountDifference;
+                            }
+                        });
+
+                        // Format the total properly with commas for thousands and no decimal places
+                        $('#totalOngoingDifference').text(newTotal.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }));
+                    }
+
+                }
+            }
+        }
+
+        // Trigger modal update when filters change
+        $('#ManufacturingCompanyId,#DeliveryRepresentativeId, #CountryId,#CityId').on('change', function () {
+            fetchData(); // Fetch data with updated filters
+        });
+
+        // Initial fetch and setup when the page loads
+        fetchData();
+    });
+
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+

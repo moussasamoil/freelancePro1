@@ -1,0 +1,1547 @@
+/* =========================================================
+   MAJESTA DARK THEME - HOME / INDEX ONLY
+   Cleaned version: duplicate and conflicting rules removed.
+   Keep this stylesheet loaded only by Views/Home/Index.cshtml.
+   ========================================================= */
+
+:root {
+    --mj-bg: #101828;
+    --mj-bg-deep: #0c1523;
+    --mj-control: #0d1728;
+    --mj-control-hover: #142033;
+    --mj-table-header: #192131;
+
+    --mj-gold: #c39b63;
+    --mj-gold-bright: #e7c273;
+
+    --mj-text: #d8dbe1;
+    --mj-muted: #9c9ea3;
+
+    --mj-border: rgba(195, 155, 99, 0.22);
+    --mj-border-strong: rgba(195, 155, 99, 0.38);
+}
+
+/* =========================================================
+   PAGE BACKGROUND
+   Only the main layout wrapper is dark. Nested
+   .background-white-green elements (such as order details)
+   keep their normal light styling unless overridden below.
+   ========================================================= */
+
+html,
+body,
+body > .background-white-green {
+    background: var(--mj-bg) !important;
+    background-color: var(--mj-bg) !important;
+    color: var(--mj-text) !important;
+}
+
+/* =========================================================
+   MAIN HEADER
+   ========================================================= */
+
+header .navbar {
+    background: var(--mj-bg-deep) !important;
+    background-color: var(--mj-bg-deep) !important;
+    border-bottom: 1px solid var(--mj-border-strong) !important;
+    box-shadow:
+        0 2px 14px rgba(0, 0, 0, 0.35),
+        0 1px 8px rgba(195, 155, 99, 0.10) !important;
+}
+
+/* =========================================================
+   TOP NAVIGATION PILLS
+   ========================================================= */
+
+.reports-btn-pill {
+    background: var(--mj-control) !important;
+    border: 1px solid rgba(203, 159, 88, 0.30) !important;
+    box-shadow: 0 0 6px rgba(203, 159, 88, 0.06) !important;
+}
+
+.reports-btn-text {
+    color: #d8d8d8 !important;
+}
+
+#employeeErrorsTrigger .reports-btn-pill {
+    background: linear-gradient(180deg, #e9bd68 0%, #c89442 100%) !important;
+    border-color: #e5bb69 !important;
+    box-shadow:
+        0 0 10px rgba(226, 178, 91, 0.32),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+}
+
+#employeeErrorsTrigger .reports-btn-text {
+    color: #101827 !important;
+}
+
+/* =========================================================
+   USER NAME (SALAH)
+   ========================================================= */
+
+html body header + .d-flex .text-green {
+    color: #d7aa5d !important;
+    text-shadow: 0 0 6px rgba(215, 170, 93, 0.28) !important;
+    font-weight: 600 !important;
+    position: relative;
+    padding-bottom: 7px;
+}
+
+html body header + .d-flex .text-green::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 52px;
+    height: 1px;
+    background: var(--mj-gold) !important;
+    box-shadow: 0 0 5px rgba(195, 155, 99, 0.55);
+}
+
+/* =========================================================
+   DASHBOARD FILTER / ACTION BOXES
+   ========================================================= */
+
+.custom-inpage-dropdown {
+    background: var(--mj-control) !important;
+    color: var(--mj-text) !important;
+    border: 1px solid var(--mj-border) !important;
+    box-shadow: none !important;
+    border-radius: 8px !important;
+}
+
+.drop-down-design {
+    background: var(--mj-control) !important;
+    color: var(--mj-text) !important;
+    border: 1px solid var(--mj-border) !important;
+}
+
+.drop-down-design:hover {
+    background: var(--mj-control-hover) !important;
+}
+
+/* Main dashboard action buttons and search controls. */
+a.btn.custom-box-shadow,
+#searchInput,
+#custom-datepicker,
+#pageSize {
+    background: var(--mj-control) !important;
+    background-color: var(--mj-control) !important;
+    color: var(--mj-text) !important;
+    border: 1px solid var(--mj-border) !important;
+    box-shadow: none !important;
+}
+
+#searchInput::placeholder,
+#custom-datepicker::placeholder {
+    color: var(--mj-muted) !important;
+}
+
+/* =========================================================
+   SELECT2 FILTER CONTROLS ON THE DASHBOARD
+   ========================================================= */
+
+html body .drop-down-design + .select2-container {
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+html body .drop-down-design + .select2-container .select2-selection--single,
+html body .drop-down-design + .select2-container .select2-selection--multiple {
+    background: var(--mj-control) !important;
+    background-color: var(--mj-control) !important;
+    background-image: none !important;
+    border: 1px solid rgba(195, 155, 99, 0.35) !important;
+    border-radius: 8px !important;
+    color: #e7e1d8 !important;
+    box-shadow:
+        inset 0 0 8px rgba(0, 0, 0, 0.20),
+        0 0 4px rgba(195, 155, 99, 0.05) !important;
+}
+
+html body .drop-down-design + .select2-container .select2-selection--single {
+    min-height: 40px !important;
+    height: 40px !important;
+}
+
+html body .drop-down-design + .select2-container
+.select2-selection--single .select2-selection__rendered {
+    color: #e7e1d8 !important;
+    line-height: 38px !important;
+}
+
+html body .drop-down-design + .select2-container
+.select2-selection--single .select2-selection__placeholder {
+    color: #e7e1d8 !important;
+    font-weight: 400 !important;
+}
+
+html body .drop-down-design + .select2-container
+.select2-selection--single .fa-chevron-down {
+    color: var(--mj-gold) !important;
+}
+
+/* Select2 dropdowns are appended outside the original select container. */
+html body .select2-container--open .select2-dropdown {
+    background: var(--mj-control) !important;
+    border: 1px solid rgba(195, 155, 99, 0.40) !important;
+    color: #e7e1d8 !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.40) !important;
+}
+
+html body .select2-results__option {
+    background: var(--mj-control) !important;
+    color: #e7e1d8 !important;
+}
+
+html body .select2-results__option--highlighted {
+    background: #172338 !important;
+    color: var(--mj-gold-bright) !important;
+}
+
+html body .select2-search__field {
+    background: #101b2d !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(195, 155, 99, 0.35) !important;
+}
+
+/* =========================================================
+   ORDERS TABLE
+   ========================================================= */
+
+#ordersTable {
+    --bs-table-bg: var(--mj-control) !important;
+    --bs-table-color: var(--mj-text) !important;
+    --bs-table-border-color: rgba(194, 153, 87, 0.18) !important;
+
+    background: var(--mj-control) !important;
+    color: var(--mj-text) !important;
+    border: 1px solid rgba(194, 153, 87, 0.28) !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    border-radius: 10px;
+}
+
+html body #ordersTable thead th,
+html body #ordersTable thead th.order-row-actions-header {
+    background: var(--mj-table-header) !important;
+    background-color: var(--mj-table-header) !important;
+    color: #caa05d !important;
+    border-top: 1px solid rgba(202, 160, 93, 0.28) !important;
+    border-bottom: 1px solid rgba(202, 160, 93, 0.28) !important;
+    box-shadow: none !important;
+}
+
+/* Remove the light/white strip over the actions-arrow column. */
+html body #ordersTable thead th.order-row-actions-header::after {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+html body #ordersTable tbody td {
+    background: var(--mj-control) !important;
+    background-color: var(--mj-control) !important;
+    color: var(--mj-text) !important;
+    border-bottom: 1px solid rgba(202, 160, 93, 0.14) !important;
+}
+
+/* Keep the row dark when hovered; only make it slightly lighter. */
+html body #ordersTable tbody tr:hover > td,
+html body #ordersTable tbody tr:hover .products-tooltip-cell,
+html body #ordersTable tbody tr:hover .order-row-actions-cell,
+html body #ordersTable tbody tr:hover .order-row-actions-shell,
+html body #ordersTable tbody tr:hover .order-row-actions-toggle {
+    background: var(--mj-control-hover) !important;
+    background-color: var(--mj-control-hover) !important;
+}
+
+/* Phone numbers and price values. */
+html body #ordersTable .phone-cell,
+html body #ordersTable .phone-cell a,
+html body #ordersTable .home-order-total-price,
+html body #ordersTable .home-order-total-price * {
+    color: #e0b25f !important;
+}
+
+/* New-order status text must stay white. */
+html body #ordersTable .order-status--blue,
+html body #ordersTable .order-status-badge.order-status--blue {
+    color: #ffffff !important;
+}
+
+html body #ordersTable .order-status-badge.order-status--blue {
+    background: rgba(27, 73, 128, 0.38) !important;
+    border: 1px solid rgba(77, 125, 184, 0.15) !important;
+}
+
+/* =========================================================
+   TABLE ACTION ARROW
+   ========================================================= */
+
+html body #ordersTable .order-row-actions-cell,
+html body #ordersTable .order-row-actions-shell,
+html body #ordersTable .order-row-actions-toggle {
+    background: var(--mj-control) !important;
+    background-color: var(--mj-control) !important;
+    border-color: rgba(195, 155, 99, 0.20) !important;
+    box-shadow: none !important;
+}
+
+html body #ordersTable .order-row-actions-toggle,
+html body #ordersTable .order-row-actions-toggle:hover,
+html body #ordersTable .order-row-actions-toggle .actions-toggle-text,
+html body #ordersTable .order-row-actions-shell.is-open .order-row-actions-toggle,
+html body #ordersTable .order-row-actions-shell.is-open .order-row-actions-toggle .actions-toggle-text {
+    color: #ffffff !important;
+}
+
+/* Preserve the existing open-row movement, but keep the visible arrow dark/white. */
+html body #ordersTable .order-row-actions-shell.is-open .order-row-actions-toggle {
+    background: var(--mj-control) !important;
+    background-color: var(--mj-control) !important;
+    border-inline-start: 1px solid rgba(195, 155, 99, 0.25) !important;
+    border-inline-end: 1px solid rgba(195, 155, 99, 0.25) !important;
+    box-shadow: none !important;
+}
+
+html body #ordersTable tbody tr:hover .order-row-actions-toggle,
+html body #ordersTable tbody tr:hover .actions-toggle-text {
+    color: #ffffff !important;
+}
+
+/* =========================================================
+   PRODUCT / STORE ICON IN TABLE
+   ========================================================= */
+
+html body #ordersTable .products-store-trigger {
+    background: var(--mj-control) !important;
+    border: 1px solid rgba(195, 155, 99, 0.45) !important;
+    color: var(--mj-gold-bright) !important;
+    box-shadow: 0 0 7px rgba(195, 155, 99, 0.15) !important;
+}
+
+html body #ordersTable .products-store-svg,
+html body #ordersTable .products-store-trigger i {
+    color: var(--mj-gold-bright) !important;
+    fill: currentColor !important;
+}
+
+html body #ordersTable .products-store-trigger::before {
+    background: linear-gradient(
+        180deg,
+        rgba(231, 194, 115, 0.20),
+        transparent
+    ) !important;
+}
+
+/* =========================================================
+   META BUTTON - FINAL FIX
+   Keep the entire word "Meta" inside the closed pill.
+   ========================================================= */
+
+html body #ordersTable .order-contact-actions .order-meta-btn {
+    direction: ltr !important;
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    width: 112px !important;
+    min-width: 112px !important;
+    max-width: 112px !important;
+    height: 25px !important;
+    min-height: 25px !important;
+    max-height: 25px !important;
+
+    padding: 0 7px !important;
+    gap: 4px !important;
+    box-sizing: border-box !important;
+
+    background: var(--mj-control) !important;
+    border: 1px solid rgba(195, 155, 99, 0.55) !important;
+    border-radius: 999px !important;
+    box-shadow: 0 0 5px rgba(195, 155, 99, 0.08) !important;
+
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    text-decoration: none !important;
+}
+
+/* Hide the original full Meta logo. */
+html body #ordersTable .order-contact-actions .order-meta-btn > img {
+    display: none !important;
+}
+
+/* Blue Meta infinity icon. */
+html body #ordersTable .order-contact-actions .order-meta-btn::before {
+    content: "" !important;
+    display: block !important;
+
+    width: 24px !important;
+    min-width: 24px !important;
+    max-width: 24px !important;
+    height: 16px !important;
+    min-height: 16px !important;
+    max-height: 16px !important;
+    flex: 0 0 24px !important;
+
+    background-image: url("/socialmediaicons/meta.svg") !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: contain !important;
+
+    order: 1 !important;
+}
+
+/* Meta word appears to the RIGHT of the infinity icon. */
+html body #ordersTable .order-contact-actions .order-meta-btn::after {
+    content: "Meta" !important;
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+
+    color: #f1f1f1 !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+
+    flex: 0 0 auto !important;
+    min-width: 30px !important;
+    overflow: visible !important;
+
+    order: 2 !important;
+}
+
+/* =========================================================
+   EMPLOYEE / DELIVERY / OTHER SMALL TABLE IMAGES
+   These rules do not create missing image files; they only
+   ensure valid images are not hidden by the dark theme.
+   ========================================================= */
+
+html body #ordersTable img.safe-table-img {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    filter: none !important;
+    mix-blend-mode: normal !important;
+    width: auto !important;
+    max-width: 18px !important;
+    height: 18px !important;
+    max-height: 18px !important;
+    object-fit: contain !important;
+    vertical-align: middle !important;
+    margin-inline: 3px !important;
+}
+
+html body #ordersTable .employee-table-logo {
+    width: 18px !important;
+    min-width: 18px !important;
+    max-width: 18px !important;
+    height: 18px !important;
+    min-height: 18px !important;
+    max-height: 18px !important;
+    border-radius: 50% !important;
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+html body #ordersTable .employee-name-line {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
+
+/* =========================================================
+   ORDER DETAILS MODAL - KEEP ORIGINAL LIGHT DESIGN
+   IMPORTANT: colors only. No width, height, margin, position,
+   border-radius, or layout changes are made here.
+   ========================================================= */
+
+html body #orderDetailsModal .modal-content,
+html body #orderDetailsModal #orderDetailsModalBody,
+html body #orderDetailsModal .order-details-partial,
+html body #orderDetailsModal .background-white-green,
+html body #orderDetailsModal .bg-white {
+    background: #f7f8fa !important;
+    background-color: #f7f8fa !important;
+    color: #1d273b !important;
+}
+
+html body #orderDetailsModal #orderDetailsSharedHeader {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #1d273b !important;
+    border-bottom-color: #e5e7eb !important;
+}
+
+html body #orderDetailsModal .custom-box-shadow,
+html body #orderDetailsModal .custom-shadow-small {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #1d273b !important;
+    border-color: #e5e7eb !important;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.20) !important;
+}
+
+html body #orderDetailsModal .text-green {
+    color: #1d273b !important;
+}
+
+html body #orderDetailsModal input,
+html body #orderDetailsModal textarea,
+html body #orderDetailsModal select,
+html body #orderDetailsModal .form-control {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #1d273b !important;
+    border-color: #ced4da !important;
+}
+
+html body #orderDetailsModal .select2-container--default .select2-selection--single,
+html body #orderDetailsModal .select2-container--default .select2-selection--multiple {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    border-color: #ced4da !important;
+}
+
+html body #orderDetailsModal .select2-selection__rendered {
+    color: #1d273b !important;
+}
+
+html body #orderDetailsModal table,
+html body #orderDetailsModal table td,
+html body #orderDetailsModal table th {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #1d273b !important;
+    border-color: #dee2e6 !important;
+}
+
+
+
+/* =========================================
+   GOLD ICON COLORS
+   ========================================= */
+
+:root {
+    --mj-gold: #d4a24c;
+    --mj-gold-soft: #e0b45c;
+    --mj-gold-border: rgba(212, 162, 76, 0.55);
+    --mj-gold-glow: rgba(212, 162, 76, 0.28);
+}
+
+
+/* font icons */
+i,
+.fa,
+.fas,
+.far,
+.fal,
+.fab,
+.bi,
+[class*="fa-"] {
+    color: var(--mj-gold) !important;
+}
+
+
+/* svg icons that follow currentColor */
+svg,
+svg path,
+svg circle,
+svg rect {
+    fill: currentColor;
+}
+
+
+/* icons inside the top dashboard buttons / filters */
+.order-search-btn i,
+.order-search-btn svg,
+.btn i,
+.btn svg,
+a i,
+a svg,
+.filter-box i,
+.filter-box svg,
+.card i,
+.card svg,
+.box i,
+.box svg {
+    color: var(--mj-gold) !important;
+}
+
+
+/* circular icon look like the dark target image */
+.icon-circle,
+.top-icon,
+.filter-icon,
+.dashboard-icon {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    border-radius: 50% !important;
+
+    border: 1px solid var(--mj-gold-border) !important;
+    box-shadow: 0 0 10px var(--mj-gold-glow) !important;
+    color: var(--mj-gold) !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+
+/* =========================================
+   GOLD FILTER FOR IMG ICONS
+   ========================================= */
+
+img.icon-gold,
+.filter-box img,
+.dashboard-icon img,
+.top-icon img,
+.action-icon img {
+    filter:
+        brightness(0)
+        saturate(100%)
+        invert(71%)
+        sepia(42%)
+        saturate(718%)
+        hue-rotate(356deg)
+        brightness(92%)
+        contrast(90%) !important;
+}
+
+
+/* =========================================================
+   DASHBOARD FONT ICONS - DARK / GOLD
+   ========================================================= */
+
+html body .circle-icon,
+html body .circle-icon-green {
+    background: #0D1627 !important;
+
+    color: #E7C273 !important;
+
+    border: 1px solid #C39B63 !important;
+
+    box-shadow:
+        0 0 6px rgba(195, 155, 99, 0.45),
+        inset 0 0 4px rgba(231, 194, 115, 0.10) !important;
+
+    border-radius: 50% !important;
+}
+
+
+/* glow around the SVG image icons */
+html body .custom-inpage-dropdown
+img[src^="/mainicons-dark/"] {
+    filter:
+        drop-shadow(0 0 4px rgba(195, 155, 99, 0.55)) !important;
+}
+
+
+/* Gold glow around dashboard icons */
+html body .custom-inpage-dropdown img[src*="/mainicons-dark-full/"],
+html body .select2-container img[src*="/mainicons-dark-full/"] {
+    filter:
+        drop-shadow(0 0 4px rgba(195, 155, 99, 0.65))
+        drop-shadow(0 0 2px rgba(231, 194, 115, 0.35))
+        !important;
+}
+
+/* =========================
+   LOWER ACTION BUTTON ICONS
+   ========================= */
+
+.mj-inline-btn-icon {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 4px rgba(231, 194, 115, 0.45));
+}
+
+.mj-btn-with-icon,
+.mj-filter-with-icon {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+}
+
+.mj-search-wrap {
+    position: relative;
+}
+
+.mj-search-wrap .mj-search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    pointer-events: none;
+    filter: drop-shadow(0 0 4px rgba(231, 194, 115, 0.45));
+}
+
+.mj-search-wrap input,
+.mj-search-wrap .form-control {
+    padding-left: 42px !important;
+}
+
+/* =========================================================
+   DATE FILTER - FINAL FIX
+   Use a real <img> sibling for the calendar icon.
+   ========================================================= */
+
+html body .mj-date-filter {
+    position: relative !important;
+    overflow: visible !important;
+}
+
+html body .mj-date-filter #custom-datepicker {
+    background: #0d1728 !important;
+    background-image: none !important;
+    color: #d8dbe1 !important;
+    border: 1px solid rgba(195, 155, 99, 0.35) !important;
+    padding-right: 48px !important;
+    cursor: pointer !important;
+}
+
+html body .mj-date-filter #custom-datepicker::placeholder {
+    color: #aeb4bf !important;
+    opacity: 1 !important;
+}
+
+html body .mj-date-filter .mj-date-filter-icon {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+
+    position: absolute !important;
+    right: 14px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+
+    width: 20px !important;
+    min-width: 20px !important;
+    max-width: 20px !important;
+    height: 20px !important;
+    min-height: 20px !important;
+    max-height: 20px !important;
+
+    object-fit: contain !important;
+    z-index: 9999 !important;
+    pointer-events: none !important;
+
+    filter: drop-shadow(0 0 4px rgba(195, 155, 99, 0.75)) !important;
+}
+
+/* Do not create a second calendar icon. */
+html body .mj-date-filter::after {
+    content: none !important;
+    display: none !important;
+}
+
+
+/* =========================================================
+   CALENDAR - ACTUAL SVG IMAGE
+   ========================================================= */
+
+html body .mj-date-filter {
+    position: relative !important;
+    overflow: visible !important;
+}
+
+html body .mj-date-filter #custom-datepicker {
+    background: #0d1728 !important;
+    color: #d8dbe1 !important;
+
+    border: 1px solid rgba(195, 155, 99, 0.35) !important;
+
+    padding-right: 46px !important;
+
+    cursor: pointer !important;
+}
+
+html body .mj-date-filter .mj-date-filter-icon {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+
+    position: absolute !important;
+
+    right: 14px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+
+    width: 19px !important;
+    height: 19px !important;
+
+    z-index: 50 !important;
+
+    pointer-events: none !important;
+
+    filter:
+        drop-shadow(0 0 4px rgba(195, 155, 99, 0.80))
+        !important;
+}
+
+
+/* =========================================================
+   META - REAL HTML ONLY
+   Icon + Meta perfectly centered
+   ========================================================= */
+
+html body #ordersTable .order-contact-actions {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    flex-wrap: nowrap !important;
+
+    overflow: visible !important;
+}
+
+
+/* Button */
+html body #ordersTable
+.order-contact-actions
+.order-meta-btn {
+
+    direction: ltr !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    flex-direction: row !important;
+
+    width: 96px !important;
+    min-width: 96px !important;
+    max-width: 96px !important;
+
+    height: 25px !important;
+    min-height: 25px !important;
+    max-height: 25px !important;
+
+    padding: 0 9px !important;
+
+    gap: 6px !important;
+
+    margin-left: auto !important;
+    margin-right: auto !important;
+
+    box-sizing: border-box !important;
+
+    background: #0d1728 !important;
+
+    /*
+       Don't use the normal border.
+       The inset shadow guarantees a CLOSED pill
+       on all four sides.
+    */
+    border: 0 !important;
+
+    border-radius: 999px !important;
+
+    box-shadow:
+        inset 0 0 0 1px rgba(195, 155, 99, 0.60),
+        0 0 5px rgba(195, 155, 99, 0.12)
+        !important;
+
+    overflow: hidden !important;
+
+    text-decoration: none !important;
+}
+
+
+/* IMPORTANT:
+   remove the fake icon and fake Meta word */
+html body #ordersTable
+.order-contact-actions
+.order-meta-btn::before,
+
+html body #ordersTable
+.order-contact-actions
+.order-meta-btn::after {
+
+    content: none !important;
+    display: none !important;
+}
+
+
+/* Real blue Meta icon */
+html body #ordersTable
+.order-contact-actions
+.order-meta-btn > img.meta-infinity-only {
+
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+
+    width: 26px !important;
+    min-width: 26px !important;
+    max-width: 26px !important;
+
+    height: 16px !important;
+    min-height: 16px !important;
+    max-height: 16px !important;
+
+    flex: 0 0 26px !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    object-fit: contain !important;
+}
+
+
+/* Real Meta text */
+html body #ordersTable
+.order-contact-actions
+.order-meta-btn > .meta-word {
+
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+
+    flex: 0 0 auto !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    color: #f1f1f1 !important;
+
+    font-size: 13px !important;
+    font-weight: 500 !important;
+
+    line-height: 1 !important;
+
+    white-space: nowrap !important;
+}
+
+
+/* =========================================================
+   DATE FILTER - INLINE GOLD CALENDAR
+   ========================================================= */
+
+html body .mj-date-filter {
+    position: relative !important;
+}
+
+html body .mj-date-filter #custom-datepicker {
+    background: #0d1728 !important;
+
+    color: #d8dbe1 !important;
+
+    border: 1px solid rgba(195, 155, 99, 0.35) !important;
+
+    padding-right: 48px !important;
+
+    cursor: pointer !important;
+}
+
+html body .mj-date-filter #custom-datepicker::placeholder {
+    color: #aeb4bf !important;
+    opacity: 1 !important;
+}
+
+html body .mj-date-filter .mj-date-calendar-svg {
+    display: block !important;
+
+    position: absolute !important;
+
+    right: 14px !important;
+    top: 50% !important;
+
+    transform: translateY(-50%) !important;
+
+    width: 20px !important;
+    height: 20px !important;
+
+    color: #E7C273 !important;
+
+    z-index: 99999 !important;
+
+    pointer-events: none !important;
+
+    overflow: visible !important;
+
+    filter:
+        drop-shadow(0 0 3px rgba(231, 194, 115, 0.70))
+        !important;
+}
+
+
+/* =========================================================
+   META COUNTER - MATCH ORIGINAL POSITION
+   ========================================================= */
+
+html body #ordersTable
+.luxira-meta-action-wrap {
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: visible !important;
+}
+
+html body #ordersTable
+.luxira-meta-action-wrap
+.luxira-meta-action-badge {
+    top: -8px !important;
+    left: -7px !important;
+    right: auto !important;
+
+    width: 18px !important;
+    min-width: 18px !important;
+    height: 18px !important;
+
+    align-items: center !important;
+    justify-content: center !important;
+
+    padding: 0 !important;
+
+    background: #ef4444 !important;
+    color: #ffffff !important;
+
+    border: 0 !important;
+    border-radius: 50% !important;
+
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    line-height: 18px !important;
+
+    z-index: 50 !important;
+
+    box-shadow:
+        0 2px 5px rgba(239, 68, 68, 0.35) !important;
+}
+
+
+/* =========================
+   META BUTTON + RED COUNTER
+   ========================= */
+
+html body #ordersTable .luxira-meta-action-wrap,
+html body #ordersTable .meta-pill,
+html body #ordersTable .meta-button-wrap {
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: visible !important;
+}
+
+html body #ordersTable .luxira-meta-action-badge,
+html body #ordersTable .meta-counter,
+html body #ordersTable .meta-badge {
+    position: absolute !important;
+    top: -8px !important;
+    left: -7px !important;
+    right: auto !important;
+
+    width: 18px !important;
+    min-width: 18px !important;
+    height: 18px !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    padding: 0 !important;
+    margin: 0 !important;
+
+    background: #ef4444 !important;
+    color: #ffffff !important;
+
+    border: 0 !important;
+    border-radius: 50% !important;
+
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    line-height: 18px !important;
+
+    z-index: 30 !important;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35) !important;
+}
+
+
+/* =========================
+   "تم المعالجة 1" BADGE
+   ========================= */
+
+/* wrapper */
+html body #ordersTable .processed-badge-wrap,
+html body #ordersTable .done-badge-wrap,
+html body #ordersTable .investigation-badge-wrap {
+    display: inline-flex !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    gap: 2px !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+}
+
+/* the blue text part: تم المعالجة */
+html body #ordersTable .processed-badge-text,
+html body #ordersTable .done-badge-text,
+html body #ordersTable .investigation-badge-text {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    height: 16px !important;
+    padding: 0 8px !important;
+
+    background: #46c3f1 !important;
+    color: #ffffff !important;
+
+    border-radius: 999px !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    line-height: 16px !important;
+
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+}
+
+/* the small number bubble: 1 */
+html body #ordersTable .processed-badge-count,
+html body #ordersTable .done-badge-count,
+html body #ordersTable .investigation-badge-count {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    width: 16px !important;
+    min-width: 16px !important;
+    height: 16px !important;
+    padding: 0 !important;
+
+    background: #46c3f1 !important;
+    color: #ffffff !important;
+
+    border-radius: 50% !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    line-height: 16px !important;
+
+    box-sizing: border-box !important;
+}
+
+
+
+/* =========================================================
+   META COUNTER
+   Hide 0 exactly like original white theme
+   ========================================================= */
+
+html body #ordersTable .luxira-meta-action-wrap {
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: visible !important;
+}
+
+/*
+   IMPORTANT:
+   Default is hidden.
+   JS will write:
+       display: inline-flex  -> count > 0
+       display: none         -> count = 0
+*/
+html body #ordersTable .luxira-meta-action-badge {
+    position: absolute !important;
+
+    top: -9px !important;
+    left: -9px !important;
+    right: auto !important;
+
+    width: 18px !important;
+    min-width: 18px !important;
+    height: 18px !important;
+
+    padding: 0 !important;
+    margin: 0 !important;
+
+    border-radius: 50% !important;
+
+    background: #ef4444 !important;
+    color: #ffffff !important;
+
+    align-items: center !important;
+    justify-content: center !important;
+
+    font-size: 10px !important;
+    font-weight: 900 !important;
+    line-height: 18px !important;
+
+    box-shadow: 0 2px 5px rgba(239, 68, 68, 0.35) !important;
+
+    z-index: 50 !important;
+
+    pointer-events: none !important;
+
+    /* DO NOT put display:inline-flex !important here */
+}
+
+
+/* JS says count = 0 */
+html body #ordersTable
+.luxira-meta-action-badge[style*="display: none"] {
+    display: none !important;
+}
+
+
+/* JS says count > 0 */
+html body #ordersTable
+.luxira-meta-action-badge[style*="inline-flex"] {
+    display: inline-flex !important;
+}
+
+
+/* =========================================================
+   PROCESSED BADGES
+   Match the original WHITE theme:
+         1  تم المعالجة
+   ========================================================= */
+
+/* allow the two little blue badges to extend above the status */
+html body #ordersTable .order-status-cell {
+    overflow: visible !important;
+}
+
+html body #ordersTable .order-status-badge-wrapper {
+    position: relative !important;
+
+    display: inline-block !important;
+
+    overflow: visible !important;
+
+    max-width: 100% !important;
+
+    padding-top: 4px !important;
+    padding-bottom: 13px !important;
+}
+
+
+/* Blue "تم المعالجة" pill */
+html body #ordersTable .processed-corner-badge {
+    position: absolute !important;
+
+    top: -8px !important;
+    left: -7px !important;
+    right: auto !important;
+
+    z-index: 5 !important;
+
+    min-width: 44px !important;
+    width: auto !important;
+    height: 13px !important;
+
+    padding: 1px 5px !important;
+    margin: 0 !important;
+
+    display: inline-flex !important;
+
+    align-items: center !important;
+    justify-content: center !important;
+
+    background: #45bbea !important;
+    color: #ffffff !important;
+
+    border: 0 !important;
+    border-radius: 999px !important;
+
+    font-size: 7px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+
+    white-space: nowrap !important;
+
+    box-sizing: border-box !important;
+
+    box-shadow:
+        0 1px 3px rgba(69, 187, 234, 0.35) !important;
+
+    pointer-events: none !important;
+}
+
+
+/* Small blue number: 1 / 2 / 3 */
+html body #ordersTable .processed-count-badge {
+    position: absolute !important;
+
+    top: -9px !important;
+    left: -23px !important;
+    right: auto !important;
+
+    z-index: 6 !important;
+
+    width: 15px !important;
+    min-width: 15px !important;
+    max-width: 15px !important;
+
+    height: 15px !important;
+    min-height: 15px !important;
+    max-height: 15px !important;
+
+    padding: 0 !important;
+    margin: 0 !important;
+
+    display: inline-flex !important;
+
+    align-items: center !important;
+    justify-content: center !important;
+
+    background: #45bbea !important;
+    color: #ffffff !important;
+
+    border: 0 !important;
+    border-radius: 50% !important;
+
+    font-size: 8px !important;
+    font-weight: 700 !important;
+    line-height: 15px !important;
+
+    text-align: center !important;
+
+    box-sizing: border-box !important;
+
+    box-shadow:
+        0 1px 3px rgba(69, 187, 234, 0.35) !important;
+
+    pointer-events: none !important;
+}
+
+
+/* Never show the Meta badge while JS marks it hidden */
+html body #ordersTable
+.luxira-meta-action-badge[hidden] {
+    display: none !important;
+}
+
+
+/* =========================================================
+   PROCESSED BADGE
+   Match white-theme layout
+   ========================================================= */
+
+html body #ordersTable .order-status-cell {
+    overflow: visible !important;
+}
+
+html body #ordersTable .order-status-badge-wrapper {
+    position: relative !important;
+    display: inline-block !important;
+
+    overflow: visible !important;
+
+    padding-top: 4px !important;
+    padding-bottom: 13px !important;
+}
+
+
+/* تم المعالجة */
+html body #ordersTable .processed-corner-badge {
+    position: absolute !important;
+
+    /*
+       White theme used left:-7.
+       Dark status is wider, so shift the whole pair
+       15px right to prevent clipping.
+    */
+    top: -8px !important;
+    left: 8px !important;
+    right: auto !important;
+
+    z-index: 20 !important;
+
+    min-width: 44px !important;
+    width: auto !important;
+    height: 13px !important;
+
+    padding: 1px 5px !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    background: #45bbea !important;
+    color: #ffffff !important;
+
+    border: 0 !important;
+    border-radius: 999px !important;
+
+    font-size: 7px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+
+    white-space: nowrap !important;
+
+    box-sizing: border-box !important;
+
+    box-shadow:
+        0 1px 3px rgba(69, 187, 234, 0.35) !important;
+
+    pointer-events: none !important;
+}
+
+
+/* number: 1 / 2 / 3 */
+html body #ordersTable .processed-count-badge {
+    position: absolute !important;
+
+    /*
+       Keep exactly the same 16px relationship
+       to تم المعالجة as the white theme.
+    */
+    top: -9px !important;
+    left: -8px !important;
+    right: auto !important;
+
+    z-index: 21 !important;
+
+    width: 15px !important;
+    min-width: 15px !important;
+    max-width: 15px !important;
+
+    height: 15px !important;
+    min-height: 15px !important;
+    max-height: 15px !important;
+
+    padding: 0 !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    background: #45bbea !important;
+    color: #ffffff !important;
+
+    border: 0 !important;
+    border-radius: 50% !important;
+
+    font-size: 8px !important;
+    font-weight: 700 !important;
+    line-height: 15px !important;
+
+    text-align: center !important;
+
+    box-sizing: border-box !important;
+
+    box-shadow:
+        0 1px 3px rgba(69, 187, 234, 0.35) !important;
+
+    pointer-events: none !important;
+}
+
+
+
+
+
+
+/* =========================================================
+   ORDERS TABLE - CLIENT BORDER STYLE
+   ========================================================= */
+
+html body #ordersTable {
+    width: 100% !important;
+
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+
+    background: #0d1728 !important;
+
+    /* subtle dark outer border */
+    border: 1px solid rgba(55, 67, 86, 0.75) !important;
+
+    border-radius: 10px !important;
+
+    overflow: hidden !important;
+
+    /* very soft edge like client image */
+    box-shadow:
+        inset 0 0 8px rgba(255, 255, 255, 0.018),
+        0 0 7px rgba(0, 0, 0, 0.18) !important;
+}
+
+
+/* =========================
+   TABLE HEADER
+   ========================= */
+
+html body #ordersTable thead th {
+    background: #0d1728 !important;
+
+    /* keep your gold header text */
+    color: #c99b55 !important;
+
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+
+    /* subtle line below header */
+    border-bottom:
+        1px solid rgba(55, 67, 86, 0.80) !important;
+}
+
+
+/* =========================
+   TABLE ROWS
+   ========================= */
+
+html body #ordersTable tbody td {
+    background: #0d1728 !important;
+
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+
+    /* client-style faint horizontal separator */
+    border-bottom:
+        1px solid rgba(43, 56, 75, 0.82) !important;
+}
+
+
+/* remove separator from final row */
+html body #ordersTable tbody tr:last-child td {
+    border-bottom: none !important;
+}
+
+
+/* =========================
+   HOVER
+   ========================= */
+
+html body #ordersTable tbody tr:hover > td {
+    background: #101c30 !important;
+}
+
+
+/* =========================
+   CORNERS
+   ========================= */
+
+html body #ordersTable thead tr:first-child th:first-child {
+    border-top-left-radius: 9px !important;
+}
+
+html body #ordersTable thead tr:first-child th:last-child {
+    border-top-right-radius: 9px !important;
+}
+
+html body #ordersTable tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 9px !important;
+}
+
+html body #ordersTable tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 9px !important;
+}

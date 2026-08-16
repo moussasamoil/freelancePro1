@@ -1,0 +1,159 @@
+﻿@model lotus_blue.ViewModels.CampaignAnalyticsFilterViewModel
+@{
+    ViewData["Title"] = "تحليلات الحملات";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>@ViewData["Title"]</h1>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <input id="custom-datepicker" class="form-control custom-datepicker" placeholder=" فلتر حسب التاريخ " readonly>
+            <script src="/js/datepicker.min.js"></script>
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="CountryId" name="Country" class="form-control drop-down-design">
+                <!-- Options will be populated dynamically -->
+            </select>
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="ProductId" name="Product" class="form-control drop-down-design">
+                <!-- Options will be populated dynamically -->
+            </select>
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="CampaignId" name="campaignId" class="form-control drop-down-design">
+                <!-- Options will be populated dynamically -->
+            </select>
+        </div>
+    </div>
+
+    <div id="data" class="row mb-3">
+        <!-- Summary Cards -->
+        <div class="col-md-4">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <h5 class="card-title">إجمالي الطلبات</h5>
+                    <h2 class="card-text">@Model.Analytics.TotalOrders</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h5 class="card-title">إجمالي المبيعات (USD)</h5>
+                    <h2 class="card-text">@Model.Analytics.TotalPriceUSD.ToString("N2")</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h5 class="card-title">إجمالي المبيعات (TRY)</h5>
+                    <h2 class="card-text">@Model.Analytics.TotalPriceTRY.ToString("N2")</h2>
+                </div>
+            </div>
+        </div>
+
+        <!-- Campaign Sales Table -->
+        <div class="col-12 mt-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">تفاصيل مبيعات الحملات</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>صورة</th>
+                                    <th>اسم الحملة</th>
+                                    <th>عدد الطلبات</th>
+                                    <th>إجمالي المبيعات (USD)</th>
+                                    <th>إجمالي المبيعات (TRY)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model.Analytics.CampaignSales.Any())
+                                {
+                                    @foreach (var campaign in Model.Analytics.CampaignSales)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <img src="@campaign.ImageUrl" alt="@campaign.CampaignName"
+                                                     style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;"
+                                                     onerror="this.src=''">
+                                            </td>
+                                            <td>@campaign.CampaignName</td>
+                                            <td>@campaign.TotalOrders</td>
+                                            <td>$@campaign.TotalSalesUSD.ToString("N2")</td>
+                                            <td>₺@campaign.TotalSalesTRY.ToString("N2")</td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="5" class="text-center">لا توجد بيانات للعرض</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<input type="hidden" id="startDate" />
+<input type="hidden" id="endDate" />
+
+<script>
+    $(document).ready(function () {
+        initializeLitepicker('.custom-datepicker', updatedata);
+
+        // Event listener for dropdown changes
+        $('#CountryId, #CampaignId, #ProductId').on('change', function () {
+            updatedata();
+        });
+
+        // Function to handle the AJAX request
+        function updatedata() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            console.log("Sending AJAX request with dates:", startDate, endDate);
+            var countryId = $('#CountryId').val();
+            var campaignId = $('#CampaignId').val();
+            var productId = $('#ProductId').val();
+
+            $.ajax({
+                url: '/Campaign/CampaignAnalytics',
+                type: 'GET',
+                data: {
+                    countryId: countryId,
+                    campaignId: campaignId,
+                    productId: productId,
+                    startDay: startDate,
+                    endDay: endDate,
+                },
+                success: function (result) {
+                    // Extract just the analytics data from the response
+                    var analyticsData = $(result).find('#data').html();
+                    if (analyticsData) {
+                        $('#data').html(analyticsData);
+                    }
+                },
+                error: function (xhr) {
+                    console.error('AJAX Error:', xhr);
+                }
+            });
+        }
+    });
+</script>

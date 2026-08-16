@@ -1,0 +1,59 @@
+﻿@model lotus_blue.Models.ViewModel.SubWarehouseViewModel
+
+<div class="container">
+    <form asp-action="Create" method="post" enctype="multipart/form-data">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label asp-for="Name">الاسم</label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label asp-for="ProductCode">الكود (مطابق للمتجر)</label>
+                    <input asp-for="ProductCode" class="form-control" />
+                    <span asp-validation-for="ProductCode" class="text-danger"></span>
+                </div>
+            </div>
+
+    
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="MainWarehouseId">المستودع الرئيسي</label>
+                    <select id="MainWarehouseId" name="MainWarehouseId" class="form-control">
+                    </select>
+                    <span asp-validation-for="MainWarehouseId" class="text-danger"></span>
+                </div>
+            </div>
+            
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <button type="submit" class="btn mt-3 btn-success">موافقة</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $.ajax({
+            url: '@Url.Action("GetMainWarehouses", "Datalist")',
+            type: 'GET',
+            success: function (data) {
+                var dropdown = $('#MainWarehouseId');
+                dropdown.empty();
+                dropdown.append('<option value="">-- اختار المستودع الرئيسي --</option>');
+                $.each(data, function (i, warehouse) {
+                    dropdown.append('<option value="' + warehouse.id + '">' + warehouse.name + '</option>');
+                });
+            },
+            error: function (xhr, status, error) {
+                console.error('Error fetching Main Warehouses:', error);
+            }
+        });
+    });
+</script>

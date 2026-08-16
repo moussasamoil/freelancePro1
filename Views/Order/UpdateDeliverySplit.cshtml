@@ -1,0 +1,1109 @@
+@{
+    Layout = "AllOrdersLayout";
+    ViewData["Title"] = "تم التسليم وفشل التسليم";
+}
+
+<meta name="format-detection" content="telephone=no" />
+
+<style>
+    .delivery-split-page {
+        direction: rtl;
+        width: 100%;
+        max-width: 100%;
+        padding: 2px 12px 16px;
+        background: #f8fbfa;
+        min-height: calc(100vh - 20px);
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+
+    .delivery-split-shell {
+        width: min(1880px, 100%);
+        max-width: 100%;
+        margin: 0 auto;
+    }
+
+    .delivery-split-header {
+        min-height: 34px;
+        display: grid;
+        grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr);
+        align-items: center;
+        gap: 12px;
+        padding: 0 10px;
+        margin: 0 auto 6px;
+        background: transparent !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        position: relative;
+    }
+
+
+        .delivery-split-header::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: -1px;
+            height: 1px;
+            background: #e5e7eb;
+            pointer-events: none;
+        }
+
+    .delivery-split-header-side {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+        .delivery-split-header-side.right {
+            justify-content: flex-start;
+        }
+
+        .delivery-split-header-side.left {
+            justify-content: flex-end;
+        }
+
+    .delivery-split-title {
+        color: #111827;
+        font-size: 14px;
+        font-weight: 700;
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    .delivery-split-header-link {
+        color: #18a088;
+        text-decoration: none !important;
+        font-size: 13px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+        .delivery-split-header-link:hover {
+            color: #0f8b76;
+        }
+
+    .delivery-split-top-toolbar {
+        min-height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin: 0 auto 8px;
+    }
+
+    .delivery-split-nav-btn {
+        height: 34px;
+        min-width: 145px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        padding: 0 14px;
+        text-decoration: none !important;
+        font-size: 12px;
+        font-weight: 900;
+        border: 1px solid transparent;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.10);
+        white-space: nowrap;
+    }
+
+        .delivery-split-nav-btn.back {
+            background: #ffffff;
+            color: #18a088;
+            border-color: #dbeafe;
+        }
+
+        .delivery-split-nav-btn.delivered {
+            background: #dcfce7;
+            color: #15803d;
+            border-color: #bbf7d0;
+        }
+
+        .delivery-split-nav-btn.failed {
+            background: #fee2e2;
+            color: #b91c1c;
+            border-color: #fecaca;
+        }
+
+    .delivery-split-report-btn {
+        border: 0;
+        background: transparent;
+        color: #18a088;
+        min-height: 28px;
+        padding: 0 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        font-size: 13px;
+        font-weight: 900;
+        line-height: 1;
+        cursor: pointer;
+        position: relative;
+        white-space: nowrap;
+    }
+
+        .delivery-split-report-btn:hover {
+            color: #0f8b76;
+        }
+
+    .delivery-split-search-wrap {
+        width: min(380px, 96%);
+        position: relative;
+        direction: rtl;
+        order: 10;
+    }
+
+    .delivery-split-search-input {
+        width: 100%;
+        height: 30px;
+        border-radius: 999px;
+        border: 1px solid #dbe4ea;
+        background: #ffffff;
+        color: #0f172a;
+        font-size: 12px;
+        font-weight: 800;
+        padding: 0 34px 0 12px;
+        outline: none;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, .05);
+        text-align: right;
+    }
+
+        .delivery-split-search-input:focus {
+            border-color: #18a088;
+            box-shadow: 0 0 0 3px rgba(24, 160, 136, .11);
+        }
+
+    .delivery-split-search-icon {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #18a088;
+        font-size: 12px;
+        pointer-events: none;
+    }
+
+
+    .delivery-split-report-count {
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #ff0000;
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 900;
+        box-shadow: 0 3px 8px rgba(255, 0, 0, .22);
+    }
+
+        .delivery-split-report-count.is-zero {
+            display: none;
+        }
+
+    .delivery-split-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 10px;
+        align-items: stretch;
+        width: 100%;
+        height: calc(100vh - 118px);
+        min-height: 620px;
+    }
+
+    .delivery-split-panel {
+        min-width: 0;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        box-shadow: 0 3px 12px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .delivery-split-frame {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        flex: 1 1 auto;
+        background: #f8fbfa;
+    }
+
+    .delivery-split-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483600;
+        background: rgba(15, 23, 42, .36);
+        display: none;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 18px;
+        direction: rtl;
+    }
+
+        .delivery-split-modal-backdrop.is-visible {
+            display: flex !important;
+        }
+
+    .delivery-split-modal {
+        width: min(650px, 96vw);
+        max-height: calc(100vh - 36px);
+        background: #ffffff;
+        border: 1px solid #dbe4ea;
+        border-radius: 10px;
+        box-shadow: 0 18px 48px rgba(15, 23, 42, .22);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .delivery-split-modal-header {
+        height: 37px;
+        min-height: 37px;
+        border-bottom: 1px solid #dbe4ea;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        padding: 0 12px;
+        gap: 8px;
+    }
+
+    .delivery-split-modal-title {
+        color: #111827;
+        font-size: 15px;
+        font-weight: 500;
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    .delivery-split-modal-actions-left,
+    .delivery-split-modal-actions-right {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .delivery-split-modal-actions-left {
+        justify-content: flex-start;
+    }
+
+    .delivery-split-modal-actions-right {
+        justify-content: flex-end;
+    }
+
+    .delivery-split-modal-link {
+        border: 0;
+        background: transparent;
+        color: #18a088;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 0;
+        cursor: pointer;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+        .delivery-split-modal-link.delete-all {
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            background: #fff1f2;
+            color: #dc2626;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+        }
+
+    .delivery-split-modal-body {
+        padding: 14px;
+        overflow-y: auto;
+    }
+
+    .delivery-split-history-panel {
+        display: block;
+        margin-bottom: 12px;
+        max-height: 170px;
+        overflow-y: auto;
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 10px;
+    }
+
+    .delivery-split-history-empty {
+        color: #94a3b8;
+        font-size: 13px;
+        font-weight: 700;
+        text-align: center;
+        padding: 16px 6px;
+    }
+
+    .delivery-split-history-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 9px 11px;
+        margin-bottom: 8px;
+        display: grid;
+        grid-template-columns: 38px minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+        box-shadow: 0 2px 7px rgba(15, 23, 42, .06);
+    }
+
+    .delivery-split-history-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 999px;
+        background: #e5e7eb;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        font-weight: 900;
+        overflow: hidden;
+    }
+
+    .delivery-split-history-main {
+        min-width: 0;
+        text-align: right;
+    }
+
+    .delivery-split-history-name {
+        color: #18a088;
+        font-size: 13px;
+        font-weight: 900;
+        margin-bottom: 3px;
+    }
+
+    .delivery-split-history-text {
+        color: #111827;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.55;
+        word-break: break-word;
+    }
+
+    .delivery-split-history-meta {
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 700;
+        margin-top: 4px;
+    }
+
+    .delivery-split-history-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .delivery-split-history-action {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        border: 1px solid #e5e7eb;
+        background: #ffffff;
+        color: #18a088;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 12px;
+    }
+
+        .delivery-split-history-action.delete {
+            color: #dc2626;
+        }
+
+    .delivery-split-report-input,
+    .delivery-split-report-textarea,
+    .delivery-split-image-zone {
+        width: 100%;
+        border: 1px solid #cfd8df;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #111827;
+        font-size: 13px;
+        font-weight: 500;
+        outline: none;
+        box-sizing: border-box;
+    }
+
+    .delivery-split-report-input {
+        height: 42px;
+        padding: 0 12px;
+        margin-bottom: 12px;
+    }
+
+    .delivery-split-report-textarea {
+        min-height: 128px;
+        resize: vertical;
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .delivery-split-image-zone {
+        min-height: 64px;
+        border-style: dashed;
+        background: #f8fafc;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        line-height: 1.75;
+        cursor: pointer;
+        margin-bottom: 8px;
+        padding: 8px;
+    }
+
+        .delivery-split-image-zone.has-image {
+            border-color: #18a088;
+            background: #f0fdf4;
+            color: #15803d;
+        }
+
+    .delivery-split-image-preview {
+        display: none;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+
+        .delivery-split-image-preview img {
+            max-width: 100%;
+            max-height: 150px;
+            object-fit: contain;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+        }
+
+    .delivery-split-report-error {
+        display: none;
+        color: #dc2626;
+        font-size: 12px;
+        font-weight: 800;
+        text-align: center;
+        margin-bottom: 8px;
+        line-height: 1.6;
+    }
+
+    .delivery-split-submit-btn {
+        width: 100%;
+        min-height: 42px;
+        border: 1px solid #d1d5db;
+        border-radius: 999px;
+        background: #ffffff;
+        color: #64748b;
+        font-size: 19px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+        .delivery-split-submit-btn:hover {
+            color: #18a088;
+            border-color: #18a088;
+        }
+
+        .delivery-split-submit-btn:disabled {
+            opacity: .55;
+            cursor: wait;
+        }
+
+    @@media (max-width: 1200px) {
+        .delivery-split-header {
+            grid-template-columns: 1fr;
+            padding: 8px 12px;
+        }
+
+        .delivery-split-header-side.right,
+        .delivery-split-header-side.left {
+            justify-content: center;
+        }
+
+        .delivery-split-layout {
+            grid-template-columns: 1fr;
+            height: auto;
+        }
+
+        .delivery-split-panel {
+            height: 720px;
+        }
+    }
+</style>
+
+<div class="delivery-split-page">
+    <div class="delivery-split-shell">
+        <div class="delivery-split-header">
+            <div class="delivery-split-header-side right">
+                <a href="/Order/UpdateAllStatuses" class="delivery-split-header-link">رجوع</a>
+            </div>
+
+            <div class="delivery-split-title">تم التسليم + فشل التسليم</div>
+
+            <div class="delivery-split-header-side left">
+                <button type="button" class="delivery-split-report-btn" data-split-report-type="0" data-split-report-title="التبليغ عن مشكلة">
+                    <span id="splitProblemReportsCount" class="delivery-split-report-count is-zero">0</span>
+                    التبليغ عن مشكلة
+                </button>
+                <button type="button" class="delivery-split-report-btn" data-split-report-type="1" data-split-report-title="تبليغ عن تعديل فوري">
+                    <span id="splitEditReportsCount" class="delivery-split-report-count is-zero">0</span>
+                    تبليغ عن تعديل فوري
+                </button>
+            </div>
+        </div>
+
+        <div class="delivery-split-top-toolbar">
+            <a href="/Order/UpdateAllStatuses" class="delivery-split-nav-btn back">
+                رجوع لكل الحالات
+            </a>
+            <a href="/Order/UpdateDelivered" class="delivery-split-nav-btn delivered">
+                صفحة تم التسليم
+            </a>
+            <a href="/Order/UpdateFailedDelivery" class="delivery-split-nav-btn failed">
+                صفحة فشل التسليم
+            </a>
+            <div class="delivery-split-search-wrap">
+                <i class="fa-solid fa-magnifying-glass delivery-split-search-icon"></i>
+                <input type="text" id="splitStatusSearchInput" class="delivery-split-search-input" placeholder="ابحث عن الطلبات..." autocomplete="off" />
+            </div>
+        </div>
+
+        <div class="delivery-split-layout">
+            <section class="delivery-split-panel">
+                <iframe class="delivery-split-frame"
+                        src="/Order/UpdateFailedDelivery?splitPanel=true&pageSize=10"
+                        title="تحديث فشل التسليم"></iframe>
+            </section>
+
+            <section class="delivery-split-panel">
+                <iframe class="delivery-split-frame"
+                        src="/Order/UpdateDelivered?splitPanel=true&pageSize=10"
+                        title="تحديث تم التسليم"></iframe>
+            </section>
+        </div>
+    </div>
+</div>
+
+<div id="splitQuickReportBackdrop" class="delivery-split-modal-backdrop">
+    <div class="delivery-split-modal">
+        <div class="delivery-split-modal-header">
+            <div class="delivery-split-modal-actions-right">
+                <button type="button" id="splitQuickReportBack" class="delivery-split-modal-link">تراجع</button>
+            </div>
+            <span id="splitQuickReportTitle" class="delivery-split-modal-title">التبليغ عن مشكلة</span>
+            <div class="delivery-split-modal-actions-left">
+                <button type="button" id="splitQuickReportDeleteAll" class="delivery-split-modal-link delete-all" title="مسح الكل">🗑</button>
+                <button type="button" id="splitQuickReportCopyAll" class="delivery-split-modal-link">نسخ الكل</button>
+                <button type="button" id="splitQuickReportHistory" class="delivery-split-modal-link">سجل التعديلات</button>
+                <button type="button" id="splitQuickReportClose" class="delivery-split-modal-link">إغلاق</button>
+            </div>
+        </div>
+
+        <div class="delivery-split-modal-body">
+            <div id="splitQuickReportHistoryPanel" class="delivery-split-history-panel">
+                <div class="delivery-split-history-empty">لا يوجد سجل للعرض</div>
+            </div>
+            <input type="text" inputmode="text" autocomplete="off" id="splitQuickReportOrderId" class="delivery-split-report-input" placeholder="اكتب كود الطلب هنا" />
+            <textarea id="splitQuickReportReason" class="delivery-split-report-textarea" placeholder="اكتب سبب البلاغ هنا"></textarea>
+            <div id="splitQuickReportImageZone" class="delivery-split-image-zone" tabindex="0">
+                اضغط هنا لاختيار صورة أو الصق الصورة Ctrl + V <br />الصورة اختيارية
+            </div>
+            <input type="file" id="splitQuickReportImageInput" accept="image/*" hidden />
+            <div id="splitQuickReportImagePreview" class="delivery-split-image-preview"></div>
+            <div id="splitQuickReportError" class="delivery-split-report-error"></div>
+            <button type="button" id="splitQuickReportSubmit" class="delivery-split-submit-btn">إرسال البلاغ</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const compactTableCss = `
+            html, body { overflow-x: hidden !important; }
+            .status-update-page-shell { padding-top: 6px !important; }
+
+            /* إخفاء رجوع + التبليغ من كل صفحة داخل السبليت */
+            .status-update-header-actions,
+            .delivery-split-hide-in-panel,
+            .status-update-navigation,
+            .status-update-nav-btn,
+            a[href*="UpdateAllStatuses"],
+            a[href*="UpdateDelivered"],
+            a[href*="UpdateFailedDelivery"] {
+                display: none !important;
+            }
+
+            .status-update-filter-card { padding: 7px !important; margin-bottom: 6px !important; }
+            .status-update-top-row, .status-update-counter-row { margin: 6px 0 !important; gap: 6px !important; }
+            .status-update-live-counter-center { gap: 6px !important; }
+            .status-update-live-card { width: 92px !important; min-height: 70px !important; border-radius: 13px !important; gap: 2px !important; }
+            .status-update-live-icon { width: 26px !important; height: 26px !important; font-size: 12px !important; }
+            .status-update-live-number { font-size: 19px !important; }
+            .status-update-live-label { font-size: 10px !important; }
+
+            .status-update-action-btn,
+            .row-delivered-btn,
+            .row-cancel-delivered-btn,
+            .row-cancel-selection-btn {
+                min-height: 27px !important;
+                height: 27px !important;
+                padding: 0 8px !important;
+                font-size: 10px !important;
+                border-radius: 8px !important;
+            }
+
+            .status-update-table th,
+            .status-update-table td,
+            #ordersTable th,
+            #ordersTable td {
+                padding-top: 3px !important;
+                padding-bottom: 3px !important;
+                padding-left: 4px !important;
+                padding-right: 4px !important;
+                font-size: 10.5px !important;
+                line-height: 1.1 !important;
+                vertical-align: middle !important;
+            }
+
+            #ordersTable tbody tr,
+            .status-update-table tbody tr {
+                height: 38px !important;
+            }
+
+            .inline-failure-select,
+            .failure-reason-button,
+            .failure-reason-display {
+                height: 28px !important;
+                min-height: 28px !important;
+                min-width: 142px !important;
+                max-width: 168px !important;
+                padding: 2px 7px !important;
+                font-size: 10.5px !important;
+                border-radius: 8px !important;
+            }
+
+            .failure-image-inline-btn { width: 28px !important; height: 28px !important; min-width: 28px !important; border-radius: 8px !important; }
+            .products-store-trigger, .status-product-icon { width: 25px !important; height: 25px !important; min-width: 25px !important; }
+            .products-store-svg { width: 13px !important; height: 13px !important; }
+            .order-status-badge { padding: 0.18rem 0.4rem !important; font-size: 10.5px !important; }
+            .amount-main-line, .status-amount-main, .status-update-amount-main { font-size: 10.5px !important; line-height: 1.05 !important; }
+            .amount-delivery-line, .status-amount-delivery, .status-update-delivery-cost { font-size: 8.5px !important; line-height: 1.05 !important; margin-top: 1px !important; }
+            #pagination-link .page-link, .pagination .page-link { min-width: 30px !important; height: 29px !important; padding: 0 6px !important; font-size: 11px !important; }
+            #pagination-link .pagination, .pagination { gap: 4px !important; }
+        `;
+
+        function hideByText(doc) {
+            const hiddenTexts = ['رجوع', 'التبليغ عن مشكلة', 'تبليغ عن تعديل فوري'];
+            doc.querySelectorAll('a, button').forEach(function (el) {
+                const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+                if (hiddenTexts.some(function (item) { return text.indexOf(item) > -1; })) {
+                    el.style.setProperty('display', 'none', 'important');
+                    el.classList.add('delivery-split-hide-in-panel');
+                }
+            });
+        }
+
+        function injectCompactCss(frame) {
+            try {
+                const doc = frame.contentDocument || frame.contentWindow.document;
+                if (!doc) return;
+
+                let style = doc.getElementById('split-compact-table-style');
+                if (!style) {
+                    style = doc.createElement('style');
+                    style.id = 'split-compact-table-style';
+                    doc.head.appendChild(style);
+                }
+
+                style.textContent = compactTableCss;
+                hideByText(doc);
+            } catch (e) {
+                console.warn('Could not apply split compact table style', e);
+            }
+        }
+
+        document.querySelectorAll('.delivery-split-frame').forEach(function (frame) {
+            frame.addEventListener('load', function () {
+                injectCompactCss(frame);
+                setTimeout(function () { injectCompactCss(frame); }, 250);
+                setTimeout(function () { injectCompactCss(frame); }, 900);
+                setTimeout(function () { injectCompactCss(frame); }, 1800);
+            });
+        });
+    })();
+</script>
+
+<script>
+    (function () {
+        var quickReportType = 0;
+        var quickReportImageFile = null;
+        var reportsCache = [];
+
+        function qs(id) { return document.getElementById(id); }
+
+        function setError(message) {
+            var error = qs('splitQuickReportError');
+            if (!error) return;
+            error.textContent = message || '';
+            error.style.display = message ? 'block' : 'none';
+        }
+
+        function setCount(el, value) {
+            if (!el) return;
+            var count = parseInt(value || 0, 10) || 0;
+            el.textContent = count;
+            el.classList.toggle('is-zero', count <= 0);
+        }
+
+        function resetImage() {
+            quickReportImageFile = null;
+            var input = qs('splitQuickReportImageInput');
+            var zone = qs('splitQuickReportImageZone');
+            var preview = qs('splitQuickReportImagePreview');
+            if (input) input.value = '';
+            if (zone) {
+                zone.innerHTML = 'اضغط هنا لاختيار صورة أو الصق الصورة Ctrl + V <br />الصورة اختيارية';
+                zone.classList.remove('has-image');
+            }
+            if (preview) {
+                preview.innerHTML = '';
+                preview.style.display = 'none';
+            }
+        }
+
+        function setImage(file) {
+            if (!file) return;
+            if (!file.type || file.type.indexOf('image/') !== 0) {
+                setError('الملف المختار يجب أن يكون صورة');
+                return;
+            }
+            quickReportImageFile = file;
+            setError('');
+            var reader = new FileReader();
+            reader.onload = function (event) {
+                var zone = qs('splitQuickReportImageZone');
+                var preview = qs('splitQuickReportImagePreview');
+                if (zone) {
+                    zone.innerHTML = 'تم إضافة الصورة - اضغط أو Ctrl + V لتغييرها';
+                    zone.classList.add('has-image');
+                }
+                if (preview) {
+                    preview.innerHTML = '<img src="' + event.target.result + '" alt="صورة البلاغ" />';
+                    preview.style.display = 'block';
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function pasteImage(event) {
+            var clipboard = event.clipboardData;
+            var items = clipboard && clipboard.items;
+            if (!items) return;
+            for (var i = 0; i < items.length; i++) {
+                var item = items[i];
+                if (item.kind === 'file' && item.type && item.type.indexOf('image/') === 0) {
+                    var file = item.getAsFile();
+                    if (file) {
+                        event.preventDefault();
+                        setImage(file);
+                        return;
+                    }
+                }
+            }
+        }
+
+        function openReport(type, title) {
+            quickReportType = parseInt(type, 10) || 0;
+            var backdrop = qs('splitQuickReportBackdrop');
+            var titleEl = qs('splitQuickReportTitle');
+            var submitBtn = qs('splitQuickReportSubmit');
+            var orderInput = qs('splitQuickReportOrderId');
+            var reasonInput = qs('splitQuickReportReason');
+            if (titleEl) titleEl.textContent = title || (quickReportType === 1 ? 'تبليغ عن تعديل فوري' : 'التبليغ عن مشكلة');
+            if (submitBtn) submitBtn.textContent = quickReportType === 1 ? 'إرسال التعديل الفوري' : 'إرسال البلاغ';
+            if (orderInput) orderInput.value = '';
+            if (reasonInput) reasonInput.value = '';
+            resetImage();
+            setError('');
+            loadReports(quickReportType);
+            if (backdrop) backdrop.classList.add('is-visible');
+            setTimeout(function () { if (orderInput) orderInput.focus(); }, 100);
+        }
+
+        function closeReport() {
+            var backdrop = qs('splitQuickReportBackdrop');
+            if (backdrop) backdrop.classList.remove('is-visible');
+            resetImage();
+            setError('');
+        }
+
+        function renderReports(type) {
+            var panel = qs('splitQuickReportHistoryPanel');
+            if (!panel) return;
+            var items = reportsCache.filter(function (r) {
+                return parseInt(r.type || 0, 10) === parseInt(type || 0, 10);
+            });
+            if (!items.length) {
+                panel.innerHTML = '<div class="delivery-split-history-empty">لا يوجد سجل للعرض</div>';
+                return;
+            }
+            panel.innerHTML = items.map(function (item) {
+                var body = escapeHtml(item.body || item.reason || '');
+                var code = escapeHtml(item.orderCode || item.orderId || '');
+                var date = escapeHtml(item.createdAt || item.date || '');
+                var name = escapeHtml(item.userName || item.authorName || 'الموظف');
+                var imageUrl = item.imageUrl || (item.images && item.images.length ? item.images[0] : '');
+                var imageBtn = imageUrl ? '<button type="button" class="delivery-split-history-action" data-open-image="' + escapeAttr(imageUrl) + '" title="عرض الصورة">🖼</button>' : '';
+                return '<div class="delivery-split-history-card" data-report-id="' + escapeAttr(item.id) + '">' +
+                    '<div class="delivery-split-history-avatar">👤</div>' +
+                    '<div class="delivery-split-history-main">' +
+                    '<div class="delivery-split-history-name">' + name + '</div>' +
+                    '<div class="delivery-split-history-text">' + body + '</div>' +
+                    '<div class="delivery-split-history-meta">طلب: ' + code + ' &nbsp; ' + date + '</div>' +
+                    '</div>' +
+                    '<div class="delivery-split-history-actions">' +
+                    imageBtn +
+                    '<button type="button" class="delivery-split-history-action" data-copy-report="' + escapeAttr((code ? 'طلب: ' + code + '\n' : '') + (item.body || item.reason || '')) + '" title="نسخ">⧉</button>' +
+                    '<button type="button" class="delivery-split-history-action delete" data-delete-report="' + escapeAttr(item.id) + '" title="مسح">🗑</button>' +
+                    '</div>' +
+                    '</div>';
+            }).join('');
+        }
+
+        function loadReports(typeToRender) {
+            fetch('/Order/QuickReportList', { credentials: 'same-origin' })
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    reportsCache = data.reports || [];
+                    setCount(qs('splitProblemReportsCount'), data.problemCount || reportsCache.filter(function (x) { return parseInt(x.type || 0, 10) === 0; }).length);
+                    setCount(qs('splitEditReportsCount'), data.editCount || reportsCache.filter(function (x) { return parseInt(x.type || 0, 10) === 1; }).length);
+                    if (typeof typeToRender !== 'undefined') renderReports(typeToRender);
+                })
+                .catch(function () { });
+        }
+
+        function submitReport() {
+            var orderInput = qs('splitQuickReportOrderId');
+            var reasonInput = qs('splitQuickReportReason');
+            var submitBtn = qs('splitQuickReportSubmit');
+            var orderCode = orderInput ? orderInput.value.trim() : '';
+            var reason = reasonInput ? reasonInput.value.trim() : '';
+            if (!orderCode) { setError('اكتبي كود الطلب'); return; }
+            if (!reason && !quickReportImageFile) { setError('اكتبي سبب البلاغ'); return; }
+            var formData = new FormData();
+            formData.append('orderCode', orderCode);
+            formData.append('orderId', orderCode);
+            formData.append('type', quickReportType.toString());
+            formData.append('body', reason);
+            formData.append('reason', reason);
+            if (quickReportImageFile) formData.append('images', quickReportImageFile);
+            if (submitBtn) submitBtn.disabled = true;
+            setError('');
+            fetch('/Order/QuickReportCreate', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            })
+                .then(function (response) {
+                    return response.text().then(function (text) {
+                        var json = null;
+                        try { json = text ? JSON.parse(text) : null; } catch (e) { json = null; }
+                        if (!response.ok || (json && json.success === false)) {
+                            throw new Error((json && json.message) || text || 'فشل إرسال البلاغ');
+                        }
+                        return json || { success: true };
+                    });
+                })
+                .then(function () {
+                    if (orderInput) orderInput.value = '';
+                    if (reasonInput) reasonInput.value = '';
+                    resetImage();
+                    loadReports(quickReportType);
+                    setError('تم الإرسال بنجاح');
+                    setTimeout(function () { setError(''); }, 1600);
+                })
+                .catch(function (error) {
+                    setError(error.message || 'فشل إرسال البلاغ');
+                })
+                .finally(function () {
+                    if (submitBtn) submitBtn.disabled = false;
+                });
+        }
+
+        function deleteReport(id) {
+            if (!id) return;
+            var formData = new FormData();
+            formData.append('id', id);
+            fetch('/Order/QuickReportDelete', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            })
+                .then(function (response) { return response.json().catch(function () { return {}; }); })
+                .then(function () { loadReports(quickReportType); });
+        }
+
+        function deleteAllVisible() {
+            var visible = reportsCache.filter(function (r) { return parseInt(r.type || 0, 10) === quickReportType; });
+            if (!visible.length) return;
+            if (!confirm('هل تريدين مسح كل السجل الظاهر؟')) return;
+            Promise.all(visible.map(function (item) {
+                var formData = new FormData();
+                formData.append('id', item.id);
+                return fetch('/Order/QuickReportDelete', { method: 'POST', body: formData, credentials: 'same-origin' }).catch(function () { });
+            })).then(function () { loadReports(quickReportType); });
+        }
+
+        function copyAllVisible() {
+            var visible = reportsCache.filter(function (r) { return parseInt(r.type || 0, 10) === quickReportType; });
+            var text = visible.map(function (item) {
+                return 'طلب: ' + (item.orderCode || item.orderId || '') + '\n' + (item.body || item.reason || '');
+            }).join('\n----------------\n');
+            copyText(text || '');
+        }
+
+        function copyText(text) {
+            if (!text) return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).catch(function () { fallbackCopy(text); });
+            } else {
+                fallbackCopy(text);
+            }
+        }
+
+        function fallbackCopy(text) {
+            var textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try { document.execCommand('copy'); } catch (e) { }
+            textarea.remove();
+        }
+
+        function escapeHtml(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function escapeAttr(value) {
+            return escapeHtml(value).replace(/`/g, '&#096;');
+        }
+
+        document.querySelectorAll('[data-split-report-type]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                openReport(button.getAttribute('data-split-report-type'), button.getAttribute('data-split-report-title'));
+            });
+        });
+
+        var closeBtn = qs('splitQuickReportClose');
+        var backBtn = qs('splitQuickReportBack');
+        var submitBtn = qs('splitQuickReportSubmit');
+        var imageZone = qs('splitQuickReportImageZone');
+        var imageInput = qs('splitQuickReportImageInput');
+        var historyBtn = qs('splitQuickReportHistory');
+        var copyAllBtn = qs('splitQuickReportCopyAll');
+        var deleteAllBtn = qs('splitQuickReportDeleteAll');
+        var backdrop = qs('splitQuickReportBackdrop');
+
+        if (closeBtn) closeBtn.addEventListener('click', closeReport);
+        if (backBtn) backBtn.addEventListener('click', closeReport);
+        if (submitBtn) submitBtn.addEventListener('click', submitReport);
+        if (historyBtn) historyBtn.addEventListener('click', function () { loadReports(quickReportType); });
+        if (copyAllBtn) copyAllBtn.addEventListener('click', copyAllVisible);
+        if (deleteAllBtn) deleteAllBtn.addEventListener('click', deleteAllVisible);
+        if (imageZone) {
+            imageZone.addEventListener('click', function () { if (imageInput) imageInput.click(); });
+            imageZone.addEventListener('paste', pasteImage);
+        }
+        if (imageInput) {
+            imageInput.addEventListener('change', function () { setImage(imageInput.files && imageInput.files[0]); });
+        }
+        if (backdrop) {
+            backdrop.addEventListener('click', function (event) {
+                if (event.target === backdrop) closeReport();
+            });
+        }
+
+        document.addEventListener('click', function (event) {
+            var deleteBtn = event.target.closest('[data-delete-report]');
+            if (deleteBtn) {
+                deleteReport(deleteBtn.getAttribute('data-delete-report'));
+                return;
+            }
+            var copyBtn = event.target.closest('[data-copy-report]');
+            if (copyBtn) {
+                copyText(copyBtn.getAttribute('data-copy-report') || '');
+                return;
+            }
+            var imageBtn = event.target.closest('[data-open-image]');
+            if (imageBtn) {
+                var url = imageBtn.getAttribute('data-open-image');
+                if (url) window.open(url, '_blank');
+            }
+        });
+
+        loadReports();
+        setInterval(loadReports, 30000);
+
+
+        function normalizeSplitSearchText(value) {
+            value = String(value == null ? '' : value)
+                .replace(/[٠-٩]/g, function (d) { return '٠١٢٣٤٥٦٧٨٩'.indexOf(d); })
+                .replace(/[۰-۹]/g, function (d) { return '۰۱۲۳۴۵۶۷۸۹'.indexOf(d); })
+                .replace(/[⁦⁧⁨⁩]/g, '')
+                .toLowerCase()
+                .trim();
+            if (value.indexOf('09') === 0) value = value.substring(1);
+            return value;
+        }
+
+        function applySplitSearchToFrame(frame) {
+            var input = document.getElementById('splitStatusSearchInput');
+            var query = normalizeSplitSearchText(input ? input.value : '');
+            if (!frame || !frame.contentDocument) return;
+
+            var rows = Array.prototype.slice.call(frame.contentDocument.querySelectorAll('#ordersTable tbody tr.order-row'));
+            rows.forEach(function (row) {
+                var text = normalizeSplitSearchText(row.innerText || row.textContent || '');
+                var copyText = Array.prototype.slice.call(row.querySelectorAll('[data-copy-text]'))
+                    .map(function (cell) { return cell.getAttribute('data-copy-text') || ''; })
+                    .join(' ');
+                text += ' ' + normalizeSplitSearchText(copyText);
+                row.style.display = !query || text.indexOf(query) !== -1 ? '' : 'none';
+            });
+        }
+
+        function applySplitSearch() {
+            document.querySelectorAll('.delivery-split-frame').forEach(function (frame) {
+                try { applySplitSearchToFrame(frame); } catch (e) { }
+            });
+        }
+
+        document.addEventListener('input', function (event) {
+            if (event.target && event.target.id === 'splitStatusSearchInput') {
+                applySplitSearch();
+            }
+        }, true);
+
+        document.querySelectorAll('.delivery-split-frame').forEach(function (frame) {
+            frame.addEventListener('load', function () {
+                injectCompactCss(frame);
+                setTimeout(applySplitSearch, 150);
+            });
+        });
+    })();
+</script>

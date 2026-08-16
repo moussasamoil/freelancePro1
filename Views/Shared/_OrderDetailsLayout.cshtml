@@ -1,0 +1,22 @@
+﻿@using lotus_blue.Models
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    @Html.Partial("_Head")
+</head>
+<body class="background-white-green">
+
+    <div class="container-fluid background-white-green pt-5">
+        <main role="main" class="pb-3 " style="direction:rtl;">
+            @RenderBody()
+        </main>
+    </div>
+    @Html.Partial("_Notification")
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+
+
+
+

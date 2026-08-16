@@ -1,0 +1,637 @@
+@model lotus_blue.Models.ViewModel.EmployeeBonusIndexViewModel
+@inject lotus_blue.Services.CurrencyExchangeService Fx
+@{
+    ViewData["Title"] = "العمولات";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var isAdmin = User.IsInRole("Admin");
+
+    // Sub-label shown on cards: "اليوم" when no filter is active, or the date range.
+    var _contextLabel = Model.IsDateFiltered
+        ? ((Model.FilterStart.HasValue ? Model.FilterStart.Value.ToString("dd/MM") : "?")
+           + " – "
+           + (Model.FilterEnd.HasValue ? Model.FilterEnd.Value.ToString("dd/MM") : "?"))
+        : "اليوم";
+
+    // Alt currency on the stat cards: when filtering by employee, use that employee's
+    // country (if set). When no employee filter, default to Turkish Lira.
+    Common.Countries? _altCountry = null;
+    string _altCode = "TL";
+    string _altSubtitle = "(ما يقابله بالليرة التركية)";
+    if (!string.IsNullOrEmpty(Model.SelectedEmployeeId))
+    {
+        var _selectedRow = Model.Rows?.FirstOrDefault(r => r.EmployeeId == Model.SelectedEmployeeId);
+        if (_selectedRow?.Country.HasValue == true
+            && Common.CurrencyByCountry.TryGetValue(_selectedRow.Country.Value, out var _code))
+        {
+            _altCountry = _selectedRow.Country;
+            _altCode = _code;
+            _altSubtitle = $"(ما يقابله بـ {_code})";
+        }
+    }
+
+    Func<decimal, string> _fmt = v => v.ToString("N2", System.Globalization.CultureInfo.InvariantCulture);
+    Func<decimal, string> _altFmt = usd => _fmt(Fx.ConvertFromUSD(usd, _altCountry)) + " " + _altCode;
+    Func<decimal, string> _usdFmt = usd => "$" + _fmt(usd) + " USD";
+
+    // Map system color hex → visual variant. Collection and Incomplete both use distinct
+    // colors so we rely on label for the red-vs-blue disambiguation when hex collides.
+    Func<string, string, string> _variant = (hex, label) => label switch
+    {
+        "الطلبات غير المكتملة" => "bsc-v-incomplete",
+        "فشل التسليم"          => "bsc-v-red",
+        "الطلبات المعالجة"      => "bsc-v-cyan",
+        _ => hex switch
+        {
+            "#2ab149" => "bsc-v-success",
+            "#FF0000" => "bsc-v-red",
+            "#007bff" => "bsc-v-blue",
+            "#45bbea" => "bsc-v-cyan",
+            "#ffc107" => "bsc-v-yellow",
+            _ => "bsc-v-neutral"
+        }
+    };
+
+    string IdsAttr(System.Collections.Generic.IEnumerable<int> ids)
+        => ids == null ? "" : string.Join(",", ids);
+
+    // Navigation IDs: union of primary + extra delegate IDs. Returns null when extra is
+    // empty so the view only emits the attribute when there's something extra to add.
+    string NavIdsAttr(System.Collections.Generic.IEnumerable<int> primary, System.Collections.Generic.IEnumerable<int> extra)
+    {
+        if (extra == null || !extra.Any()) return null;
+        var union = (primary ?? System.Linq.Enumerable.Empty<int>()).Union(extra).ToList();
+        return union.Count == 0 ? null : string.Join(",", union);
+    }
+}
+
+<style>
+    .bsc-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 24px;
+        padding: 0 8px;
+        box-sizing: border-box;
+    }
+    .bsc-row {
+        display: flex;
+        flex-direction: row;
+        gap: 15px;
+        width: 100%;
+    }
+    .bsc-card {
+        background: #ffffff;
+        border-radius: 16px;
+        flex: 1 1 0;
+        min-width: 0;
+        overflow: hidden;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        position: relative;
+    }
+    .bsc-currency-icon, .bsc-toggle-icon {
+        position: absolute;
+        top: 12px;
+        width: 27px;
+        height: 27px;
+        cursor: pointer;
+        z-index: 2;
+    }
+    .bsc-currency-icon { left: 12px; }
+    .bsc-toggle-icon { left: calc(12px + 12px + 27px); }
+    .bsc-currency-icon img, .bsc-toggle-icon img { width: 100%; height: 100%; }
+
+    .bsc-card.bsc-hidden .bsc-card-amount { font-size: 0; }
+    .bsc-card.bsc-hidden .bsc-card-amount::before {
+        content: '* * * * * * * *';
+        font-size: 19.5px;
+        letter-spacing: 3px;
+    }
+
+    /* Whole card surface navigates to /Rating/EmployeOrdersDetails?orderIds=… on click. The currency
+       icon sits above (z-index 2) and stopPropagation in its handler so the toggle
+       doesn't accidentally trigger navigation. */
+    .bsc-card-clickable { cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease; }
+    .bsc-card-clickable:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,0.10); }
+    .bsc-row-clickable td { cursor: pointer; }
+    .bsc-row-clickable:hover { background-color: #fafafa; }
+
+    .bsc-card-top { padding: 9px 12px 15px; }
+    .bsc-card-title { font-size: 16.5px; font-weight: 700; margin-bottom: 12px; }
+    .bsc-card-subtitle { color: #aaaaaa; font-size: 9.75px; margin-bottom: 4.5px; }
+    .bsc-card-amount-row {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        direction: ltr;
+    }
+    .bsc-card-amount { color: #1a1a1a; font-size: 19.5px; font-weight: 700; }
+    .bsc-card-divider { border: none; border-top: 1px solid #b1b1b1; margin: 0; }
+    .bsc-card-bottom {
+        padding: 13.5px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 6px;
+    }
+    .bsc-card-bottom-group { display: flex; align-items: center; gap: 6px; }
+    .bsc-card-label { color: #888888; font-size: 9.75px; }
+    .bsc-card-gain { font-weight: 700; direction: ltr; }
+
+    .bsc-card-count-only .bsc-card-top {
+        padding: 18px 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    .bsc-card-count-only .bsc-card-amount-row { font-size: 22px; }
+    .bsc-card-context-row {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        direction: ltr;
+    }
+
+    .bsc-v-success  { border: 1px solid #2ab149; }
+    .bsc-v-success  .bsc-card-title, .bsc-v-success  .bsc-card-gain { color: #2ab149; }
+    .bsc-v-red      { border: 1px solid #FF0000; }
+    .bsc-v-red      .bsc-card-title, .bsc-v-red      .bsc-card-gain { color: #FF0000; }
+    .bsc-v-cyan     { border: 1px solid #45bbea; }
+    .bsc-v-cyan     .bsc-card-title, .bsc-v-cyan     .bsc-card-gain { color: #45bbea; }
+    .bsc-v-incomplete { border: 1px solid #45bbe9; }
+    .bsc-v-incomplete .bsc-card-title, .bsc-v-incomplete .bsc-card-gain { color: #45bbe9; }
+    .bsc-v-blue     { border: 1px solid #007bff; }
+    .bsc-v-blue     .bsc-card-title, .bsc-v-blue     .bsc-card-gain { color: #007bff; }
+    .bsc-v-yellow   { border: 1px solid #ffc107; }
+    .bsc-v-yellow   .bsc-card-title, .bsc-v-yellow   .bsc-card-gain { color: #b8983a; }
+    .bsc-v-pro      { border: 1px solid #9b59b6; }
+    .bsc-v-pro      .bsc-card-title, .bsc-v-pro      .bsc-card-gain { color: #9b59b6; }
+
+    #payConfirm {
+        position: fixed; inset: 0; z-index: 9999; display: none;
+        background: rgba(33,37,41,.55); align-items: center; justify-content: center;
+    }
+    #payConfirm .pc-box {
+        background: #fff; border-radius: 8px; min-width: 320px; max-width: 480px;
+    }
+    #payConfirm .pc-confirm { color: #2ab149; text-decoration: underline; cursor: pointer; }
+    #payConfirm .pc-cancel { color: #888; text-decoration: underline; cursor: pointer; }
+</style>
+
+<div class="d-flex mb-3 mt-3 justify-content-between mx-auto align-items-center width-99">
+    <h1 class="m-0" style="font-size: 1.5rem;">@ViewData["Title"]</h1>
+    @if (isAdmin)
+    {
+        <a asp-action="Create" class="btn" style="background-color:#1d273b;border-color:#1d273b;color:#fff;">
+            <i class="fas fa-plus"></i> إضافة عمولة المبيعات
+        </a>
+    }
+</div>
+
+<div class="width-99 mx-auto">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    @* ----- Filters (auto-apply on change — same pattern as /Rating/EmployeList) ----- *@
+    <div class="row mb-3 g-2">
+        <div class="col-md-6">
+            <input id="custom-datepicker" class="form-control custom-datepicker"
+                   placeholder="فلتر حسب التاريخ" readonly />
+            <script src="/js/datepicker.min.js"></script>
+        </div>
+        <div class="col-md-6">
+            <select id="EmployeeId" name="EmployeeId" class="form-control drop-down-design">
+                <option value="">كل الموظفين</option>
+                @foreach (var opt in Model.EmployeeOptions)
+                {
+                    if (opt.Id == Model.SelectedEmployeeId)
+                    {
+                        <option value="@opt.Id" selected>@opt.Name</option>
+                    }
+                    else
+                    {
+                        <option value="@opt.Id">@opt.Name</option>
+                    }
+                }
+            </select>
+        </div>
+    </div>
+
+    <input type="hidden" id="startDate" value="@(Model.FilterStart?.ToString("yyyy-MM-dd"))" />
+    <input type="hidden" id="endDate" value="@(Model.FilterEnd?.ToString("yyyy-MM-dd"))" />
+
+    @* ----- Stat cards (fund.html proportions) ----- *@
+    @{ int _cardIdx = 0; }
+    <div class="bsc-stack" id="bonusStatsStack">
+        <div class="bsc-row">
+        @foreach (var card in Model.Stats)
+        {
+            if (_cardIdx == 3)
+            {
+                @:</div><div class="bsc-row">
+            }
+            _cardIdx++;
+            var variant = _variant(card.ColorHex, card.Label);
+            var hasIds = card.OrderIds != null && card.OrderIds.Count > 0;
+            var navIds = NavIdsAttr(card.OrderIds, card.NavOrderIds);
+            var hasNavIds = hasIds || (navIds != null);
+            var clickableCls = hasNavIds ? " bsc-card-clickable" : "";
+            if (card.AmountUsd.HasValue)
+            {
+                var bonus = card.AmountUsd.Value;
+                var profit = card.ProfitUsd ?? 0m;
+                <div class="bsc-card @variant@(clickableCls) bsc-hidden"
+                     data-alt="@_altFmt(bonus)" data-usd="@_usdFmt(bonus)"
+                     data-order-ids="@IdsAttr(card.OrderIds)"
+                     data-nav-order-ids="@navIds">
+                    <div class="bsc-currency-icon"><img src="/static/bonus-currency-icon.png" alt="currency"></div>
+                    <div class="bsc-toggle-icon"><img src="/static/bonus-eye-off.svg" alt="toggle" class="bsc-toggleBtn"></div>
+                    <div class="bsc-card-top">
+                        <div class="bsc-card-title">@card.Label</div>
+                        <div class="bsc-card-subtitle">@_altSubtitle</div>
+                        <div class="bsc-card-amount-row">
+                            <span class="bsc-card-amount">@_altFmt(bonus)</span>
+                        </div>
+                    </div>
+                    <hr class="bsc-card-divider"/>
+                    <div class="bsc-card-bottom">
+                        <div class="bsc-card-bottom-group">
+                            <span class="bsc-card-label">عدد الطلبات</span>
+                            <span class="bsc-card-gain">@card.OrderCount</span>
+                        </div>
+                        @if (card.ContextCount.HasValue && !Model.IsDateFiltered)
+                        {
+                            <div class="bsc-card-bottom-group">
+                                <span class="bsc-card-label">@_contextLabel</span>
+                                <span class="bsc-card-gain">@card.ContextCount.Value</span>
+                            </div>
+                        }
+                        <div class="bsc-card-bottom-group">
+                            <span class="bsc-card-label">إجمالي المبيعات</span>
+                            @if (!string.IsNullOrEmpty(Model.SelectedEmployeeId))
+                            {
+                                <span class="bsc-card-gain" data-alt="@_altFmt(profit)" data-usd="@_usdFmt(profit)">@_altFmt(profit)</span>
+                            }
+                            else
+                            {
+                                <span class="bsc-card-gain">@_usdFmt(profit)</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+            else if (card.NetProfitUsd.HasValue)
+            {
+                var netProfit = card.NetProfitUsd.Value;
+                <div class="bsc-card @variant@(clickableCls) bsc-hidden"
+                     data-alt="@_altFmt(netProfit)" data-usd="@_usdFmt(netProfit)"
+                     data-order-ids="@IdsAttr(card.OrderIds)"
+                     data-nav-order-ids="@navIds">
+                    <div class="bsc-currency-icon"><img src="/static/bonus-currency-icon.png" alt="currency"></div>
+                    <div class="bsc-toggle-icon"><img src="/static/bonus-eye-off.svg" alt="toggle" class="bsc-toggleBtn"></div>
+                    <div class="bsc-card-top">
+                        <div class="bsc-card-title">@card.Label</div>
+                        <div class="bsc-card-subtitle">@_altSubtitle</div>
+                        <div class="bsc-card-amount-row">
+                            <span class="bsc-card-amount">@_altFmt(netProfit)</span>
+                        </div>
+                    </div>
+                    <hr class="bsc-card-divider"/>
+                    <div class="bsc-card-bottom">
+                        <div class="bsc-card-bottom-group">
+                            <span class="bsc-card-label">عدد الطلبات</span>
+                            <span class="bsc-card-gain">@card.OrderCount</span>
+                        </div>
+                        @if (card.ContextCount.HasValue && !Model.IsDateFiltered)
+                        {
+                            <div class="bsc-card-bottom-group">
+                                <span class="bsc-card-label">@_contextLabel</span>
+                                <span class="bsc-card-gain">@card.ContextCount.Value</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="bsc-card @variant bsc-card-count-only@(clickableCls)"
+                     data-order-ids="@IdsAttr(card.OrderIds)"
+                     data-nav-order-ids="@navIds">
+                    <div class="bsc-card-top">
+                        <div class="bsc-card-title">@card.Label</div>
+                        <div class="bsc-card-amount-row">
+                            <span class="bsc-card-gain">@card.OrderCount</span>
+                        </div>
+                        @if (card.ContextCount.HasValue && !Model.IsDateFiltered)
+                        {
+                            <div class="bsc-card-context-row">
+                                <span class="bsc-card-label">@_contextLabel</span>
+                                <span class="bsc-card-gain" style="font-size:14px;">@card.ContextCount.Value</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+
+        @if (Model.ProProgress != null)
+        {
+            if (_cardIdx == 3)
+            {
+                @:</div><div class="bsc-row">
+            }
+            _cardIdx++;
+            <div class="bsc-card bsc-v-pro bsc-hidden"
+                 data-alt="@_altFmt(Model.ProProgress.RemainingUsd)" data-usd="@_usdFmt(Model.ProProgress.RemainingUsd)">
+                <div class="bsc-currency-icon"><img src="/static/bonus-currency-icon.png" alt="currency"></div>
+                <div class="bsc-toggle-icon"><img src="/static/bonus-eye-off.svg" alt="toggle" class="bsc-toggleBtn"></div>
+                <div class="bsc-card-top">
+                    <div class="bsc-card-title">المبلغ المتبقي من النسبة المئوية</div>
+                    <div class="bsc-card-subtitle">@_altSubtitle</div>
+                    <div class="bsc-card-amount-row">
+                        <span class="bsc-card-amount">@_altFmt(Model.ProProgress.RemainingUsd)</span>
+                    </div>
+                </div>
+                <hr class="bsc-card-divider"/>
+                <div class="bsc-card-bottom">
+                    <div class="bsc-card-bottom-group">
+                        <span class="bsc-card-label">الحالي</span>
+                        <span class="bsc-card-gain" data-alt="@_altFmt(Model.ProProgress.CycleProfitUsd)" data-usd="@_usdFmt(Model.ProProgress.CycleProfitUsd)">@_altFmt(Model.ProProgress.CycleProfitUsd)</span>
+                    </div>
+                    <div class="bsc-card-bottom-group">
+                        <span class="bsc-card-label">الحد</span>
+                        <span class="bsc-card-gain" data-alt="@_altFmt(Model.ProProgress.ThresholdUsd)" data-usd="@_usdFmt(Model.ProProgress.ThresholdUsd)">@_altFmt(Model.ProProgress.ThresholdUsd)</span>
+                        @if (Model.ProProgress.ThresholdReached)
+                        {
+                            <span class="badge bg-success">تم</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var stack = document.getElementById('bonusStatsStack');
+            if (!stack) return;
+            var eyeOff = '/static/bonus-eye-off.svg';
+            var eyeOn  = '/static/bonus-eye-on.svg';
+
+            var cards = stack.querySelectorAll('.bsc-card');
+            var toggleBtns = stack.querySelectorAll('.bsc-toggleBtn');
+            var currencyIcons = stack.querySelectorAll('.bsc-currency-icon');
+            var globalHidden = true;
+            var globalCurrency = 'ALT';
+            var altSubtitle = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(_altSubtitle));
+
+            toggleBtns.forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    globalHidden = !globalHidden;
+                    cards.forEach(function (c) {
+                        if (c.hasAttribute('data-alt')) c.classList.toggle('bsc-hidden', globalHidden);
+                    });
+                    toggleBtns.forEach(function (b) { b.src = globalHidden ? eyeOff : eyeOn; });
+                });
+            });
+
+            currencyIcons.forEach(function (icon) {
+                icon.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    globalCurrency = globalCurrency === 'ALT' ? 'USD' : 'ALT';
+                    cards.forEach(function (c) {
+                        if (!c.hasAttribute('data-alt')) return;
+                        var amt = c.querySelector('.bsc-card-amount');
+                        var sub = c.querySelector('.bsc-card-subtitle');
+                        if (amt) amt.textContent = c.getAttribute(globalCurrency === 'ALT' ? 'data-alt' : 'data-usd');
+                        if (sub) sub.textContent = globalCurrency === 'ALT'
+                            ? altSubtitle
+                            : '(ما يقابله بالدولار الأمريكي)';
+                        c.querySelectorAll('.bsc-card-gain[data-alt][data-usd]').forEach(function (g) {
+                            g.textContent = g.getAttribute(globalCurrency === 'ALT' ? 'data-alt' : 'data-usd');
+                        });
+                    });
+                });
+            });
+
+            // Card click → /Rating/EmployeOrdersDetails?orderIds=…
+            // Prefers data-nav-order-ids (unions delegated orders) over data-order-ids.
+            cards.forEach(function (c) {
+                if (!c.classList.contains('bsc-card-clickable')) return;
+                c.addEventListener('click', function () {
+                    var ids = c.getAttribute('data-nav-order-ids') || c.getAttribute('data-order-ids');
+                    if (!ids) return;
+                    window.location.href = '/Rating/EmployeOrdersDetails?orderIds=' + encodeURIComponent(ids);
+                });
+            });
+        })();
+    </script>
+
+    @* ----- Employee table — same skeleton as Home/Index ordersTable ----- *@
+    <div class="table-responsive">
+        <table class="table mt-2 mb-0 mb-lg-2 mx-auto width-99" id="bonusEmployeesTable">
+            <thead>
+                <tr>
+                    <th>الموظف</th>
+                    <th>النسبة المؤوية %</th>
+                    <th>النسبة المؤوية لمعالجة الطلب %</th>
+                    <th>النسبة المؤوية البرو %</th>
+                    <th>النسبة المؤوية البرو لمعالجة الطلب %</th>
+                    <th>الحد الأدنى للبرو</th>
+                    <th>المبلغ المستحق</th>
+                    @if (isAdmin)
+                    {
+                        <th>دفع</th>
+                        <th>لوحة العمولة</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    var rowIdsAttr = IdsAttr(row.AllBonusOrderIds);
+                    var rowClickCls = !string.IsNullOrEmpty(rowIdsAttr) ? "bsc-row-clickable" : "";
+                    <tr class="@rowClickCls" data-order-ids="@rowIdsAttr">
+                        <td>@row.EmployeeName</td>
+                        <td>@row.BonusPercentage.ToString("0.##")</td>
+                        <td>@row.BonusProcessingPercentage.ToString("0.##")</td>
+                        <td>@row.ProBonusPercentage.ToString("0.##")</td>
+                        <td>@row.ProBonusProcessingPercentage.ToString("0.##")</td>
+                        <td>
+                            @* Threshold is stored exactly as the admin entered it (in the
+                               employee's local currency, or USD when no country is set).
+                               No conversion at display — the runtime calc translates the
+                               cycle's USD profit into this same unit for comparison. *@
+                            @if (row.Country.HasValue && Common.CurrencyByCountry.TryGetValue(row.Country.Value, out var thresholdCurrency))
+                            {
+                                @row.ProThreshold.ToString("0.##") <span class="text-muted">@thresholdCurrency</span>
+                            }
+                            else
+                            {
+                                @:$@row.ProThreshold.ToString("0.##")
+                            }
+                        </td>
+                        <td>
+                            @if (row.PayableUsd > 0m)
+                            {
+                                <div class="fw-bold @(row.IsEarlyPay ? "text-warning" : "text-green") d-flex flex-column align-items-end" style="gap:2px; display:unset !important;">
+                                    @{ var rowCurrencyCode = row.Country.HasValue && Common.CurrencyByCountry.TryGetValue(row.Country.Value, out var _rc) ? _rc : "TRY"; }
+                                    <div>@Fx.ConvertFromUSD(row.PayableUsd, row.Country).ToString("0.##") @rowCurrencyCode</div>
+                                    <div>
+                                        $@row.PayableUsd.ToString("0.##")
+                                        <small class="text-muted ms-1">(@row.PayableOrderCount)</small>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        @if (isAdmin)
+                        {
+                            <td>
+                                @if (row.PayableUsd > 0m)
+                                {
+                                    <button type="button"
+                                            class="btn btn-sm @(row.IsEarlyPay ? "btn-warning" : "btn-success") pay-button"
+                                            data-employee-id="@row.EmployeeId"
+                                            data-employee-name="@row.EmployeeName"
+                                            data-amount="@row.PayableUsd.ToString("0.##")"
+                                            data-early="@(row.IsEarlyPay ? "true" : "false")">
+                                        <i class="fas fa-money-check"></i>
+                                        @(row.IsEarlyPay ? "دفع مبكر" : "دفع الشهر")
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input bonus-panel-toggle"
+                                           type="checkbox"
+                                           id="BonusPanel-@row.EmployeeId"
+                                           data-employee-id="@row.EmployeeId"
+                                           @(!row.IsBonusPanelHidden ? "checked" : "") />
+                                    <label class="form-check-label" for="BonusPanel-@row.EmployeeId">ظهور</label>
+                                </div>
+                            </td>
+                        }
+                    </tr>
+                }
+                @if (Model.Rows.Count == 0)
+                {
+                    <tr>
+                        <td colspan="@(isAdmin ? 9 : 7)" class="text-center text-muted py-4">
+                            لا يوجد موظفون لعرضهم.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@* ----- Pay confirmation modal (same pattern as _createOrder qty 0) ----- *@
+@if (isAdmin)
+{
+    <div id="payConfirm">
+        <div class="pc-box">
+            <div class="text-center pt-3">
+                <img src="/static/check-double-solid.svg" width="50" onerror="this.style.display='none'" />
+            </div>
+            <p class="text-center pb-3 px-3">
+                هل أنت متأكد من دفع العمولات للموظف
+                <strong id="payEmpName"></strong>
+                بمبلغ <strong id="payAmount"></strong>؟
+            </p>
+            <div class="border-top">
+                <div class="row m-0">
+                    <div class="col-6 py-2 text-center pc-confirm" id="payConfirmYes">موافقه</div>
+                    <div class="col-6 py-2 text-center border-right pc-cancel" id="payConfirmNo">تراجع</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form id="payForm" method="post" asp-action="Pay" style="display:none;">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="employeeId" id="payEmployeeId" />
+        <input type="hidden" name="early" id="payEarly" value="false" />
+    </form>
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Auto-apply filters on change — mirrors /Rating/EmployeList. Date changes
+            // fire via the litepicker callback; the employee dropdown fires on change.
+            function applyFilters() {
+                var s = $('#startDate').val();
+                var e = $('#endDate').val();
+                var emp = $('#EmployeeId').val();
+                var parts = [];
+                if (s) parts.push('startDate=' + encodeURIComponent(s));
+                if (e) parts.push('endDate=' + encodeURIComponent(e));
+                if (emp) parts.push('employeeId=' + encodeURIComponent(emp));
+                window.location.href = '/EmployeeBonus' + (parts.length ? '?' + parts.join('&') : '');
+            }
+
+            initializeLitepicker('.custom-datepicker', applyFilters);
+
+            $('#EmployeeId').on('change', applyFilters);
+
+            // ---- Pay confirmation ----
+            $(document).on('click', '.pay-button', function () {
+                var empId = $(this).data('employee-id');
+                var empName = $(this).data('employee-name');
+                var amount = $(this).data('amount');
+                var early = $(this).data('early') === true || $(this).data('early') === 'true';
+                $('#payEmpName').text(empName);
+                $('#payAmount').text('$' + amount + (early ? ' (دفع مبكر للفترة الحالية)' : ''));
+                $('#payEmployeeId').val(empId);
+                $('#payEarly').val(early ? 'true' : 'false');
+                $('#payConfirm').css('display', 'flex');
+            });
+
+            $(document).on('click', '#payConfirmNo', function () {
+                $('#payConfirm').hide();
+            });
+
+            $(document).on('click', '#payConfirmYes', function () {
+                $('#payForm').trigger('submit');
+            });
+
+            // ---- Bonus panel visibility toggle ----
+            $(document).on('change', '.bonus-panel-toggle', function () {
+                var empId = $(this).data('employee-id');
+                var hidden = !$(this).is(':checked');
+                $.post('/EmployeeBonus/ToggleBonusPanel',
+                    { employeeId: empId, hidden: hidden, __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').first().val() });
+            });
+
+            // ---- Row click → /Home/Index with this employee's combined bonus IDs ----
+            // Skip clicks that originated from the pay button or the bonus-panel toggle
+            // so those keep their own behavior. Everything else (cells, names, percentages)
+            // counts as a navigation click.
+            $(document).on('click', '.bsc-row-clickable', function (e) {
+                if ($(e.target).closest('.pay-button, .form-check, button, input, label').length) return;
+                var ids = $(this).attr('data-order-ids');
+                if (!ids) return;
+                window.location.href = '/Rating/EmployeOrdersDetails?orderIds=' + encodeURIComponent(ids);
+            });
+        });
+    </script>
+}

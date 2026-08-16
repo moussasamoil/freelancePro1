@@ -1,0 +1,143 @@
+﻿@model lotus_blue.Models.DeliveryCompanyPrice
+
+@{
+    ViewData["Title"] = "اضافة سعر لشركة التوصيل";
+}
+
+<form id="deliveryForm" asp-action="Create" method="post">
+    <div class="d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">اختار سعر شركة التوصيل</h5>
+            </div>
+            <div class="modal-body">
+                <!-- Removed the nested form tag here, as nested forms are not valid HTML. -->
+                <div class="mb-3">
+                    <label for="Country" class="form-label">الدولة:</label>
+                    <select id="country" class="form-select" asp-for="Country" asp-items="Html.GetEnumSelectList<lotus_blue.Models.Common.Countries>()" onchange="updateDeliveryCompanies(); updateCities();">
+                        <option value=""> ---اختار الدولة ---</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="DeliveryCompanyId" class="form-label"> شركة التوصيل:</label>
+                    <select id="deliveryCompany" name="DeliveryCompanyId" class="form-select" onchange="updateCities()">
+                        <option value="">اختار شركة التوصيل</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="City" class="form-label">المدينة:</label>
+                    <select id="city" name="City" class="form-select">
+                        <option value="">اختار المدينة</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="Price" class="form-label">السعر:</label>
+                    <input asp-for="Price" type="number" class="form-control" step="0.01" />
+                </div>
+
+                <!-- Add checkbox for adding the price for all cities -->
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="addAllCitiesCheckbox" name="addForAllCities" value="true">
+                    <label class="form-check-label" for="addAllCitiesCheckbox">أضف السعر لجميع المدن في الدولة المحددة</label>
+                </div>
+
+                <button type="submit" class="btn btn-success">موافقة</button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+    let country; // Declare country as a global variable
+
+    function updateDeliveryCompanies() {
+        country = document.getElementById('country').value; // Update the value of the global variable
+
+        fetch(`/DataList/GetAllDeliveryCompanies?countryIds=${country}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to load delivery companies');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const deliveryCompanyDropdown = document.getElementById('deliveryCompany');
+                deliveryCompanyDropdown.innerHTML = '<option value="">اختار شركة التوصيل</option>';  // Clear existing options and add placeholder
+
+                data.forEach(dc => {
+                    const option = document.createElement('option');
+                    option.text = dc.name;
+                    option.value = dc.id;
+                    deliveryCompanyDropdown.add(option);
+                });
+
+                console.log(data);
+            })
+            .catch(error => {
+                console.error(error);
+            });
+    }
+
+    function updateCities() {
+        const country = document.getElementById('country').value; // Get the selected country
+        const deliveryCompanyId = document.getElementById('deliveryCompany').value; // Get the selected delivery company
+
+        if (country && deliveryCompanyId) {
+            fetch(`/Datalist/GetCitiesByCountry?countryIds=${country}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load cities');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const cityDropdown = document.getElementById('city');
+                    cityDropdown.innerHTML = '<option value="">اختار المدينة</option>';  // Clear existing options and add placeholder
+
+                    data.forEach(city => {
+                        const option = document.createElement('option');
+                        option.text = city;
+                        option.value = city;
+                        cityDropdown.add(option);
+                    });
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+        }
+    }
+
+    $(document).ready(function () {
+        $('#deliveryForm').submit(function (event) {
+            event.preventDefault(); // Prevent the default form submission
+
+            // Serialize form data
+            var formData = $(this).serialize();
+            var url = $(this).attr('action'); // Get form action URL
+
+            $.ajax({
+                type: 'POST',
+                url: url,
+                data: formData,
+                success: function (data) {
+                    // Reset city and price fields
+                    $('#Price').val('');
+
+                    // Show success alert
+                    alert('تم أضافة اسعار التوصيل');
+
+                    // Optionally, you could clear other fields or close the modal if required
+                },
+                error: function (xhr, status, error) {
+                    console.error(xhr.responseText);
+                    // Show error alert
+                    alert('Failed to add delivery price. Please try again. Error: ' + xhr.responseText);
+                }
+            });
+        });
+    });
+
+</script>

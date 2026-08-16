@@ -1,0 +1,158 @@
+﻿@model lotus_blue.Models.ViewModel.WarehouseViewModel
+
+@{
+    ViewData["Title"] = "تفاصيل المستودع";
+}
+
+<h2>تفاصيل المستودع</h2>
+
+<div class="row">
+    <div class="col-md-3">
+        <dl class="row">
+            <dt class="col-sm-4">كود المستودع:</dt>
+            <dd class="col-sm-8">@Model.Id</dd>
+
+            <dt class="col-sm-4">الاسم:</dt>
+            <dd class="col-sm-8">@Model.Name</dd>
+
+            <dt class="col-sm-4">السعر:</dt>
+            <dd class="col-sm-8">@Model.Price</dd>
+            <dt class="col-sm-4">صورة المنتج:</dt>
+            <dd class="col-sm-8">
+                @if (!string.IsNullOrEmpty(Model.ProductImage))
+                {
+                    <img width="150" height="150" src="@Model.ProductImage" alt="صورة المنتج" />
+                }
+                else
+                {
+                    <span>لا توجد صورة متاحة</span>
+                }
+            </dd>
+
+        </dl>
+    </div>
+    <div class="col-md-3">
+        <dl class="row">
+           
+
+            <dt class="col-sm-4">الكمية:</dt>
+            <dd class="col-sm-8">@Model.Amount</dd>
+
+            <dt class="col-sm-4">الكمية الأجمالية:</dt>
+            <dd class="col-sm-8">@Model.UnchangingAmount</dd>
+
+            <dt class="col-sm-4">الإجمالي:</dt>
+            <dd class="col-sm-8">@Model.Total</dd>
+
+            <dt class="col-sm-4">عدد القطع الي تسلمت:</dt>
+            <dd class="col-sm-8 delivered" id="delivered" style="cursor:pointer;"
+                data-delivery-company-id="@Model.DeliveryCompanyId"
+                data-warehouse-id="@Model.Id"
+                data-main-warehouse-id="@Model.Id"
+                data-is-delivery="true">@Model.TotalDeliveredItemsFromSpecificOrders</dd>
+
+            <dt class="col-sm-4">عدد القطع الي فشل :</dt>
+            <dd class="col-sm-8 faileddelivered" id="failedDelivered" style="cursor:pointer;"
+                data-delivery-company-id="@Model.DeliveryCompanyId"
+                data-warehouse-id="@Model.Id"
+                data-main-warehouse-id="@Model.Id"
+                data-is-delivery="false">@Model.TotalFailedDeliveredItemsFromSpecificOrders</dd>
+
+
+
+
+
+
+        </dl>
+    </div>
+    <div class="col-md-3">
+        <dl class="row">
+         
+            <dt class="col-sm-4">شركة التوصيل:</dt>
+            <dd class="col-sm-8">@Model.DeliveryCompanyName</dd>
+
+            <dt class="col-sm-4">الدولة:</dt>
+            <dd class="col-sm-8">@Model.Countries</dd>
+
+            
+
+
+        </dl>
+    </div>
+    <div class="col-md-3">
+        <dl class="row">
+            <dt class="col-sm-4">شركة التصنيع:</dt>
+            <dd class="col-sm-8">@Model.ManufacturingCompanyName</dd>
+
+            <dt class="col-sm-4">تاريخ الإضافة:</dt>
+            <dd class="col-sm-8">@Model.DateAdded</dd>
+
+            <dt class="col-sm-4">تاريخ التحديث:</dt>
+            <dd class="col-sm-8">@Model.DateUpdated.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+
+          
+        </dl>
+    </div>
+</div>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>صورة المنتج</th>
+            <th>اسم المنتج</th>
+
+            <th> الكمية المتاحة</th>
+            <th>الكمية المضافة </th>
+
+            <th>الكمية الأجمالية </th>
+            <th>أخر تحديث  </th>
+            <th> اسم الموظف</th>
+
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var warehouse in Model.EditHistories)
+        {
+            <tr>
+                <td>@warehouse.Warehouse?.Id</td>
+                <td><img src="/@warehouse.Warehouse?.MainWarehouse.ImageUrl " alt="Product Image" /></td>
+                <td>@warehouse.Warehouse?.Name</td>
+                <td>@(warehouse.Warehouse?.Amount-warehouse.AddedAmount)</td>
+                <td>@warehouse.AddedAmount</td>
+                <td>@warehouse.Warehouse?.Amount</td> <!-- Assuming you want to show the total after addition -->
+                <td>@warehouse.EditDate.ToString("yyyy:MM:dd")</td>
+                <td>@warehouse.ApplicationUser?.Name</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var deliveredElement = document.getElementById('delivered');
+        var failedDeliveredElement = document.getElementById('failedDelivered');
+
+        if (deliveredElement) {
+            deliveredElement.addEventListener('click', function () {
+                const deliveryCompanyId = this.getAttribute('data-delivery-company-id');
+                const warehouseId = this.getAttribute('data-warehouse-id');
+                const mainWarehouseId = this.getAttribute('data-main-warehouse-id');
+                const isDelivery = this.getAttribute('data-is-delivery');
+                const url = `/rating/EmployeOrdersDetails?isDeliverd=${isDelivery}&deliveryCompanyId=${deliveryCompanyId}&warehouseId=${mainWarehouseId}`;
+                window.location.href = url;
+            });
+        }
+
+        if (failedDeliveredElement) {
+            failedDeliveredElement.addEventListener('click', function () {
+                const deliveryCompanyId = this.getAttribute('data-delivery-company-id');
+                const warehouseId = this.getAttribute('data-warehouse-id');
+                const mainWarehouseId = this.getAttribute('data-main-warehouse-id');
+                const isDelivery = this.getAttribute('data-is-delivery');
+                const url = `/rating/EmployeOrdersDetails?isDeliverd=${isDelivery}&deliveryCompanyId=${deliveryCompanyId}&warehouseId=${mainWarehouseId}`;
+                window.location.href = url;
+            });
+        }
+    });
+</script>

@@ -1,0 +1,71 @@
+﻿@model lotus_blue.Models.ViewModel.OrderBonusConfigurationViewModel
+
+@{
+    ViewData["Title"] = "إنشاء عمولة";
+}
+
+<h2>إنشاء عمولة</h2>
+
+<form asp-action="Create">
+    <div class="form-group">
+        <label for="OrderThreshold">سعر عمولة الطلب</label>
+        <input asp-for="OrderThreshold" class="form-control" />
+        <span asp-validation-for="OrderThreshold" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label for="FlatBonusAmount">عمولة الموظف</label>
+        <input asp-for="FlatBonusAmount" class="form-control" />
+        <span asp-validation-for="FlatBonusAmount" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label for="PercentageBonus">النسبة المئوية</label>
+        <input asp-for="PercentageBonus" class="form-control" />
+        <span asp-validation-for="PercentageBonus" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label for="SelectedCountry" class="form-label">الدولة:</label>
+        <select id="country" class="form-select" asp-for="Country" asp-items="Html.GetEnumSelectList<lotus_blue.Models.Common.Countries>()" onchange="updateDeliveryCompanies(); updateCities();">
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="Employee">الموظف</label>
+        <select asp-for="EmployeeId" class="form-control" id="employeeDropdown">
+            <option value="">-- اختر موظفاً --</option>
+        </select>
+        <span asp-validation-for="EmployeeId" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mt-3 d-inline-flex">
+        <input type="submit" value="موافقة" class="btn btn-success" />
+        <a class="btn me-3 btn-secondary" asp-action="Index ">العودة إلى القائمة</a>
+
+    </div>
+</form>
+
+
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $.ajax({
+                url: '@Url.Action("GetAllEmployees", "DataList")',
+                type: 'GET',
+                success: function (data) {
+                    var employeeDropdown = $('#employeeDropdown');
+                    employeeDropdown.empty();
+                    employeeDropdown.append('<option value="">-- اختر موظفاً --</option>');
+                    $.each(data, function (index, employee) {
+                        employeeDropdown.append('<option value="' + employee.Id + '">' + employee.name + '</option>');
+                    });
+                },
+                error: function () {
+                    alert('فشل في استرجاع الموظفين.');
+                }
+            });
+        });
+    </script>
+}

@@ -1,0 +1,3019 @@
+@{
+    ViewData["Title"] = "Conversations";
+    Layout = "~/Views/Shared/_MainLayout.cshtml";
+}
+@using lotus_blue.Controllers
+@* <header
+ *@
+<header>
+    <div class="container-fluid">
+        <nav class="nav-shadow px-3 background-white-green py-0 fixed-top navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom">
+            <div class="d-flex justify-content-between w-100">
+                <div class="p-0 rtl">
+                    <a class="px-2 py-1 text-black text-decoration-none d-inline-block" href="javascript:window.history.back();">
+                        تراجع
+                    </a>
+
+                </div>
+                <div class="text-center pt-1 ">
+                    <img id="logo" width="200" class="text-center pb-3 main-logo pb-md-1" loading="lazy" src="/static/مفرغغ.png" />
+                </div>
+                <div class=" pt-1">
+                    انتهى
+                </div>
+            </div>
+        </nav>
+    </div>
+</header>
+
+
+
+<h4 class="d-flex justify-content-center pt-1 text-green">
+    مجموعة أدوات الأعمال
+</h4>
+
+
+<div id="filterpages" class="d-flex justify-content-start flex-wrap gap-4">
+    @foreach (var item in FacebookWebhookBotController.PAGES_CONFIG)
+    {
+        <div class="d-flex justify-content-center flex-column filter-page" data-page-id="@item.Key">
+            <div class="circle">
+                <img src="@item.Value.PagePhoto" alt="@item.Value.PageName">
+            </div>
+            <p class="pt-1 text-center">@item.Value.PageName</p>
+        </div>
+    }
+</div>
+
+
+<!-- Hidden input to store the selected page ID for filtering -->
+<input type="hidden" id="page-filter" name="page-filter" />
+
+
+
+<div>
+  @*   <button id="send-offer-messages-flare-woman" class="btn btn-primary">عروض فلير بنات</button>
+
+    <button id="send-offer-messages-moonlight" class="btn btn-primary">عروض مون لايت </button>
+
+    <button id="send-offer-messages-flare-man" class="btn btn-primary">عروض فلير شباب</button>
+
+    <button id="send-offer-messages-lotusblue" class="btn btn-primary">عروض لوتس بلو </button>
+
+    <button id="send-offer-messages-loxxking-man" class="btn btn-primary">عروض لوكس كينغ شباب</button>
+
+    <button id="send-offer-messages-loxxking-woman" class="btn btn-primary">عروض لوكس كينغ بنات </button> *@
+    <div class="row">
+        <!-- Right Sidebar - Column 3 -->
+        <div class="col-12 col-md-3 bg-light">
+            <div class="p-3">
+
+                <!-- search  Tabs -->
+
+                <div class="w-100 w-sm-100">
+                    <div class="input-group flex-grow-1 ">
+                        <input type="text" id="searchInput" name="search" class="pe-5 w-100 custom-box-shadow
+            Search search-input">
+
+                        <span class="icon search-icon">
+                            <i class="fa-solid text-green fa-magnifying-glass fa-rotate-90"></i>
+                        </span>
+                        <span id="searchingshow" class="icon clear-search-icon cursor-pointer" style="visibility: hidden;">
+                            <i class="fa-solid text-green text-green fa-circle-xmark "></i>
+                        </span>
+                    </div>
+                </div>
+
+
+
+            </div>
+
+            <!-- Filter Tabs -->
+            <div class="filter-tabs mb-3 d-flex justify-content-start" role="tablist">
+                <button id="resetFiltersButton" class="tab-button f-s-16  all" type="button" role="tab">الكل</button>
+                <button class="tab-button f-s-16 read" type="button" role="tab">غير مقرؤة</button>
+                <!-- التصنيفات Dropdown -->
+                <select id="categoriesDropdown" class="form-select">
+                    <option value="">اختر تصنيف</option>
+                    <option value="completedOrders">طلبات مكتملة</option>
+                    <option value="incompleteOrders">طلبات غير مكتملة</option>
+                    <option value="completedOffers">عروض مكتملة</option>
+                    <option value="incompleteOffers">عروض غير مكتملة</option>
+                </select>
+                <button id="showCountriesButton" class="tab-button f-s-16" type="button" role="tab">الدول</button>
+                <button id="showUndefinedOrder" class="tab-button f-s-16" type="button" role="tab">غير معرف</button>
+
+            </div>
+
+            <!-- Dropdown for Countries -->
+            <div id="countryDropdownContainer" style="display: none;">
+                <select id="countryDropdown" class="form-select">
+                    <option value="" disabled selected>اختر الدولة</option>
+                    <option value="1">العراق</option>
+                    <option value="2">الإمارات</option>
+                    <option value="3">قطر</option>
+                    <option value="4">ليبيا</option>
+                    <option value="5">سلطنة عمان</option>
+                    <option value="6">فلسطين</option>
+                    <option value="7">تركيا</option>
+                    <option value="8">الأردن</option>
+                    <option value="9">الكويت</option>
+                    <option value="10">البحرين</option>
+                    <option value="11">السعودية</option>
+                    <option value="12">تونس</option>
+                    <option value="13">المغرب</option>
+                    <option value="14">الجزائر</option>
+                    <option value="15">لبنان</option>
+                </select>
+            </div>
+
+            <!-- Dropdown for Gender -->
+            <div id="genderDropdownContainer" style="display: none;">
+                <select id="genderDropdown" class="form-select">
+                    <option value="" disabled selected>اختر الجنس</option>
+                    <option value="true">ذكر</option> <!-- Male -->
+                    <option value="false">أنثى</option> <!-- Female -->
+                </select>
+            </div>
+
+            <!-- Message List -->
+            <div class="list-group custom-scroll" id="scrollable-div">
+                <!-- Message Item -->
+                <div class="list-group-item  d-flex align-items-center border-0">
+                </div>
+                <div class="message-border-bottom"></div>
+
+                <!-- Repeat Message Item as needed -->
+            </div>
+
+
+        </div>
+
+
+        <!-- Main Chat Area - Column 8 -->
+        <div class="col-12 col-md-8 border-end fixed-middle">
+
+            <!-- Chat Header -->
+            <div class="chat-header d-flex justify-content-between align-items-center p-1 bg-white border-bottom hidden">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-times "></i>
+                    <i class="fas fa-check-square text-danger me-3" id="order-status-icon"></i>
+                    <i class="fas fa-envelope  me-3" id="read-status-icon"></i>
+                    <div class="dropdown">
+                        <i class="fa-solid fa-earth-americas me-3" id="country-dropdown-icon" data-bs-toggle="dropdown"></i>
+                        <ul class="dropdown-menu" aria-labelledby="country-dropdown-icon">
+                            @foreach (var country in Enum.GetValues(typeof(Common.Countries)))
+                            {
+                                <li>
+                                    <a class="dropdown-item country-option" href="#" data-country-id="@((int)country)">
+                                        @country
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+
+                    <div class="dropdown">
+                        <i class="fa-solid fa-warehouse me-3" id="product-dropdown-icon" data-bs-toggle="dropdown"></i>
+                        <ul class="dropdown-menu" aria-labelledby="product-dropdown-icon">
+                            <li><a class="dropdown-item product-option" href="#" data-product-name="Foundation">Foundation</a></li>
+                            <li><a class="dropdown-item product-option" href="#" data-product-name="Powder">Powder</a></li>
+                            <li><a class="dropdown-item product-option" href="#" data-product-name="Shampoo">Shampoo</a></li>
+                            <li><a class="dropdown-item product-option" href="#" data-product-name="Corset">Corset</a></li>
+                            <li><a class="dropdown-item product-option" href="#" data-product-name="Mascara">Mascara</a></li>
+                        </ul>
+                    </div>
+
+
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                    <h6 id="conversation-country"></h6>
+                    <img height="15" width="15" id="conversation-flag" />
+                    <h6 id="product-name"></h6>
+                    <h6 id="gender-name"></h6>
+
+                </div>
+
+
+                <div class="d-flex align-items-center">
+                    <div>
+                        <h6 class="m-0 text-green fw-bold" id="conversation-username"> </h6>
+                        <small class="text-muted" id="conversation-pagename"> </small>
+                    </div>
+                    <img width="72" height="72" src="" class="rounded-circle me-2" alt="Logo" id="conversation-logo">
+                </div>
+            </div>
+
+            <!-- Chat Body -->
+            <div class="chat-body p-3 hidden" style="height: 500px; overflow-y: auto; background-color: #f7f7f7;">
+
+                <div id="message-list">
+                    <!-- Messages will be dynamically appended here -->
+                </div>
+
+            </div>
+
+            <!-- Chat Footer -->
+            <div class="chat-footer p-3 border-top bg-white hidden">
+                <div class="input-group">
+                    <span id="instant-message" class="input-group-text reply instant-message text-white hover-response background-color-custom-in-page b-r-8">
+                      رد الخصائص
+
+                    </span>
+                    <input id="message-input" type="text" class="form-control fw-bold border-0" placeholder="اكتب رسالة" aria-label="Message input">
+                  
+                </div>
+            </div>
+        </div>
+
+
+
+        <!-- For Moon Light Button Panel, initially hidden -->
+        <div id="moonlight-panel" class="p-0 col-md-1" style=" display: none;">
+            <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                <!-- الخصائص Section -->
+                <h6 class="text-center mt-2 h3 text-white p-2 b-r-8 background-color-custom-in-page ">إقناع الدرجة</h6>
+                <div class="nav flex-column" role="tablist">
+
+                    <button class="nav-link text-green-in-page d-flex align-items-center  h5" id="v-pills-1-tab" data-bs-toggle="pill" data-bs-target="#v-pills-1" type="button" role="tab" onclick="sendCustomMessageMoonLight('درجة اولى')">
+                        <span class=" dot"></span>
+
+                        درجة اولى
+                    </button>
+                    <button class="nav-link text-green-in-page d-flex align-items-center  h5" id="v-pills-2-tab" data-bs-toggle="pill" data-bs-target="#v-pills-2" type="button" role="tab" onclick="sendCustomMessageMoonLight('درجة تانية')">
+                        <span class=" dot"></span>
+
+                        درجة تانية
+                    </button>
+                    <button class="nav-link text-green-in-page d-flex align-items-center  h5" id="v-pills-3-tab" data-bs-toggle="pill" data-bs-target="#v-pills-3" type="button" role="tab" onclick="sendCustomMessageMoonLight('درجة تالتة')">
+                        <span class=" dot"></span>
+
+                        درجة تالتة
+                    </button>
+                    <button class="nav-link text-green-in-page d-flex align-items-center  h5" id="v-pills-4-tab" data-bs-toggle="pill" data-bs-target="#v-pills-4" type="button" role="tab" onclick="sendCustomMessageMoonLight('درجة رابعة')">
+                        <span class=" dot"></span>
+
+                        درجة رابعة
+                    </button>
+                    <button class="nav-link text-green-in-page d-flex align-items-center  h5" id="v-pills-5-tab" data-bs-toggle="pill" data-bs-target="#v-pills-5" type="button" role="tab" onclick="sendCustomMessageMoonLight('درجة خامسة')">
+                        <span class=" dot"></span>
+
+                        درجة خامسة
+                    </button>
+                </div>
+
+                <!-- الأقناع Section -->
+                <h5 class="text-center mt-2 h3 text-white p-3 b-r-8 background-color-custom-in-page ">إقناع النوع</h5>
+                <div class="nav flex-column" role="tablist">
+                    <button class="nav-link text-green-in-page d-flex align-items-center  h5" id="v-pills-4-tab" data-bs-toggle="pill" data-bs-target="#v-pills-4" type="button" role="tab" onclick="sendCustomMessageMoonLight('دهنية')">
+                        <span class=" dot"></span>
+
+                        دهنية
+                    </button>
+                    <button class="nav-link  text-green-in-page d-flex align-items-center h5" id="v-pills-5-tab" data-bs-toggle="pill" data-bs-target="#v-pills-5" type="button" role="tab" onclick="sendCustomMessageMoonLight('جافة')">
+                        <span class=" dot"></span>
+
+                        جافة
+                    </button>
+                    <button class="nav-link text-green-in-page d-flex align-items-center  h5" id="v-pills-6-tab" data-bs-toggle="pill" data-bs-target="#v-pills-6" type="button" role="tab" onclick="sendCustomMessageMoonLight('مختلطة')">
+                        <span class=" dot"></span>
+
+                        مختلطة
+                    </button>
+                    <button class="nav-link text-green-in-page d-flex align-items-center  h5" id="v-pills-7-tab" data-bs-toggle="pill" data-bs-target="#v-pills-7" type="button" role="tab" onclick="sendCustomMessageMoonLight('عادية')">
+                        <span class=" dot"></span>
+
+                        عادية
+                    </button>
+                </div>
+                <!-- الأقناع Section -->
+                <h5 class="text-center mt-2 h3 text-white p-3 b-r-8 background-color-custom-in-page ">العروض</h5>
+                <div class="nav flex-column" role="tablist">
+                    <button class="nav-link text-green-in-page d-flex align-items-center  h5" id="v-pills-4-tab" data-bs-toggle="pill" data-bs-target="#v-pills-4" type="button" role="tab" onclick="sendCustomMessageMoonLight('العرض')">
+                        <span class=" dot"></span>
+
+                        إقناع العرض
+                    </button>
+
+                    <button class="nav-link text-green-in-page d-flex align-items-center  h5" id="v-pills-4-tab" data-bs-toggle="pill" data-bs-target="#v-pills-4" type="button" role="tab" onclick="sendCustomMessageMoonLight('الغالي')">
+                        <span class=" dot"></span>
+
+                        إقناع الغالي
+                    </button>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- For Loxx King Woman Button Panel, initially hidden -->
+        <div id="loxxkingwoman-panel" class="p-0 col-md-1" style="display: none;">
+            <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                <!-- الخصائص Section -->
+                <h5 class="text-center mt-2 p-1 text-white b-r-8 background-color-custom-in-page">الخصائص</h5>
+                <div class="nav background-white flex-column" role="tablist">
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5" id="v-pills-1-tab" data-bs-toggle="pill" data-bs-target="#v-pills-1" type="button" role="tab" onclick="sendCustomMessageloxxkingwoman('الخصائص')">
+                        <span class="dot"></span>
+                        حل المشكلة
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- For loxx king man Button Panel, initially hidden -->
+        <div id="loxxkingman-panel" class="p-0 col-md-1" style="display: none;">
+            <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                <!-- الخصائص Section -->
+                <h5 class="text-center mt-2 p-1 text-white b-r-8 background-color-custom-in-page">الخصائص</h5>
+                <div class="nav background-white flex-column" role="tablist">
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5 " id="v-pills-1-tab" data-bs-toggle="pill" data-bs-target="#v-pills-1" type="button" role="tab" onclick="sendCustomMessageloxxkingman('الخصائص')">
+                        <span class="dot"></span>
+                        حل المشكلة
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- For lotusblue Button Panel, initially hidden -->
+        <div id="lotusblue-panel" class="p-0 col-md-1" style="display: none;">
+            <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                <!-- الخصائص Section -->
+                <h5 class="text-center mt-2 p-1  text-white  b-r-8 background-color-custom-in-page">إقناع الدرجة</h5>
+                <div class="nav background-white flex-column" role="tablist">
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5" id="v-pills-1-tab" data-bs-toggle="pill" data-bs-target="#v-pills-1" type="button" role="tab" onclick="sendCustomMessageLotusblue('درجة اولى')">
+                        <span class="dot"></span>
+                        درجة اولى
+                    </button>
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5" id="v-pills-2-tab" data-bs-toggle="pill" data-bs-target="#v-pills-2" type="button" role="tab" onclick="sendCustomMessageLotusblue('درجة تانية')">
+                        <span class="dot"></span>
+                        درجة تانية
+                    </button>
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5" id="v-pills-3-tab" data-bs-toggle="pill" data-bs-target="#v-pills-3" type="button" role="tab" onclick="sendCustomMessageLotusblue('درجة تالتة')">
+                        <span class="dot"></span>
+                        درجة تالتة
+                    </button>
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5" id="v-pills-4-tab" data-bs-toggle="pill" data-bs-target="#v-pills-4" type="button" role="tab" onclick="sendCustomMessageLotusblue('درجة رابعة')">
+                        <span class="dot"></span>
+                        درجة رابعة
+                    </button>
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5" id="v-pills-5-tab" data-bs-toggle="pill" data-bs-target="#v-pills-5" type="button" role="tab" onclick="sendCustomMessageLotusblue('درجة خامسة')">
+                        <span class="dot"></span>
+                        درجة خامسة
+                    </button>
+                </div>
+
+                <!-- الأقناع Section -->
+                <h5 class="text-center mt-2  text-white p-1 b-r-8 background-color-custom-in-page">إقناع النوع</h5>
+                <div class="nav background-white flex-column" role="tablist">
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5" id="v-pills-6-tab" data-bs-toggle="pill" data-bs-target="#v-pills-6" type="button" role="tab" onclick="sendCustomMessageLotusblue('عادية')">
+                        <span class="dot"></span>
+                        عادية
+                    </button>
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5" id="v-pills-7-tab" data-bs-toggle="pill" data-bs-target="#v-pills-7" type="button" role="tab" onclick="sendCustomMessageLotusblue('مختلطة')">
+                        <span class="dot"></span>
+                        مختلطة
+                    </button>
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5" id="v-pills-8-tab" data-bs-toggle="pill" data-bs-target="#v-pills-8" type="button" role="tab" onclick="sendCustomMessageLotusblue('جافة')">
+                        <span class="dot"></span>
+                        جافة
+                    </button>
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5" id="v-pills-9-tab" data-bs-toggle="pill" data-bs-target="#v-pills-9" type="button" role="tab" onclick="sendCustomMessageLotusblue('دهنية')">
+                        <span class="dot"></span>
+                        دهنية
+                    </button>
+                </div>
+
+                <!-- العروض Section -->
+                <h5 class="text-center mt-2  text-white p-1 b-r-8 background-color-custom-in-page">العروض</h5>
+                <div class="nav background-white flex-column" role="tablist">
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5" id="v-pills-10-tab" data-bs-toggle="pill" data-bs-target="#v-pills-10" type="button" role="tab" onclick="sendCustomMessageLotusblue('العرض')">
+                        <span class="dot"></span>
+                        إقناع العرض
+                    </button>
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5" id="v-pills-11-tab" data-bs-toggle="pill" data-bs-target="#v-pills-11" type="button" role="tab" onclick="sendCustomMessageLotusblue('الغالي')">
+                        <span class="dot"></span>
+                        إقناع الغالي
+                    </button>
+                </div>
+                <h5 class="text-center mt-2  text-white p-1 b-r-8 background-color-custom-in-page">المنتجات</h5>
+                <div class="nav background-white flex-column" role="tablist">
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5" id="v-pills-10-tab" data-bs-toggle="pill" data-bs-target="#v-pills-10" type="button" role="tab" onclick="sendCustomMessageLotusblue('المسكارا')">
+                        <span class="dot"></span>
+                        الماسكارا
+                    </button>
+
+                </div>
+            </div>
+        </div>
+
+
+        <!-- For flare woman Button Panel, initially hidden -->
+        <div id="flarewoman-panel" class="p-0 col-md-1" style="display: none;">
+            <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                <!-- الخصائص Section -->
+                <h5 class="text-center mt-2 p-1 text-white b-r-8 background-color-custom-in-page">الخصائص</h5>
+                <div class="nav background-white flex-column" role="tablist">
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5" id="v-pills-1-tab" data-bs-toggle="pill" data-bs-target="#v-pills-1" type="button" role="tab" onclick="sendCustomMessageFlareWoman('حل المشكلة')">
+                        <span class="dot"></span>
+                        حل المشكلة
+                    </button>
+                </div>
+
+                <!-- الأقناع Section -->
+                <h5 class="text-center mt-3 p-1 text-white b-r-8 background-color-custom-in-page">الأقناع</h5>
+                <div class="nav background-white flex-column" role="tablist">
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5" id="v-pills-4-tab" data-bs-toggle="pill" data-bs-target="#v-pills-4" type="button" role="tab" onclick="sendCustomMessageFlareWoman('عادي')">
+                        <span class="dot"></span>
+                        عادي
+                    </button>
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5" id="v-pills-5-tab" data-bs-toggle="pill" data-bs-target="#v-pills-5" type="button" role="tab" onclick="sendCustomMessageFlareWoman('جاف')">
+                        <span class="dot"></span>
+                        جاف
+                    </button>
+                    <button class="nav-link text-green-in-page d-flex align-items-center h5" id="v-pills-6-tab" data-bs-toggle="pill" data-bs-target="#v-pills-6" type="button" role="tab" onclick="sendCustomMessageFlareWoman('دهني')">
+                        <span class="dot"></span>
+                        دهني
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- For flare man  Button Panel, initially hidden -->
+        <div id="flareman-panel" class=" col-md-1" style=" display: none;">
+            <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                <!-- الخصائص Section -->
+                <h5 class="text-center mt-2">الخصائص</h5>
+                <button class="nav-link active" id="v-pills-1-tab" data-bs-toggle="pill" data-bs-target="#v-pills-1" type="button" role="tab" onclick="sendCustomMessageFlareman('حل المشكلة')">
+                    حل المشكلة
+                </button>
+
+                <!-- الأقناع Section -->
+                <h5 class="text-center mt-3">الأقناع</h5>
+                <button class="nav-link" id="v-pills-4-tab" data-bs-toggle="pill" data-bs-target="#v-pills-4" type="button" role="tab" onclick="sendCustomMessageFlareman('عادي')">
+                    عادي
+                </button>
+                <button class="nav-link" id="v-pills-5-tab" data-bs-toggle="pill" data-bs-target="#v-pills-5" type="button" role="tab" onclick="sendCustomMessageFlareman('جاف')">
+                    جاف
+                </button>
+
+                <button class="nav-link" id="v-pills-5-tab" data-bs-toggle="pill" data-bs-target="#v-pills-5" type="button" role="tab" onclick="sendCustomMessageFlareman('دهني')">
+                    دهني
+                </button>
+
+            </div>
+        </div>
+
+
+    </div>
+
+</div>
+
+
+<script>
+    // lets declate
+    let messageQueueConversationId = null; // For auto message queue
+    let messageQueues = {}; // Queue for each conversation
+
+    let lockedConversationId = null; // Locks the conversation for the duration of auto-messaging
+    let currentConversationId = null;
+    let currentPageId = null;
+    let recipientId = null;
+
+    // Cache messages for each conversation
+    let messageCache = {};
+
+    // Declare variables
+    let currentCountry = null;
+
+
+    // Variable to track if sending process is active
+    let isSending = false;
+
+
+    const activeConversations = new Map(); // Tracks active conversations being processed
+
+
+    // signal r starter
+
+    const messageHubConnection = new signalR.HubConnectionBuilder()
+        .withUrl("/messageHub")
+        .configureLogging(signalR.LogLevel.Information)
+        .build();
+
+    async function startSignalR() {
+        try {
+            await messageHubConnection.start();
+            console.log("SignalR connected.");
+        } catch (err) {
+            console.error("Error connecting to SignalR:", err);
+            setTimeout(startSignalR, 3000);
+        }
+    }
+    // signal r end
+
+
+    // for seach input
+    const searchInput = $("#searchInput");
+    const clearSearchIconmain = $("#searchingshow");
+
+    // Function to toggle the visibility of the clear-search icon
+    function toggleClearIconVisibility() {
+        clearSearchIconmain.css('visibility', searchInput.val().length > 0 ? 'visible' : 'hidden');
+    }
+
+    // Event listener for input changes, including typing and pasting
+    $('#searchInput').on("input", function (e) {
+        const searchValue = $(this).val().trim(); // Get the search input value
+        console.log("Event type:", e.type, "Value:", searchValue);
+
+        toggleClearIconVisibility(searchValue); // Pass the value to toggle visibility
+        loadAllConversations(null, null, null, searchValue); // Pass search term dynamically
+    });
+
+    // Event listener for clearing the search term
+    clearSearchIconmain.on("click", function () {
+        searchInput.val(""); // Clear the input field
+        toggleClearIconVisibility();
+        loadAllConversations(); // Reload conversations without a search term
+    });
+
+    // end  seach input
+
+    // filter by country
+
+    document.getElementById('showCountriesButton').addEventListener('click', function () {
+        const dropdownContainer = document.getElementById('countryDropdownContainer');
+        // Toggle visibility of the dropdown
+        if (dropdownContainer.style.display === 'none' || dropdownContainer.style.display === '') {
+            dropdownContainer.style.display = 'block';
+        } else {
+            dropdownContainer.style.display = 'none';
+        }
+    });
+
+  
+
+    // change background color on click
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', function () {
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // All conversations (no filters)
+    document.querySelector('.all').addEventListener('click', () => {
+        applyFilters({ isOrder: null, isRead: null, showUndefined: null });
+    });
+
+    // Unread conversations
+    document.querySelector('.read').addEventListener('click', () => {
+        applyFilters({ isRead: false });
+    });
+
+    // Add event listener for التصنيفات dropdown
+    document.getElementById('categoriesDropdown').addEventListener('change', function () {
+        const selectedValue = this.value;
+
+        // Reset filters to only keep the relevant one
+        const filters = {
+            isOrder: null,
+            isOfferSent: null,
+        };
+
+        // Apply the selected filter
+        switch (selectedValue) {
+            case 'completedOrders':
+                filters.isOrder = true;
+                break;
+            case 'incompleteOrders':
+                filters.isOrder = false;
+                break;
+            case 'completedOffers':
+                filters.isOfferSent = true;
+                break;
+            case 'incompleteOffers':
+                filters.isOfferSent = false;
+                break;
+            default:
+                // Do nothing if no valid option is selected
+                break;
+        }
+
+        // Apply the filters
+        applyFilters(filters);
+    });
+
+
+
+    // Undefined country filter
+    document.getElementById('showUndefinedOrder').addEventListener('click', () => {
+        applyFilters({ showUndefined: true });
+    });
+
+    // Country filter dropdown
+    document.getElementById('countryDropdown').addEventListener('change', function () {
+        const selectedCountryId = this.value;
+        applyFilters({ country: selectedCountryId });
+    });
+
+    // Event listener for page filter
+    document.querySelectorAll('.filter-page').forEach(item => {
+        item.addEventListener('click', function () {
+            filters.pageId = this.getAttribute('data-page-id');
+
+            applyFilters(filters);
+        });
+    });
+
+    // Declare the global filters object
+    const filters = {
+        isOrder: null,
+        isRead: null,
+        pageId: null,
+        search: null,
+        country: null,
+        isOfferSent: null,
+        showUndefined: null,
+        pageId: null,
+
+    };
+
+    function applyFilters(newFilters) {
+        // Check if we need to reset all filters
+        if (Object.keys(newFilters).length === 0) {
+            // Reset the global filters object
+            filters = {
+                isOrder: null,
+                isRead: null,
+                pageId: null,
+                search: null,
+                country: null,
+                isOfferSent: null,
+                showUndefined: null,
+            };
+
+            // Reset dropdowns and inputs in the UI
+            document.getElementById('categoriesDropdown').value = '';
+            document.getElementById('countryDropdown').value = '';
+            document.getElementById('searchInput').value = '';
+        } else {
+            // Update the global filters object with new values
+            Object.assign(filters, newFilters);
+        }
+
+        // Log the active filters for debugging
+        console.log("Active Filters:", filters);
+
+        // Reload conversations with the updated filters
+        loadAllConversations(filters);
+    }
+
+
+
+    // Add event listener for the "الكل" button to reset all filters
+    document.getElementById('resetFiltersButton').addEventListener('click', function () {
+        // Send null for all filters to reset them
+        applyFilters({
+            isOrder: null,
+            isRead: null,
+            pageId: null,
+            search: null,
+            country: null,
+            isOfferSent: null,
+            showUndefined: null,
+        });
+    });
+
+
+
+    // Modify the loadAllConversations function to filter conversations by pageId
+    async function loadAllConversations(filters = {}) {
+        if (!filters || typeof filters !== 'object') {
+            filters = {};
+        }
+
+        let url = `/api/facebook/webhook/allconversations`;
+
+        // Create query parameters dynamically from the filters object
+        const params = new URLSearchParams();
+
+        // Add filters only if they have valid values
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value !== null && value !== undefined) {
+                params.append(key, value);
+            }
+        });
+
+        // Append parameters to the URL if any were added
+        if (params.toString()) {
+            url += `?${params.toString()}`;
+        }
+
+        console.log("Fetching conversations from URL:", url);
+
+        try {
+            // Fetch the filtered conversations
+            const response = await fetch(url);
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to load conversations: ${response.status} - ${errorText}`);
+            }
+            const conversations = await response.json();
+
+            console.log("Filtered Conversations Data:", conversations);
+
+            // Clear existing conversations
+            const conversationList = document.querySelector('.list-group');
+            conversationList.innerHTML = '';
+
+            // Append conversations to the list
+            conversations.forEach(conversation => {
+                appendConversation(conversation);
+            });
+        } catch (error) {
+            console.error("Failed to load conversations:", error);
+        }
+    }
+
+   
+
+ 
+
+    // Update the list of conversations when the page filter changes
+    function updateConversations(conversations, selectedPage) {
+        const conversationList = document.querySelector('.list-group');
+        conversationList.innerHTML = ""; // Clear the list
+
+        // Filter conversations by the selected page ID if provided
+        let filteredConversations = selectedPage
+            ? conversations.filter(c => c.pageid === selectedPage)
+            : conversations;
+
+        // Ensure filteredConversations is an array before sorting
+        if (Array.isArray(filteredConversations)) {
+            filteredConversations = filteredConversations.sort((a, b) => {
+                return new Date(b.lastmessagetimestamp) - new Date(a.lastmessagetimestamp);
+            });
+        } else {
+            console.error("Expected an array for filteredConversations, but got:", filteredConversations);
+            return; // Exit if the data isn't in the expected format
+        }
+
+        filteredConversations.forEach(conversation => appendConversation(conversation));
+    }
+
+
+    // Real-time update for unread message count
+    messageHubConnection.on("UpdateConversationList", (data) => {
+        console.log("UpdateConversationList received:", data);
+        console.log("Active filters:", filters);
+
+        // Check if the conversation matches the active filters
+        if (filters.pageId && filters.pageId !== data.pageid) {
+            console.log("Skipping conversation update due to page filter mismatch.");
+            return;
+        }
+
+        if (filters.country && filters.country !== data.countryname) {
+            console.log("Skipping conversation update due to country filter mismatch.");
+            return;
+        }
+
+        if (filters.showUndefinedOrder) {
+            const isUndefined = !data.countryname && !data.productname;
+            if (!isUndefined) {
+                console.log("Skipping conversation update due to undefined order filter mismatch.");
+                return;
+            }
+        }
+
+        const conversationId = data.conversationid;
+        const existingConversation = document.getElementById(`conversation-${conversationId}`);
+
+        if (existingConversation) {
+            // Ensure `.flex-grow-1` and `.d-flex` sections exist before accessing them
+            const lastMessageDiv = existingConversation.querySelector('.message-content');
+            const timestampDiv = existingConversation.querySelector('.timestamp');
+            const unreadCountSpan = existingConversation.querySelector('.unread-count');
+
+            if (lastMessageDiv) lastMessageDiv.textContent = data.latestmessage || "No message yet";
+            if (timestampDiv) timestampDiv.textContent = data.lastmessagetimestamp || "N/A";
+
+            // Update or add unread message count
+            if (unreadCountSpan) {
+                if (data.unreadMessagesCount > 0) {
+                    unreadCountSpan.textContent = data.unreadMessagesCount;
+                    unreadCountSpan.style.fontWeight = 'bold';
+                } else {
+                    unreadCountSpan.textContent = '';
+                    unreadCountSpan.style.fontWeight = 'normal';
+                }
+            } else if (data.unreadMessagesCount > 0) {
+                // If the unread count badge-circle does not exist, create it if needed
+                const newUnreadCountSpan = document.createElement('span');
+                newUnreadCountSpan.className = 'badge-circle bg-success mt-1 unread-count';
+                newUnreadCountSpan.textContent = data.unreadMessagesCount;
+                newUnreadCountSpan.style.fontWeight = 'bold';
+                existingConversation.querySelector('.d-flex.flex-column').appendChild(newUnreadCountSpan);
+            }
+
+            // Move the updated conversation to the top of the list
+            document.querySelector('.list-group').prepend(existingConversation);
+        } else {
+            console.warn(`Conversation div with ID #conversation-${conversationId} not found. Adding it as a new entry.`);
+            appendConversation(data); // Add as a new conversation if it doesn't already exist
+        }
+    });
+
+
+    // Listen for new conversation events and add them if they match the active filters
+    messageHubConnection.on("NewConversation", (data) => {
+        console.log("New conversation received:", data);
+
+        // Check if the new conversation matches the active filters
+        if (filters.pageId && filters.pageId !== data.pageid) {
+            console.log("Skipping conversation due to page filter mismatch.");
+            return;
+        }
+
+        if (filters.country && filters.country !== data.countryname) {
+            console.log("Skipping conversation due to country filter mismatch.");
+            return;
+        }
+
+        if (filters.showUndefinedOrder) {
+            const isUndefined = !data.countryname && !data.productname;
+            if (!isUndefined) {
+                console.log("Skipping conversation due to undefined order filter mismatch.");
+                return;
+            }
+        }
+
+        // Check if conversation is already in the list to avoid duplicates
+        if (!document.getElementById(`conversation-${data.conversationid}`)) {
+            appendConversation({
+                conversationid: data.conversationid,
+                pageid: data.pageid,
+                userid: data.userid,
+                username: data.username,
+                lastmessage: data.latestmessage,
+                lastmessagetimestamp: data.lastmessagetimestamp || "N/A",
+                pagename: data.pagename,
+                pageImage: data.pageImage || "/path/to/default-image.png",
+                unreadMessagesCount: data.unreadMessagesCount || 0,
+                countryname: data.countryname,
+                luxirauserId: data.luxiraUserId,
+                countryid: data.countryId,
+                productname: data.productname,
+                countryflag: data.countryflag,
+                gendername: data.gendername,
+            });
+
+            console.log("Conversation added to the list.");
+        } else {
+            console.log(`Conversation with ID #conversation-${data.conversationid} already exists.`);
+        }
+    });
+
+
+ 
+    // Handle real-time updates to the read status
+    messageHubConnection.on("UpdateReadStatus", (data) => {
+        const { conversationId, isRead } = data; // Extract values from the object
+
+        // Update the icon for the current conversation
+        if (currentConversationId === conversationId) {
+            const icon = document.getElementById("read-status-icon");
+            if (icon) {
+                if (isRead) {
+                    icon.classList.remove("text-danger");
+                } else {
+                    icon.classList.add("text-danger");
+                }
+            }
+        }
+
+        // Locate the conversation item by its ID
+        const conversationDiv = document.getElementById(`conversation-${conversationId}`);
+        if (!conversationDiv) {
+            console.warn(`Conversation div with ID conversation-${conversationId} not found.`);
+            return;
+        }
+
+        // Locate the unread count badge and message content
+        const unreadBadge = conversationDiv.querySelector('.unread-count');
+        const messageContent = conversationDiv.querySelector('.message-content');
+
+        // Check if the "Unread" tab is active
+        const isUnreadTabActive = document.querySelector('.tab-button.read').classList.contains('active');
+
+        if (isRead) {
+            // Remove bold styling and class from the message content
+            if (messageContent) {
+                messageContent.classList.remove('fw-bolder');
+                messageContent.style.fontWeight = 'normal';
+            }
+
+            // Remove the unread count badge if marked as read
+            if (unreadBadge) {
+                unreadBadge.remove(); // Remove the badge element completely
+
+            }
+
+            // If in the unread tab, remove the conversation from the list
+            if (isUnreadTabActive) {
+                conversationDiv.remove();
+            }
+        } else {
+            // If unread, ensure the unread badge is visible
+            if (!unreadBadge) {
+                const newBadge = document.createElement('span');
+                newBadge.className = 'badge-circle bg-success mt-1 unread-count';
+                newBadge.innerText = '1';
+                newBadge.style.fontWeight = 'bold';
+                conversationDiv.appendChild(newBadge);
+            } else {
+                unreadBadge.textContent = '1';
+                unreadBadge.style.fontWeight = 'bold';
+            }
+
+            // Add bold styling to the message content
+            if (messageContent) {
+                messageContent.classList.add('fw-bolder');
+                messageContent.style.fontWeight = 'bold';
+            }
+
+            // If in the unread tab, ensure the conversation remains visible
+            if (isUnreadTabActive) {
+                conversationDiv.style.display = "flex";
+            }
+        }
+
+        // Ensure visibility for the "All" tab
+        if (document.querySelector('.tab-button.all').classList.contains('active')) {
+            conversationDiv.style.display = "flex";
+        }
+    });
+
+    // Listen for real-time message updates and handle received messages
+    messageHubConnection.on("ReceiveMessage", async (data) => {
+        console.log("Received message data:", data);
+
+        // Check if the received message belongs to the current conversation
+        if (data.conversationid === currentConversationId) {
+            // Append the message if it doesn't already exist in the chat
+            const existingMessage = Array.from(document.querySelectorAll('.chat-body div'))
+                .some(div => div.innerText.includes(data.message) && div.innerText.includes(data.timestamp));
+
+            if (!existingMessage) {
+                appendMessage({
+                    text: data.message,
+                    sendername: data.sendername,
+                    pagename: data.pagename,
+                    pageImage: data.pageImage,
+                    timestamp: data.timestamp,
+                    isFromUser: data.isFromUser
+                });
+            } else {
+                console.log("Duplicate message detected; not appending.");
+            }
+
+            // Mark the conversation as read if the user is already viewing it
+            await markConversationAsRead(currentConversationId);
+
+        } else {
+            // Handle cases where the conversation is not currently open
+            console.log("Message received for a different conversation:", data.conversationid);
+        }
+    });
+
+    // Append a conversation item with a unique ID to the list
+    function appendConversation(conversation) {
+        const conversationList = document.querySelector('.list-group');
+
+        // Only create a new div if it does not already exist
+        if (!document.getElementById(`conversation-${conversation.conversationid}`)) {
+            let conversationDiv = document.createElement('div');
+            conversationDiv.className = 'list-group-item d-flex align-items-center border-0';
+            conversationDiv.id = `conversation-${conversation.conversationid}`;
+
+            conversationDiv.setAttribute('data-country', conversation.countryname); // Store country
+
+            // Conditionally apply the 'fw-bolder' class based on unread message count
+            const messageClass = conversation.unreadMessagesCount > 0 ? 'fw-bolder' : '';
+
+            const timestampId = `timestamp-${conversation.conversationid}`;
+            const initialTimestamp = createFullTimestamp(conversation.lastmessagetimestamp);
+
+            conversationDiv.innerHTML = `
+                    <img src="${conversation.pageImage || '/path/to/default-image.png'}" alt="Avatar" class="rounded-circle" style="width: 30px; height: 30px;">
+                    <div class="flex-grow-1 ms-2">
+                        <span class="fw-bold">${conversation.pagename || "Unknown Page"}</span><br>
+                        <span style="color: #616161;">${conversation.username || "Unknown User"} - ${conversation.luxirauserId || "Unknown ID"}</span><br>
+                        <span class="${messageClass} message-content">${conversation.lastmessage || "No message yet"}</span>
+                    </div>
+                    <div class="d-flex flex-column align-items-center me-3">
+                        <span class="text-muted small timestamp" id="${timestampId}">Calculating...</span>
+                        ${conversation.unreadMessagesCount > 0 ? `<span class="badge bg-success mt-1 unread-count">${conversation.unreadMessagesCount}</span>` : ''}
+                    </div>
+                `;
+
+            // Attach click event handler directly to selectConversation with the conversation object
+            conversationDiv.addEventListener('click', () => {
+                selectConversation(conversation);
+            });
+
+            conversationList.prepend(conversationDiv);
+
+            // Start updating the timestamp dynamically
+            updateTimestamp(initialTimestamp, timestampId);
+        }
+    }
+
+    // Helper function to create a full timestamp from hour:minute
+    function createFullTimestamp(hourMinute) {
+        if (!hourMinute) return new Date(); // Fallback to the current date if timestamp is missing
+
+        const [hour, minute] = hourMinute.split(':');
+        const now = new Date();
+        now.setHours(parseInt(hour, 10), parseInt(minute, 10), 0, 0); // Set hours and minutes, clear seconds and milliseconds
+        return now;
+    }
+
+    // Function to update the timestamp dynamically
+    // Function to update the timestamp dynamically
+    function updateTimestamp(initialTimestamp, timestampId) {
+        const timestampElement = document.getElementById(timestampId);
+        if (!timestampElement) return;
+
+        function refreshTimestamp() {
+            const now = new Date();
+            const elapsedSeconds = Math.floor((now - initialTimestamp) / 1000);
+
+            if (elapsedSeconds < 60) {
+                timestampElement.textContent = elapsedSeconds === 0
+                    ? 'الآن'
+                    : `${elapsedSeconds} ثانية`;
+                setTimeout(refreshTimestamp, 1000); // Update every second
+            } else {
+                // Get hours and minutes
+                const hours = initialTimestamp.getHours();
+                const minutes = initialTimestamp.getMinutes().toString().padStart(2, '0');
+
+                // Determine whether it's AM or PM
+                const period = hours < 12 ? 'ص' : 'م';
+
+                // Convert hours to 12-hour format
+                const formattedHours = hours % 12 === 0 ? 12 : hours % 12;
+
+                // Display the custom formatted time
+                timestampElement.textContent = `${formattedHours}:${minutes} ${period}`;
+            }
+        }
+
+        refreshTimestamp();
+    }
+
+
+
+
+
+
+    // Event listener for product dropdown selection
+    document.querySelectorAll('.product-option').forEach(option => {
+        option.addEventListener('click', async function (e) {
+            e.preventDefault();
+
+            const productName = this.getAttribute('data-product-name');
+
+            if (!currentConversationId) {
+                console.error("No active conversation to update product.");
+                return;
+            }
+
+            // Update the UI for the current user
+            document.getElementById('product-name').textContent = productName;
+
+            try {
+                // Send real-time notification to update the product name for all users
+                await messageHubConnection.invoke("UpdateProductName", currentConversationId, productName);
+
+                // Send a POST request to update the backend
+                const response = await fetch(`/api/facebook/webhook/updateProduct?conversationId=${currentConversationId}&productName=${productName}`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to update product: ${errorText}`);
+                }
+
+                console.log("Product updated in the backend successfully.");
+            } catch (err) {
+                console.error("Error updating product:", err);
+            }
+        });
+    });
+
+    // Event listener for country dropdown selection
+    document.querySelectorAll('.country-option').forEach(option => {
+        option.addEventListener('click', async function (e) {
+            e.preventDefault();
+
+            const countryId = this.getAttribute('data-country-id');
+            const countryName = this.textContent.trim();
+
+            if (!currentConversationId) {
+                console.error("No active conversation to update country.");
+                return;
+            }
+
+            // Update the UI for the current user
+            document.getElementById('conversation-country').textContent = countryName;
+
+            try {
+                // Send real-time notification to update the country for all users
+                await messageHubConnection.invoke("UpdateCountryName", currentConversationId, countryName);
+
+                // Send a POST request to update the backend
+                const response = await fetch(`/api/facebook/webhook/updateCountry?conversationId=${currentConversationId}&countryId=${countryId}`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to update country: ${errorText}`);
+                }
+
+                console.log("Country updated in the backend successfully.");
+            } catch (err) {
+                console.error("Error updating country:", err);
+            }
+        });
+    });
+
+
+    // Listen for real-time updates for the country name
+    messageHubConnection.on("UpdateCountryName", (conversationId, countryName) => {
+        // Update the country name in the conversation header if the current conversation matches
+        if (currentConversationId === conversationId) {
+            document.getElementById('conversation-country').textContent = countryName;
+        }
+
+        // Update the country name in the conversation list
+        const conversationDiv = document.getElementById(`conversation-${conversationId}`);
+        if (conversationDiv) {
+            conversationDiv.setAttribute('data-country', countryName);
+        }
+    });
+
+
+    // Listen for real-time updates for the product name
+    messageHubConnection.on("UpdateProductName", (conversationId, productName) => {
+        // Update the product name in the conversation header if the current conversation matches
+        if (currentConversationId === conversationId) {
+            document.getElementById('product-name').textContent = productName;
+        }
+
+        // Update the product name in the conversation list
+        const conversationDiv = document.getElementById(`conversation-${conversationId}`);
+        if (conversationDiv) {
+            conversationDiv.setAttribute('data-product', productName);
+        }
+    });
+
+
+    // Select a conversation and load its messages
+    async function selectConversation(conversation) {
+        // Clear the chat body for the new conversation
+        document.querySelector('.chat-body').innerHTML = '';
+
+        // Update current conversation ID
+        currentConversationId = conversation.conversationid;
+
+        // Lock the conversation if an auto-message is in progress
+        if (!lockedConversationId || lockedConversationId === currentConversationId) {
+            lockedConversationId = currentConversationId;
+            messageQueueConversationId = currentConversationId;
+        }
+
+        currentPageId = conversation.pageid;
+        recipientId = conversation.userid && /^\d+$/.test(conversation.userid) ? conversation.userid : null;
+        currentCountry = conversation.country;
+
+        if (!recipientId) {
+            console.error("Invalid recipientId or missing data for conversation.");
+            return;
+        }
+
+        // Show Moonlight panel conditionally based on page ID
+        const moonlightPanel = document.getElementById('moonlight-panel');
+        moonlightPanel.style.display = (currentPageId === '104568275507926') ? 'flex' : 'none';
+
+        // Show loxx king woman panel conditionally based on page ID
+        const loxxkingwomanpanel = document.getElementById('loxxkingwoman-panel');
+        loxxkingwomanpanel.style.display = (currentPageId === '100736899432829') ? 'flex' : 'none';
+
+        // Show loxx king man panel conditionally based on page ID
+        const loxxkingmanpanel = document.getElementById('loxxkingman-panel');
+        loxxkingmanpanel.style.display = (currentPageId === '211839025349185') ? 'flex' : 'none';
+
+        // Show lotusblue panel conditionally based on page ID
+        const lotusbluepanel = document.getElementById('lotusblue-panel');
+        lotusbluepanel.style.display = (currentPageId === '101509818947526') ? 'flex' : 'none';
+
+        // Show flare woman panel conditionally based on page ID
+        const flarewomanpanel = document.getElementById('flarewoman-panel');
+        flarewomanpanel.style.display = (currentPageId === '109230591424440') ? 'flex' : 'none';
+
+        // Show flare woman panel conditionally based on page ID
+        const flaremanpanel = document.getElementById('flareman-panel');
+        flaremanpanel.style.display = (currentPageId === '416441791559844') ? 'flex' : 'none';
+
+        // Update chat UI elements
+        document.getElementById('conversation-username').textContent = `${conversation.username || "Unknown User"} - ${conversation.luxirauserId || "Unknown ID"}`;
+        document.getElementById('conversation-country').textContent = conversation.countryname || " بلد غير معروف";
+        document.getElementById('conversation-flag').textContent = conversation.countryflag || " n/a  ";
+        document.getElementById('product-name').textContent = conversation.productname || " n/a  ";
+        document.getElementById('gender-name').textContent = conversation.gendername || " n/a  ";
+
+        document.getElementById('conversation-pagename').textContent = conversation.pagename || "Unknown Page";
+        document.getElementById('conversation-logo').src = conversation.pageImage || "/path/to/default-image.png";
+
+        const flagElement = document.getElementById('conversation-flag');
+        flagElement.src = conversation.countryflag || "/path/to/default-flag.png";
+        flagElement.style.display = "inline";
+
+        // Reveal the chat header, body, and footer
+        document.querySelector('.chat-header').classList.remove('hidden');
+        document.querySelector('.chat-body').classList.remove('hidden');
+        document.querySelector('.chat-footer').classList.remove('hidden');
+
+        // Load messages for the selected conversation
+        await loadConversationMessages(currentConversationId);
+
+
+        // Create a unique key for each conversation-page combination
+        const queueKey = `${currentPageId}_${currentConversationId}`;
+
+        // Initialize message queue for this unique key if it doesn't exist
+        if (!messageQueues[queueKey]) {
+            messageQueues[queueKey] = { recipientId, messages: [] };
+        }
+
+        // Start processing the queue if not already in progress
+        if (!isSending) {
+            await processAllMessageQueues();
+        }
+
+
+        // Join the selected conversation group for real-time updates
+        try {
+            await messageHubConnection.invoke("JoinConversation", currentConversationId);
+            console.log(`Joined conversation group: ${currentConversationId}`);
+        } catch (error) {
+            console.error("Error joining conversation:", error);
+        }
+    }
+
+    async function processAllMessageQueues() {
+        isSending = true;
+
+        try {
+            for (const queueKey of Object.keys(messageQueues)) {
+                const { recipientId, messages } = messageQueues[queueKey];
+
+                while (messages.length > 0) {
+                    const messageText = messages.shift();
+                    console.log(`Sending message: "${messageText}" for ${queueKey}`);
+
+                    try {
+                        await sendMessageToQueueConversation(queueKey, recipientId, messageText);
+                    } catch (error) {
+                        console.error(`Error sending message for ${queueKey}:`, error);
+                    }
+
+                    await delay(500); // Adjust delay as needed
+                }
+
+                // Clear the queue after processing
+                delete messageQueues[queueKey];
+            }
+
+        } catch (error) {
+            console.error("Error processing all message queues:", error);
+        } finally {
+            isSending = false;
+        }
+    }
+
+
+    // Load messages for a specific conversation
+    async function loadConversationMessages(conversationId) {
+        console.log(`Loading messages for conversation ID: ${conversationId}`);
+        try {
+            const response = await fetch(`/api/facebook/webhook/conversations/${conversationId}/messages`);
+            if (!response.ok) {
+                throw new Error(`Failed to load messages: ${await response.text()}`);
+            }
+            const messages = await response.json();
+            console.log(`Messages loaded for conversation ID: ${conversationId}`, messages);
+
+            // Cache messages and append each one
+            messageCache[conversationId] = messages;
+            messages.forEach(appendMessage);
+
+            // Ensure scroll position resets to the latest message
+            const chatBody = document.querySelector('.chat-body');
+            chatBody.scrollTop = chatBody.scrollHeight;
+            console.log(`Scrolled to bottom of chat body for conversation ${conversationId}`);
+            // Mark all messages as read after loading them
+            console.log(`Attempting to mark conversation ${conversationId} as read.`);
+            await markConversationAsRead(conversationId);
+
+
+        } catch (error) {
+            console.error("Error in loadConversationMessages:", error);
+        }
+    }
+
+
+    // Function to mark all messages in a conversation as read
+    async function markConversationAsRead(conversationId) {
+        try {
+            console.log(`Sending request to mark conversation ${conversationId} as read.`);
+            const response = await fetch(`/api/facebook/webhook/conversations/${conversationId}/markAsRead`, {
+                method: 'POST'
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to mark conversation as read: ${await response.text()}`);
+            }
+            console.log(`Conversation ${conversationId} marked as read.`);
+        } catch (error) {
+            console.error("Error marking conversation as read:", error);
+        }
+    }
+
+    // Function to append a message to the chat body
+    function appendMessage(message) {
+        const chatBody = document.querySelector('.chat-body');
+        const messageDiv = document.createElement('div');
+
+        // Check if the message is from the user (bold font for messages from the user)
+        if (message.isFromUser) {
+            // User's message (left side, bold font)
+            messageDiv.className = 'message  from-other'; // Other message
+            messageDiv.innerHTML = `
+                            <div class="message-info">
+                                <small class="text-muted timestamp">${message.timestamp || new Date().toLocaleTimeString()}</small>
+                                <small class="text-muted sender-name">${message.sendername || "User"}</small>
+                            </div>
+                            <div class="message-bubble user-bubble" > <!-- Bold for user messages -->
+                                ${message.text}
+                                <div class="triangle-left"></div>
+                            </div>
+                        `;
+        } else {
+            // Your message (right side, normal font)
+            messageDiv.className = 'message from-user'; // Your message
+            messageDiv.innerHTML = `
+                            <div class="message-info">
+                                <small class="text-muted timestamp">${message.timestamp || new Date().toLocaleTimeString()}</small>
+                                <small class="text-muted sender-name">${message.sendername || "Page"}</small>
+                            </div>
+                            <div class="message-bubble other-bubble" style="font-weight: normal;"> <!-- Normal for sent messages -->
+                                ${message.text}
+                                <div class="triangle-right"></div>
+                            </div>
+                        `;
+        }
+
+        chatBody.appendChild(messageDiv);
+        chatBody.scrollTop = chatBody.scrollHeight; // Scroll to the latest message
+    }
+
+
+    // Listener for the 'instant-message' button click event
+    document.getElementById('instant-message').addEventListener('click', async function () {
+        if (!currentConversationId || !currentPageId || !recipientId) {
+            console.error("Missing data for auto message send: conversationId, pageId, or recipientId.");
+            return;
+        }
+
+        if (!messageQueues[currentConversationId]) {
+            messageQueues[currentConversationId] = { recipientId, messages: [] };
+        }
+
+        console.log(`Adding messages to queue for conversation ${currentConversationId}`);
+
+        // Prepare the messages to be added to the queue
+        if (currentPageId === '104568275507926') { // Moonlight page ID
+            let multiLineMessage = `
+                                                                        اهلا وسهلا حبيبتي بشركة moon light نورتينا ✨
+                                                                        المنتج طبي اصلي
+                                                                        يخفي عيوب البشرة بشكل كامل
+                                                                        ثابت على بشرتك لمدة 24 ساعة
+                                                                        مقاوم للماء و التعرق ولا يترك اي تكتلات على البشرة
+                                                                    `;
+            if (currentCountry) {
+                const countryPrices = {
+                    1: '22 الف',
+                    2: '130 درهم',
+                    4: '130 دينار',
+                    5: '15 ريال',
+                    9: '15 دينار',
+                    10: '15 دينار',
+                    7: '500 ليرة'
+                };
+                const priceLine = countryPrices[currentCountry] ? `السعر ${countryPrices[currentCountry]}` : "";
+            }
+            const lines = multiLineMessage.trim().split('\n').map(line => line.trim());
+            messageQueues[currentConversationId].messages.push(...lines);
+        }
+
+        // Prepare the messages to be added to the queue
+        else if (currentPageId === '100736899432829') { // loxx king woman page ID
+            let multiLineMessage = `
+                                                                    اهلاو سهلا عزيزتي
+                                                                    المشد السحري يعمل على التخلص من الترهلات و الدهون الزائدة حول البطن
+                                                                    يعمل على شد عضلات البطن العليا و السفلى
+                                                                    يعمل على اعادة تشكيل الخصر + نحت الجوانب
+                                                                    يعمل على استقامة الظهر و تقليل الم  الظهر
+                                                                     المشد يساعد على التخلص من دهون وترهلات ما بعد الولادة
+
+                                                                    `;
+            if (currentCountry) {
+                const countryPrices = {
+                    1: '21 الف',
+                    2: '130 درهم',
+                    4: '130 دينار',
+                    5: '15 ريال',
+                    9: '15 دينار',
+                    10: '15 دينار',
+                    7: '600  ليرة',
+                    6: '80 شيكل',
+                    3: '120 ريال'
+                };
+                const priceLine = countryPrices[currentCountry] ? `السعر ${countryPrices[currentCountry]}` : "";
+            }
+            const lines = multiLineMessage.trim().split('\n').map(line => line.trim());
+            messageQueues[currentConversationId].messages.push(...lines);
+        }
+
+        // Prepare the messages to be added to the queue
+        else if (currentPageId === '211839025349185') { // loxx king man page ID
+            let multiLineMessage = `
+                                                            اهلا وسهلا عزيزي
+                                                            المشد السحري يعمل على التخلص من الترهلات و الدهون الزائدة حول البطن
+                                                            يعمل على اعادة تشكيل الخصر + نحت الجوانب
+                                                            يعمل على شد عضلات البطن العليا و السفلى
+                                                            يعمل على استقامة الظهر و تقليل الم  الظهر
+                                                            يساعد على تقوية النشاط الحراري في الجسم
+                                                                       `;
+            if (currentCountry) {
+                const countryPrices = {
+                    1: '21 الف',
+                    2: '130 درهم',
+                    4: '130 دينار',
+                    5: '15 ريال',
+                    9: '15 دينار',
+                    10: '15 دينار',
+                    7: '600  ليرة',
+                    6: '80 شيكل',
+                    3: '120 ريال'
+                };
+                const priceLine = countryPrices[currentCountry] ? `السعر ${countryPrices[currentCountry]}` : "";
+            }
+            const lines = multiLineMessage.trim().split('\n').map(line => line.trim());
+            messageQueues[currentConversationId].messages.push(...lines);
+        }
+
+        // Prepare the messages to be added to the queue
+        else if (currentPageId === '101509818947526') { // lotusblue page ID
+            let multiLineMessage = `
+                                                🥰اهلا و سهلا نورتي❤️
+                                                معك اخصائية التجميل شروق  من شركة لوتس بلو
+                                                الفاونديشن طبي اصلي
+                                                يخفي الكلف و التصبغات و الهالات السوداء و النمش والحفر
+                                                مناسب لبشرة الدهنية و الجافة و المختلطة
+                                                لا يترك اي تكتلات على البشرة
+                                                                               `;
+            if (currentCountry) {
+                const countryPrices = {
+                    1: '23 الف',
+                    2: '150 درهم',
+                    4: '150 دينار',
+                    5: '17 ريال',
+                    9: '15 دينار',
+                    10: '15 دينار',
+                    7: '600  ليرة',
+                };
+                const priceLine = countryPrices[currentCountry] ? `السعر ${countryPrices[currentCountry]}` : "";
+            }
+            const lines = multiLineMessage.trim().split('\n').map(line => line.trim());
+            messageQueues[currentConversationId].messages.push(...lines);
+        }
+
+
+        // Prepare the messages to be added to the queue
+        else if (currentPageId === '109230591424440') { // flare woman page ID
+            let multiLineMessage = `
+                            هلا و غلا عيني 🧡
+                            معك خبيرة  الشعر و التجميل رهف من شركة FLARE
+                            الشامبو طبي اصلي مكفول 100%
+        يعالج جميع مشاكل الشعر بشكل كامل
+        يترك الشعر ناعم و سهل التصفيف
+        مرخص من وزارة الصحة
+                                                                                       `;
+            if (currentCountry) {
+                const countryPrices = {
+                    1: '25 الف',
+                    2: '100 درهم',
+                    4: '150 دينار',
+                    5: '15 ريال',
+                    9: '13 دينار',
+                    10: '15 دينار',
+                    7: '500  ليرة',
+                };
+                const priceLine = countryPrices[currentCountry] ? `السعر ${countryPrices[currentCountry]}` : "";
+            }
+            const lines = multiLineMessage.trim().split('\n').map(line => line.trim());
+            messageQueues[currentConversationId].messages.push(...lines);
+        }
+
+        // Prepare the messages to be added to the queue
+        else if (currentPageId === '416441791559844') { // flare woman page ID
+            let multiLineMessage = `
+                        هلا و غلا عزيزي
+                        معك خبير الشعر محمد من شركة فلير للعناية ب الشعر
+                        الشامبو طبي اصلي مكفول 100%
+                        يعالج جميع مشاكل الشعر بشكل كامل
+                        يترك الشعر ناعم و سهل التصفيف
+                        مرخص من وزارة الصحة
+
+                                                                                           `;
+            if (currentCountry) {
+                const countryPrices = {
+                    1: '25 الف',
+                    2: '100 درهم',
+                    4: '150 دينار',
+                    5: '15 ريال',
+                    9: '13 دينار',
+                    10: '15 دينار',
+                    7: '500  ليرة',
+                };
+                const priceLine = countryPrices[currentCountry] ? `السعر ${countryPrices[currentCountry]}` : "";
+            }
+            const lines = multiLineMessage.trim().split('\n').map(line => line.trim());
+            messageQueues[currentConversationId].messages.push(...lines);
+        }
+
+
+
+        else {
+            console.log("No predefined message for this page.");
+            return;
+        }
+
+        console.log("Messages added to queue. Current queue:", messageQueues[currentConversationId].messages);
+
+        // Start sending messages for the initial conversation if no other conversation is locked
+
+        // Start processing this conversation independently
+        processConversationQueue(currentConversationId);
+
+
+    });
+
+    // Function to process the queue for a specific conversation
+    async function processConversationQueue(conversationId) {
+        if (activeConversations.has(conversationId)) {
+            console.log(`Conversation ${conversationId} is already being processed.`);
+            return;
+        }
+
+        const queue = messageQueues[conversationId];
+        if (!queue || !queue.messages || !queue.recipientId) {
+            console.error(`No valid queue for conversation ${conversationId}`);
+            return;
+        }
+
+        const { recipientId, messages } = queue;
+        activeConversations.set(conversationId, true); // Mark as active
+
+        try {
+            while (messages.length > 0) {
+                const messageText = messages.shift();
+                console.log(`Sending message for conversation ${conversationId}: "${messageText}"`);
+
+                await sendMessageToQueueConversation(conversationId, recipientId, messageText);
+                await delay(1000); // Adjust delay as needed
+            }
+
+            console.log(`Completed sending messages for conversation ${conversationId}`);
+        } catch (error) {
+            console.error(`Error processing queue for conversation ${conversationId}:`, error);
+        }
+        finally {
+            activeConversations.delete(conversationId);
+            delete messageQueues[conversationId]; // Clean up processed queues
+        }
+
+    }
+
+
+    // Function to send individual messages via a POST request using AJAX
+    function sendMessageToQueueConversation(conversationId, recipientId, text) {
+        const [pageId] = conversationId.split('_');
+
+        if (!conversationId || !recipientId || !text) {
+            console.warn(`Invalid data for sending message to conversation ${conversationId}`);
+            return;
+        }
+
+        const payload = {
+            text,
+            pageId,
+            recipientId,
+            isFromUser: false
+        };
+
+        console.log(`Sending POST request for ${conversationId}:`, payload);
+
+        // AJAX POST request
+        return $.ajax({
+            url: `/api/facebook/webhook/conversations/${conversationId}/messages`,
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(payload),
+            success: async function () {
+                console.log(`Message sent successfully for ${conversationId}`);
+              
+               // appendMessage(message);
+                // ✅ Reload the conversation messages and append the new message
+              //  await loadConversationMessages(conversationId);
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                console.error(`Failed to send message for ${conversationId}: ${errorThrown}`);
+            }
+        });
+    }
+
+
+    // Get references to the input and button elements
+    const messageInput = document.getElementById('message-input');
+
+    // Variable to track if a message is being sent
+    let isMessageSending = false;
+
+    // Function to handle sending the message
+    function handleSendMessage() {
+        if (isMessageSending) return; // Prevent sending multiple messages
+
+        const messageText = messageInput.value.trim();
+
+        // Check if there is text to send
+        if (!messageText) return;
+
+        // Disable input while sending the message
+        isMessageSending = true;
+        messageInput.disabled = false;
+
+        // Send the message to the current conversation
+        if (currentConversationId && recipientId) {
+            sendMessageToQueueConversation(currentConversationId, recipientId, messageText)
+                .done(function () {
+                    // Clear the input field only if the message is successfully sent
+                    messageInput.value = '';
+                })
+                .fail(function () {
+                    console.error("Failed to send the message.");
+                })
+                .always(function () {
+                    // Re-enable the input after the request is complete
+                    isMessageSending = false;
+                    messageInput.disabled = false;
+                });
+        } else {
+            console.error("No active conversation or recipient ID available.");
+            isMessageSending = false;
+            messageInput.disabled = false;
+        }
+    }
+
+    // Trigger the send message function on pressing Enter
+    messageInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            handleSendMessage();
+        }
+    });
+
+
+
+    // Delay function
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+  
+
+
+    // Function to send a custom message based on an option
+    function sendCustomMessageMoonLight(option) {
+        if (!currentConversationId || !recipientId) {
+            console.error("No active conversation to send custom message to.");
+            return;
+        }
+
+        let message = "";
+
+        // Define custom messages based on the selected option
+        switch (option) {
+            case "درجة اولى":
+                message = `
+                                                    متوفرة درجتك عزيزتي
+                                                    الدرجة الاولى
+                                                    المنتج يجنن على البشرة
+                                                    يوحد لون بشرتك ويعطيكي اطلاله رائعة
+                                                    تمنحك تغطية رائعة تطفو على بشرتك ، وتتركها ناعمة ومركزة وخالية من العيوب.
+                                                    بشرتك جافه ام دهنيه ام مختلطة?
+                                                `;
+                break;
+            case "درجة تانية":
+                message = `
+                                                    متوفرة درجتك عزيزتي
+                                                    الدرجة التانية
+                                                    المنتج يجنن على البشرة
+                                                    يوحد لون بشرتك ويعطيكي اطلاله رائعة
+                                                    تمنحك تغطية رائعة تطفو على بشرتك ، وتتركها ناعمة ومركزة وخالية من العيوب.
+                                                    بشرتك جافه ام دهنيه ام مختلطة?
+                                                `;
+                break;
+            case "درجة تالتة":
+                message = `
+                                                    متوفرة درجتك عزيزتي
+                                                    الدرجة التالتة
+                                                    المنتج يجنن على البشرة
+                                                    يوحد لون بشرتك ويعطيكي اطلاله رائعة
+                                                    تمنحك تغطية رائعة تطفو على بشرتك ، وتتركها ناعمة ومركزة وخالية من العيوب.
+                                                    بشرتك جافه ام دهنيه ام مختلطة?
+                                                `;
+                break;
+            case "درجة رابعة":
+                message = `
+                                                    متوفرة درجتك عزيزتي
+                                                    الدرجة الرابعة
+                                                    المنتج يجنن على البشرة
+                                                    يوحد لون بشرتك ويعطيكي اطلاله رائعة
+                                                    تمنحك تغطية رائعة تطفو على بشرتك ، وتتركها ناعمة ومركزة وخالية من العيوب.
+                                                    بشرتك جافه ام دهنيه ام مختلطة?
+                                                `;
+                break;
+            case "درجة خامسة":
+                message = `
+                                                        متوفرة درجتك عزيزتي
+                                                        الدرجة الخامسة
+                                                        المنتج يجنن على البشرة
+                                                        يوحد لون بشرتك ويعطيكي اطلاله رائعة
+                                                        تمنحك تغطية رائعة تطفو على بشرتك ، وتتركها ناعمة ومركزة وخالية من العيوب.
+                                                        بشرتك جافه ام دهنيه ام مختلطة?
+                                                    `;
+                break;
+            case "دهنية":
+                message = `
+                                                    المنتج بيجي مناسب لبشرتك الدهنية يساعد على امتصاص الزيوت و الدهون.
+                                                    انا كخبيرة بنصحك بالمنتج رح تستفيدي منو و تدعيلي على نتائجه الحلوة
+                                                    الاحلى من هيك يمنحك نضارة طبيعية مشرقة ومنظر اكثر جذابية
+                                                    ويحمي من أشعة الشمس الضارة بعامل حماية 70%SPF
+                                                    مناسب لاستخدام اليومي والمناسبات و الدوام
+                                                    النتائج مضمونة وامنة على البشرة
+                                                    عن تجربة شخصية و تجربة الزبائن المنتج مميز جدا و فعال على البشرة
+                                                    عندك استفسار ثاني او بتحبي احجزلك على طلبك يا عيني؟؟
+                                                `;
+                break;
+            case "جافة":
+                message = `
+                                                    المنتج طبي اصلي بيجي مناسب لبشرتك الجافة يحتوي على مكونات فائقة الترطيب يغذي البشرة ويتركها رطبة
+                                                    انا كخبيرة بنصحك بالمنتج رح تستفيدي منو و تدعيلي على نتائجه الحلوة
+                                                    الاحلى من هيك يمنحك نضارة طبيعية مشرقة ومنظر اكثر جذابية
+                                                    ويحمي من أشعة الشمس الضارة بعامل حماية 70%SPF
+                                                    مناسب لاستخدام اليومي والمناسبات و الدوام
+                                                    النتائج مضمونة وامنة على البشرة
+                                                    عن تجربة شخصية و تجربة الزبائن المنتج مميز جدا و فعال على البشرة
+                                                    عندك استفسار ثاني او بتحبي احجزلك على طلبك يا عيني؟؟
+                                                `;
+                break;
+            case "مختلطة":
+                message = `
+                                                    المنتج طبي اصلي بيجي مناسب لبشرتك المختلطة و تتحكم في لمعان البشرة و تنعم ملمسها و تمنحها تغطية رائعة تدوم طويلا
+                                                    انا كخبيرة بنصحك بالمنتج رح تستفيدي منو و تدعيلي على نتائجه الحلوة
+                                                    الاحلى من هيك يمنحك نضارة طبيعية مشرقة ومنظر اكثر جذابية
+                                                    ويحمي من أشعة الشمس الضارة بعامل حماية 70%SPF
+                                                    مناسب لاستخدام اليومي والمناسبات و الدوام
+                                                    النتائج مضمونة وامنة على البشرة
+                                                    عن تجربة شخصية و تجربة الزبائن المنتج مميز جدا و فعال على البشرة
+                                                    عندك استفسار ثاني او بتحبي احجزلك على طلبك يا عيني؟؟
+                                                `;
+                break;
+            case "عادية":
+                message = `
+                                                    المنتج طبي اصلي بيجي مناسب لبشرتك العادية و تتحكم في لمعان البشرة و تنعم ملمسها و تمنحها تغطية رائعة تدوم طويلا
+                                                    انا كخبيرة بنصحك بالمنتج رح تستفيدي منو و تدعيلي على نتائجه الحلوة
+                                                    الاحلى من هيك يمنحك نضارة طبيعية مشرقة ومنظر اكثر جذابية
+                                                    ويحمي من أشعة الشمس الضارة بعامل حماية 70%SPF
+                                                    مناسب لاستخدام اليومي والمناسبات و الدوام
+                                                    النتائج مضمونة وامنة على البشرة
+                                                    عن تجربة شخصية و تجربة الزبائن المنتج مميز جدا و فعال على البشرة
+                                                    عندك استفسار ثاني او بتحبي احجزلك على طلبك يا عيني؟؟
+                                                `;
+                break;
+            case "العرض":
+                message = `
+                        بتحبي تاخدي عرض  عمليتو الشركة  عيني
+                        اشتري  عبوتين  و الثالثة مجانا
+                        العرض ساري لغاية اليوم
+                        لحقي  حالك واستفيدي  منو
+                        الشركة مو دايما بتعمل عروض
+                            انا  حابة انك تستفيدي منو
+                            بتوفري على حالك سعر عبوة
+                            فيكي  تاخدي  العرض  فاونديشن  و باودر  و كونسيلر
+                                في حال اخذتي العرض
+                        رح يتم  اضافة اسمك على سحب بكج كامل  مع اشخاص  متلك حاصلين على العرض
+                        لو مكانك  ما بتردد انت المستفيدة  من العرض
+                            ممكن تكوني  انت  صاحبة  الحظ و تربجي البكج
+                                بتحبي احجزلك على العرض  و تستفيدي منو ؟
+            `;
+                break;
+            case "الغالي":
+                message = `
+                                      معك  حق تقولي السعر  غالي لانو  المنتج  ماركة اصلية  مضمون 100%
+                                          يستحق هيك سعر
+                                              انت ما تهتمي لسعر اهتمي لجودة و النتيجة  عمري
+                                              هاي بشرتك  لازك تستخدمي  منتجات طبية اصلية
+                                                  لا يحتوي على أي مواد كيميائية
+                                                      بس تجربي المنتج رح تغيري  رايك و تقولي المنتج بيستحق اكثر من هيك سعر
+                                                          كل الزبائن اللي استخدموا انبسطوا عليه  كتير و اعتمدوه  بشكل دائم
+
+                                                            `;
+                break;
+            default:
+
+                console.log("No matching message option found.");
+                return;
+        }
+
+        const conversationId = currentConversationId;
+        const fixedRecipientId = recipientId;
+
+        const lines = message.trim().split('\n').map(line => line.trim());
+
+        // Add messages to the queue for the current conversation
+        if (!messageQueues[conversationId]) {
+            messageQueues[conversationId] = { recipientId: fixedRecipientId, messages: [] };
+        }
+        messageQueues[conversationId].messages.push(...lines);
+
+        console.log(`Custom messages added to queue for conversation ${conversationId}. Current queue:`, messageQueues[conversationId].messages);
+
+        // Process queue if no other messages are currently being sent
+        if (!activeConversations.has(conversationId)) {
+            processConversationQueue(conversationId);
+        }
+    }
+
+
+    // Function to send a custom message based on an option
+    function sendCustomMessageloxxkingwoman(option) {
+        if (!currentConversationId || !recipientId) {
+            console.error("No active conversation to send custom message to.");
+            return;
+        }
+
+        let message = "";
+
+        // Define custom messages based on the selected option
+        switch (option) {
+            case "الخصائص":
+                message = `
+                                                    حل مشكلتك المشد السحري يعمل التخلص من الترهلات و الدهون الزائدة في البطن
+                                                    رح تحصلي على خصر منحوت و مشدود بشكل طبيعي و ملفت
+                                                    مريح جدا باللبس وما يبين تحت الملابس نهائي و يخفف وجع الظهر
+                                                    يعمل على تنحيف الجسم و تقوية عضلات البطن و تحسين وضعية الجسم
+                                                    الاحلى من هيك يعطيكي جسم مثالي و متناسق خالي من الترهلات و الدهون
+                                                    النتائج مضمونة وفعاله ورح تحصلي على جسم طبيعي مرسوم و رشيق
+                                                    عندك اي استفسار او بتحبي احجزلك على الطلب؟
+                                                `;
+                break;
+            default:
+                console.log("No matching message option found.");
+                return;
+        }
+
+        // Capture conversationId and recipientId to avoid issues on conversation switch
+        const conversationId = currentConversationId;
+        const fixedRecipientId = recipientId;
+
+        // Split message by newlines and add to the queue
+        const lines = message.trim().split('\n').map(line => line.trim());
+        if (!messageQueues[conversationId]) {
+            messageQueues[conversationId] = { recipientId: fixedRecipientId, messages: [] };
+        }
+        messageQueues[conversationId].messages.push(...lines);
+
+        console.log(`Custom messages added to queue for conversation ${conversationId}. Current queue:`, messageQueues[conversationId].messages);
+
+        // Process queue if no other messages are currently being sent
+        if (!activeConversations.has(conversationId)) {
+            processConversationQueue(conversationId);
+        }
+    }
+
+
+    // Function to send a custom message based on an option
+    function sendCustomMessageloxxkingman(option) {
+        if (!currentConversationId || !recipientId) {
+            console.error("No active conversation to send custom message to.");
+            return;
+        }
+
+        let message = "";
+
+        // Define custom messages based on the selected option
+        switch (option) {
+            case "الخصائص":
+                message = `
+                                                    حل مشكلتك المشد السحري يعمل التخلص من الترهلات و الدهون الزائدة في البطن
+                                                    رح يعمل على نحت الخصر وتقوية عضلات الخصر
+                                                    مريح جدا باللبس وما يبين تحت الملابس نهائي و يخفف وجع الظهر
+                                                    يعمل على تنحيف الجسم و تقوية عضلات البطن و تحسين وضعية الجسم
+                                                    الاحلى من هيك يعطيك جسم مثالي و متناسق خالي من الترهلات و الدهون
+                                                    النتائج مضمونة وفعاله ورح تحصل على جسم طبيعي مرسوم و رشيق
+                                                    عندك اي استفسار تاني او تحب اثبتلك الطلب؟
+                                                `;
+                break;
+            default:
+                console.log("No matching message option found.");
+                return;
+        }
+
+        // Capture conversationId and recipientId to avoid issues on conversation switch
+        const conversationId = currentConversationId;
+        const fixedRecipientId = recipientId;
+
+        // Split message by newlines and add to the queue
+        const lines = message.trim().split('\n').map(line => line.trim());
+        if (!messageQueues[conversationId]) {
+            messageQueues[conversationId] = { recipientId: fixedRecipientId, messages: [] };
+        }
+        messageQueues[conversationId].messages.push(...lines);
+
+        console.log(`Custom messages added to queue for conversation ${conversationId}. Current queue:`, messageQueues[conversationId].messages);
+
+        // Process queue if no other messages are currently being sent
+        if (!activeConversations.has(conversationId)) {
+            processConversationQueue(conversationId);
+        }
+    }
+
+    // Function to send a custom message based on an option
+    function sendCustomMessageLotusblue(option) {
+        if (!currentConversationId || !recipientId) {
+            console.error("No active conversation to send custom message to.");
+            return;
+        }
+
+        let message = "";
+
+        // Define custom messages based on the selected option
+        switch (option) {
+            case "درجة اولى":
+                message = `
+                                                        متوفرة درجتك عزيزتي
+                                                        الدرجة الاولى
+                                                        المنتج يجنن على البشرة
+                                                        يوحد لون بشرتك ويعطيكي اطلاله رائعة
+                                                        المنتج له تغطيه عاليه مما يعطي مظهرا صافيا ومثاليا خالي من العيوب
+                                                        بشرتك جافه ام دهنيه ام مختلطة?
+                                                    `;
+                break;
+            case "درجة تانية":
+                message = `
+                                                        متوفرة درجتك عزيزتي
+                                                        الدرجة التانية
+                                                        المنتج يجنن على البشرة
+                                                        يوحد لون بشرتك ويعطيكي اطلاله رائعة
+                                    المنتج له تغطيه عاليه مما يعطي مظهرا صافيا ومثاليا خالي من العيوب
+                                                        بشرتك جافه ام دهنيه ام مختلطة?
+                                                    `;
+                break;
+            case "درجة تالتة":
+                message = `
+                                                        متوفرة درجتك عزيزتي
+                                                        الدرجة التالتة
+                                                        المنتج يجنن على البشرة
+                                                        يوحد لون بشرتك ويعطيكي اطلاله رائعة
+                                    المنتج له تغطيه عاليه مما يعطي مظهرا صافيا ومثاليا خالي من العيوب
+                                                        بشرتك جافه ام دهنيه ام مختلطة?
+                                                    `;
+                break;
+            case "درجة رابعة":
+                message = `
+                                                            متوفرة درجتك عزيزتي
+                                                            الدرجة الرابعة
+                                                            المنتج يجنن على البشرة
+                                                            يوحد لون بشرتك ويعطيكي اطلاله رائعة
+                                        المنتج له تغطيه عاليه مما يعطي مظهرا صافيا ومثاليا خالي من العيوب
+                                                            بشرتك جافه ام دهنيه ام مختلطة?
+                                                        `;
+                break;
+            case "درجة خامسة":
+                message = `
+                                                            متوفرة درجتك عزيزتي
+                                                            الدرجة الخامسة
+                                                            المنتج يجنن على البشرة
+                                                            يوحد لون بشرتك ويعطيكي اطلاله رائعة
+                                        المنتج له تغطيه عاليه مما يعطي مظهرا صافيا ومثاليا خالي من العيوب
+                                                            بشرتك جافه ام دهنيه ام مختلطة?
+                                                        `;
+                break;
+
+            case "دهنية":
+                message = `
+                                                                مناسب لبشرتك الدهنيه لانه من نوع المات الي يساعد على امتصاص الدهون و الزيوت
+                                                            انا كخبيرة تجميل انصحك فيه راح تستفيدين من المنتج و نتائجه
+                                                            الاحلى من هيك يعطي للبشرة نضارة طبيعية و تغطية كاملة فل كفر مميزة جدا
+                                                            يحتوي على واقي شمسي بنسبة 70% و يعمل على حماية بشرتك من اشعة الشمسية السلبية عيني
+                                                            فيكي تستخدميه بشكل يومي وفي المناسبات والدوام
+                                                            النتائج مضمونة وامنة على البشرة
+                                                            عن تجربتي الشخصية باكدلك فعالية وجمال وروعة المنتج على البشرة
+                                                            عندك استفسار ثاني او بتحبي احجزلك ع طلبك عيني ؟                        `;
+                break;
+            case "جافة":
+                message = `
+                                النوع الكريمي مناسب لبشرتك الجافة  يحتوي على نسبة ترطيب عاليه و طبيعية  و الي راح تحمي و  تمنع التشققات و التكتلات و القشور
+                                انا كخبيرة تجميل انصحك فيه راح تستفيدين من المنتج و نتائجه
+                                                                الاحلى من هيك يعطي للبشرة نضارة طبيعية و تغطية كاملة فل كفر مميزة جدا
+                                                                يحتوي على واقي شمسي بنسبة 70% و يعمل على حماية بشرتك من اشعة الشمسية السلبية عيني
+                                                                فيكي تستخدميه بشكل يومي وفي المناسبات والدوام
+                                                                النتائج مضمونة وامنة على البشرة
+                                                                عن تجربتي الشخصية باكدلك فعالية وجمال وروعة المنتج على البشرة
+                                                                عندك استفسار ثاني او بتحبي احجزلك ع طلبك عيني ؟
+                                                        `;
+                break;
+            case "مختلطة":
+                message = `
+                                مناسب للبشره المختلطه   لانه من نوع الكريمي المضغوط ولانه بيحتوي على الهيالورونيك الي يساعد على ترطيب البشره المختلطه بدون م يعطيكي الاطلاله الدهنيه
+                                انا كخبيرة تجميل انصحك فيه راح تستفيدين من المنتج و نتائجه
+                                                                الاحلى من هيك يعطي للبشرة نضارة طبيعية و تغطية كاملة فل كفر مميزة جدا
+                                                                يحتوي على واقي شمسي بنسبة 70% و يعمل على حماية بشرتك من اشعة الشمسية السلبية عيني
+                                                                فيكي تستخدميه بشكل يومي وفي المناسبات والدوام
+                                                                النتائج مضمونة وامنة على البشرة
+                                                                عن تجربتي الشخصية باكدلك فعالية وجمال وروعة المنتج على البشرة
+                                                                عندك استفسار ثاني او بتحبي احجزلك ع طلبك عيني ؟
+                                                        `;
+                break;
+            case "عادية":
+                message = `
+                                مناسب للبشره العادية لانه من نوع الكريمي المضغوط ولانه بيحتوي على الهيالورونيك الي يساعد على ترطيب البشره المختلطه بدون م يعطيكي الاطلاله الدهنيه
+                                انا كخبيرة تجميل انصحك فيه راح تستفيدين من المنتج و نتائجه
+                                                                الاحلى من هيك يعطي للبشرة نضارة طبيعية و تغطية كاملة فل كفر مميزة جدا
+                                                                يحتوي على واقي شمسي بنسبة 70% و يعمل على حماية بشرتك من اشعة الشمسية السلبية عيني
+                                                                فيكي تستخدميه بشكل يومي وفي المناسبات والدوام
+                                                                النتائج مضمونة وامنة على البشرة
+                                                                عن تجربتي الشخصية باكدلك فعالية وجمال وروعة المنتج على البشرة
+                                                                عندك استفسار ثاني او بتحبي احجزلك ع طلبك عيني ؟
+                                                        `;
+                break;
+            case "العرض":
+                message = `
+                                    بتحبي تاخدي عرض عمليتو  الشركة عيني اشتري عبوتين والثالثة  مجانا
+                                العرض ساري لغاية اليوم لحقي  حالك واستفيدي منو
+                                الشركة لاول مرة تعمل  هيك عرض على المنتج  الطبي الاصلي
+                                فيكي تاخدي العرض  باودر و فاونديشن و كونسيلر
+                                في حال اخذتي  العرض  رح يتم اضافة اسمك على سحب بكج كامل
+                                لو مكانك ما بتردد انت المستفيدة من العرض حبيبتي
+                                بتحبي  احجزلك على العرض و تستفيدي منو ؟؟
+                                                            `;
+                break;
+            case "الغالي":
+                message = `
+                                المنتج ماركة اصلية مضمون 100% يستحق هيك سعر عمري
+                            انت ما تهتمي لسعر  اهتمي لجودة و النتيجة
+                            هاي بشرتك لازم تستخدمي منتجات طبية اصلية مضمونة 100%
+                            المنتج مرخص من وزارة الصحة
+                            لا يحتوي على أي مواد كيميائية
+                            بس تجربي المنتج رح تغيري  رايك و تقولي المنتج بيستحق اكثر من هيك سعر
+                            و رح تعتمديه بشكل  دائم لابد
+                                كل الزبائن اللي استخدموا انبسطوا عليه  كتير و اعتمدوه  بشكل دائم
+                                `;
+                break;
+            case "الماسكارا":
+                message = `
+                      اهال و سهال عزيزت
+        معك خبرية التجميل رشوق من رشكة لوتس بلو
+        المسكارا طبية اصلية
+         ع
+        تعمل عىل تطويل و التكثيف الرموش بشكل طبي
+        ثابتة عىل الرموش ال تسيل ابدا
+        لاتترك اي تكتلات على الرموش
+
+                                    `;
+                break;
+            default:
+                console.log("No matching message option found.");
+                return;
+        }
+
+        const conversationId = currentConversationId;
+        const fixedRecipientId = recipientId;
+
+        const lines = message.trim().split('\n').map(line => line.trim());
+
+        // Add messages to the queue for the current conversation
+        if (!messageQueues[conversationId]) {
+            messageQueues[conversationId] = { recipientId: fixedRecipientId, messages: [] };
+        }
+        messageQueues[conversationId].messages.push(...lines);
+
+        console.log(`Custom messages added to queue for conversation ${conversationId}. Current queue:`, messageQueues[conversationId].messages);
+
+        // Process queue if no other messages are currently being sent
+        if (!activeConversations.has(conversationId)) {
+            processConversationQueue(conversationId);
+        }
+    }
+
+
+
+    // Function to send a custom message based on an option
+    function sendCustomMessageFlareWoman(option) {
+        if (!currentConversationId || !recipientId) {
+            console.error("No active conversation to send custom message to.");
+            return;
+        }
+
+        let message = "";
+
+        // Define custom messages based on the selected option
+        switch (option) {
+            case "حل المشكلة":
+                message = `
+                            شامبو FLARE الحل الامثل لمعالجة مشكلة  الشعر بشكل كامل
+                            الشامبو طبي اصلي تركيبة خاصة لمعالجة الشعر التالف و المتقصف و التساقط
+                                    يعمل على تطويل و تكثيف و تنعيم شعرك بشكل طبيعي
+                                يعطيكي شعر جذاب و كثيف و رائع خالي من جميع المشاكل  و خالي من الشيب
+                            يعالج القشره و الشعرالباهت و الهيشان
+                            شعرك دهني ولا جاف و لا عادي ؟؟                                `;
+                break;
+
+
+            case "دهني":
+                message = `
+                            الشامبو مناسب لشعرك الدهني لانه يحتوي على مكونات طبيعية التي تعمل على تنظيف الشعر و تجديده و ترطبيه وتغذية الشعر بشمل صحي
+                            انا كخصائية شعر بنصحك بالشامبو رح تدعيلي على المنتج و نتائجه
+                            الاحلى من  هيك يعمل على تنظيف فروة الراس بعمق و تنعيم و تحسين مظهره
+                            يحتوي على فيتامين A.D.B الذي يعمل على استرجاع صحة و جمال شعرك
+                            الشامبو  تركيبته من الفيتامينات المغذية و الاحماض الامينية ال18 المخصبة بالبيتدات المرفقة بالشعر
+                            يعمل على  اعادة بنية الشعر القوية بشكل طبيعي
+                            يزيل الشوائب بشكل فعال و ينعش الشعر و يعيد توازنه
+                                                                        نتيجة الشامبو مضمونة و امنة و فعالة من اول استخدام
+                                كل الزبائن يلي بعانو من نفس مشكلة شعرك استخدمو المنتج بطريقة  صحيحة و منتظمة و حصلوا على شعر خالي من العيوب
+                                    عندك  استفسار تاني او بتحبي  احجزلك على طلبك عيني ؟
+                                                                        `;
+                break;
+            case "جاف":
+                message = `
+                            الشامبو  طبي اصلي مناسب لشعرك الجاف يقوم بامتصاص رطوبة الهواء مما يعمل على ترطيب شعرك
+                                    انا كخصائية شعر بنصحك بالشامبو رح تدعيلي على المنتج و نتائجه
+                                الاحلى من  هيك يعمل على تنظيف فروة الراس بعمق و تنعيم و تحسين مظهره
+                                يحتوي على فيتامين A.D.B الذي يعمل على استرجاع صحة و جمال شعرك
+                                الشامبو  تركيبته من الفيتامينات المغذية و الاحماض الامينية ال18 المخصبة بالبيتدات المرفقة بالشعر
+                                يعمل على  اعادة بنية الشعر القوية بشكل طبيعي
+                                يزيل الشوائب بشكل فعال و ينعش الشعر و يعيد توازنه
+                                                                            نتيجة الشامبو مضمونة و امنة و فعالة من اول استخدام
+                                    كل الزبائن يلي بعانو من نفس مشكلة شعرك استخدمو المنتج بطريقة  صحيحة و منتظمة و حصلوا على شعر خالي من العيوب
+                                        عندك  استفسار تاني او بتحبي  احجزلك على طلبك عيني ؟
+                                                            `;
+                break;
+            case "عادي":
+                message = `
+                            الشامبو طبي اصلي مناسب لشعرك و خيارا ممتاز جدا للعناية بالشعر العادي يغذي و يرطب الشعر و يمنحه نعومة اكثر
+                                            انا كخصائية شعر بنصحك بالشامبو رح تدعيلي على المنتج و نتائجه
+                                    الاحلى من  هيك يعمل على تنظيف فروة الراس بعمق و تنعيم و تحسين مظهره
+                                    يحتوي على فيتامين A.D.B الذي يعمل على استرجاع صحة و جمال شعرك
+                                    الشامبو  تركيبته من الفيتامينات المغذية و الاحماض الامينية ال18 المخصبة بالبيتدات المرفقة بالشعر
+                                    يعمل على  اعادة بنية الشعر القوية بشكل طبيعي
+                                    يزيل الشوائب بشكل فعال و ينعش الشعر و يعيد توازنه
+                                                                                نتيجة الشامبو مضمونة و امنة و فعالة من اول استخدام
+                                        كل الزبائن يلي بعانو من نفس مشكلة شعرك استخدمو المنتج بطريقة  صحيحة و منتظمة و حصلوا على شعر خالي من العيوب
+                                            عندك  استفسار تاني او بتحبي  احجزلك على طلبك عيني ؟
+                                                            `;
+                break;
+
+            default:
+                console.log("No matching message option found.");
+                return;
+        }
+
+        const conversationId = currentConversationId;
+        const fixedRecipientId = recipientId;
+
+        const lines = message.trim().split('\n').map(line => line.trim());
+
+        // Add messages to the queue for the current conversation
+        if (!messageQueues[conversationId]) {
+            messageQueues[conversationId] = { recipientId: fixedRecipientId, messages: [] };
+        }
+        messageQueues[conversationId].messages.push(...lines);
+
+        console.log(`Custom messages added to queue for conversation ${conversationId}. Current queue:`, messageQueues[conversationId].messages);
+
+        // Process queue if no other messages are currently being sent
+        if (!activeConversations.has(conversationId)) {
+            processConversationQueue(conversationId);
+        }
+    }
+
+    // Function to send a custom message based on an option
+    function sendCustomMessageFlareman(option) {
+        if (!currentConversationId || !recipientId) {
+            console.error("No active conversation to send custom message to.");
+            return;
+        }
+
+        let message = "";
+
+        // Define custom messages based on the selected option
+        switch (option) {
+            case "حل المشكلة":
+                message = `
+                                شامبو FLARE الحل الامثل لمعالجة مشكلة  الشعر بشكل كامل
+                                الشامبو طبي اصلي تركيبة خاصة لمعالجة الشعر التالف و المتقصف و التساقط
+                                يعمل على تطويل و تكثيف و تنعيم شعرك بشكل طبيعي
+                                يعطيك شعر جذاب و كثيف و رائع خالي من جميع المشاكل  و خالي من الشيب
+                                يعالج القشره و الشعرالباهت و الهيشان
+                                    يقدّم الشامبو القوة التي يحتاجها شعرك، حيث يعمل على تقوية الشعر المتساقط والضعيف و استرجاع لمعته الطبيعية
+
+                                شعرك دهني ولا جاف و لا عادي ؟؟                                `;
+                break;
+
+
+            case "دهني":
+                message = `
+                                الشامبو مناسب لشعرك الدهني لانه يحتوي على مكونات طبيعية التي تعمل على تنظيف الشعر و تجديده و ترطبيه وتغذية الشعر بشمل صحي
+                        انا كخصائي شعر بنصحك بالشامبو رح تدعيلي على المنتج و نتائجه
+                                    الاحلى من  هيك يعمل على تنظيف فروة الراس بعمق و تنعيم و تحسين مظهره
+                                        الشامبو  تركيبته من الفيتامينات المغذية و الاحماض الامينية ال18 المخصبة بالبيتدات المرفقة بالشعر
+
+                                يحتوي على فيتامين A.D.B الذي يعمل على استرجاع صحة و جمال شعرك
+                        يزيل الشوائب بشكل فعال و ينعش الشعر و يعيد توازنه
+                                    يعمل على  اعادة بنية الشعر القوية بشكل طبيعي
+                        نتيجة الشامبو مضمونة و امنة و فعالة من اول استخدام
+                                                                                نتيجة الشامبو مضمونة و امنة و فعالة من اول استخدام
+                        كل الزبائن يلي بعانو من نفس مشكلة شعرك استخدمو المنتج بطريقة  صحيحة و منتظة و حصلوا على شعر خالي من العيوب
+                                            عندك  استفسار تاني او بتحبي  احجزلك على طلبك عيني ؟
+                                                                            `;
+                break;
+            case "جاف":
+                message = `
+                                الشامبو  طبي اصلي مناسب لشعرك الجاف يقوم بامتصاص رطوبة الهواء مما يعمل على ترطيب شعرك
+                        انا كخصائي شعر بنصحك بالشامبو رح تدعيلي على المنتج و نتائجه
+                                        الاحلى من  هيك يعمل على تنظيف فروة الراس بعمق و تنعيم و تحسين مظهره
+                                            الشامبو  تركيبته من الفيتامينات المغذية و الاحماض الامينية ال18 المخصبة بالبيتدات المرفقة بالشعر
+
+                                    يحتوي على فيتامين A.D.B الذي يعمل على استرجاع صحة و جمال شعرك
+                        يزيل الشوائب بشكل فعال و ينعش الشعر و يعيد توازنه
+                                        يعمل على  اعادة بنية الشعر القوية بشكل طبيعي
+                        نتيجة الشامبو مضمونة و امنة و فعالة من اول استخدام
+                                                                                    نتيجة الشامبو مضمونة و امنة و فعالة من اول استخدام
+                        كل الزبائن يلي بعانو من نفس مشكلة شعرك استخدمو المنتج بطريقة  صحيحة و منتظة و حصلوا على شعر خالي من العيوب
+                                                عندك  استفسار تاني او بتحبي  احجزلك على طلبك عيني ؟
+                                                                `;
+                break;
+            case "عادي":
+                message = `
+                                الشامبو طبي اصلي مناسب لشعرك و خيارا ممتاز جدا للعناية بالشعر العادي يغذي و يرطب الشعر و يمنحه نعومة اكثر
+                        انا كخصائي شعر بنصحك بالشامبو رح تدعيلي على المنتج و نتائجه
+                                            الاحلى من  هيك يعمل على تنظيف فروة الراس بعمق و تنعيم و تحسين مظهره
+                                                الشامبو  تركيبته من الفيتامينات المغذية و الاحماض الامينية ال18 المخصبة بالبيتدات المرفقة بالشعر
+
+                                        يحتوي على فيتامين A.D.B الذي يعمل على استرجاع صحة و جمال شعرك
+                        يزيل الشوائب بشكل فعال و ينعش الشعر و يعيد توازنه
+                                            يعمل على  اعادة بنية الشعر القوية بشكل طبيعي
+                        نتيجة الشامبو مضمونة و امنة و فعالة من اول استخدام
+                                                                                        نتيجة الشامبو مضمونة و امنة و فعالة من اول استخدام
+                        كل الزبائن يلي بعانو من نفس مشكلة شعرك استخدمو المنتج بطريقة  صحيحة و منتظة و حصلوا على شعر خالي من العيوب
+                                                    عندك  استفسار تاني او بتحبي  احجزلك على طلبك عيني ؟
+                                                                `;
+                break;
+
+            default:
+                console.log("No matching message option found.");
+                return;
+        }
+
+        const conversationId = currentConversationId;
+        const fixedRecipientId = recipientId;
+
+        const lines = message.trim().split('\n').map(line => line.trim());
+
+        // Add messages to the queue for the current conversation
+        if (!messageQueues[conversationId]) {
+            messageQueues[conversationId] = { recipientId: fixedRecipientId, messages: [] };
+        }
+        messageQueues[conversationId].messages.push(...lines);
+
+        console.log(`Custom messages added to queue for conversation ${conversationId}. Current queue:`, messageQueues[conversationId].messages);
+
+        // Process queue if no other messages are currently being sent
+        if (!activeConversations.has(conversationId)) {
+            processConversationQueue(conversationId);
+        }
+    }
+
+    // Function to send a instant message based on an option
+
+    function triggerInstantMessage(conversationId, pageId, recipientId, countryId) {
+        if (!conversationId || !pageId || !recipientId) {
+            console.error("Missing data for auto message send: conversationId, pageId, or recipientId.");
+            return;
+        }
+
+        if (!messageQueues[conversationId]) {
+            messageQueues[conversationId] = { recipientId, messages: [] };
+        }
+        console.log(`Adding messages to queue for conversation ${conversationId}`);
+
+        let multiLineMessage = "";
+
+        // Page-specific price mappings
+        const pagePrices = {
+            '104568275507926': { // Moonlight page ID
+                prices: {
+                    1: '22 الف',
+                    2: '130 درهم',
+                    4: '130 دينار',
+                    5: '15 ريال',
+                    9: '15 دينار',
+                    10: '15 دينار',
+                    7: '500 ليرة',
+                },
+                message: `
+                                    اهلا وسهلا حبيبتي بشركة moon light نورتينا ✨
+                                    المنتج طبي اصلي
+                                    يخفي عيوب البشرة بشكل كامل
+                                    ثابت على بشرتك لمدة 24 ساعة
+                                    مقاوم للماء و التعرق ولا يترك اي تكتلات على البشرة
+                                `,
+                followUp: `ممكن اعرف لون بشرتك عزيزتي 🧏🏻‍♀️ ؟`,
+            },
+            '100736899432829': { // loxx king woman page ID
+                prices: {
+                    1: '21 الف',
+                    2: '130 درهم',
+                    4: '130 دينار',
+                    5: '15 ريال',
+                    9: '15 دينار',
+                    10: '15 دينار',
+                    7: '600 ليرة',
+                    6: '80 شيكل',
+                    3: '120 ريال',
+                },
+                message: `
+                                    اهلاو سهلا عزيزتي
+                                    المشد السحري يعمل على التخلص من الترهلات و الدهون الزائدة حول البطن
+                                    يعمل على شد عضلات البطن العليا و السفلى
+                                    يعمل على اعادة تشكيل الخصر + نحت الجوانب
+                                    يعمل على استقامة الظهر و تقليل الم  الظهر
+                                    المشد يساعد على التخلص من دهون وترهلات ما بعد الولادة
+                                `,
+                followUp: `فيني اعرف من شو بتعاني حضرتك من ترهلات او دهون على البطن ؟`,
+            },
+            '211839025349185': { // loxx king man page ID
+                prices: {
+                    1: '21 الف',
+                    2: '130 درهم',
+                    4: '130 دينار',
+                    5: '15 ريال',
+                    9: '15 دينار',
+                    10: '15 دينار',
+                    7: '600 ليرة',
+                    6: '80 شيكل',
+                    3: '120 ريال',
+                },
+                message: `
+                                    اهلا وسهلا عزيزي
+                                    المشد السحري يعمل على التخلص من الترهلات و الدهون الزائدة حول البطن
+                                    يعمل على اعادة تشكيل الخصر + نحت الجوانب
+                                    يعمل على شد عضلات البطن العليا و السفلى
+                                    يعمل على استقامة الظهر و تقليل الم  الظهر
+                                    يساعد على تقوية النشاط الحراري في الجسم
+                                `,
+                followUp: `فيني اعرف من شو بتعاني حضرتك من ترهلات او دهون على البطن ؟`,
+            },
+            // Add similar configurations for other pages with specific prices and messages
+        };
+
+        // Retrieve page-specific data
+        const pageData = pagePrices[pageId];
+
+        if (!pageData) {
+            console.log("No predefined message for this page.");
+            return;
+        }
+
+        multiLineMessage = pageData.message;
+        const priceLine = pageData.prices[countryId] ? `السعر ${pageData.prices[countryId]}` : "عذراً، السعر غير متوفر لبلدك.";
+
+        console.log("Country ID received:", countryId);
+        console.log("Price line computed:", priceLine);
+
+        multiLineMessage += `\n${priceLine}\n${pageData.followUp}`;
+
+        const lines = multiLineMessage.trim().split('\n').map(line => line.trim());
+        messageQueues[conversationId].messages.push(...lines);
+
+        console.log("Messages added to queue for conversation:", messageQueues[conversationId].messages);
+
+        processConversationQueue(conversationId);
+
+    }
+
+
+    // Toggle conversation `IsOrder` status
+    document.querySelector("#order-status-icon").addEventListener("click", async function () {
+        if (currentConversationId) {
+            try {
+                // Send a POST request to toggle the order status
+                const response = await fetch(`/api/facebook/webhook/toggle-order/${currentConversationId}`, {
+                    method: "POST"
+                });
+
+                if (response.ok) {
+                    console.log("Conversation order status toggled successfully.");
+
+                    // Get the updated status from the response
+                    const data = await response.json();
+                    const isOrder = data.isOrder;
+
+                    // Update the icon color based on the new status
+                    const icon = document.getElementById("order-status-icon");
+                    if (isOrder) {
+                        icon.classList.remove("text-danger");
+                        icon.classList.add("text-success");
+                    } else {
+                        icon.classList.remove("text-success");
+                        icon.classList.add("text-danger");
+                    }
+
+                    // Notify other clients in real-time using SignalR
+                    await messageHubConnection.invoke("UpdateOrderStatus", currentConversationId, isOrder);
+                } else {
+                    console.error("Failed to toggle order status.");
+                }
+            } catch (error) {
+                console.error("Error toggling order status:", error);
+            }
+        }
+    });
+
+    // Listen for real-time updates to the order status
+    messageHubConnection.on("UpdateOrderStatus", (conversationId, isOrder) => {
+        if (currentConversationId === conversationId) {
+            const icon = document.getElementById("order-status-icon");
+            if (isOrder) {
+                icon.classList.remove("text-danger");
+                icon.classList.add("text-success");
+            } else {
+                icon.classList.remove("text-success");
+                icon.classList.add("text-danger");
+            }
+        }
+    });
+
+    // Apply icon classes on page load based on `isRead` status
+    function updateReadStatusIcons(conversations) {
+        conversations.forEach(conversation => {
+            const icon = document.getElementById('read-status-icon');
+            if (icon && currentConversationId === conversation.conversationid) {
+                if (!conversation.isRead) {
+                    icon.classList.add("fa-envelope", "text-danger");
+                } else {
+                    icon.classList.remove("fa-envelope", "text-danger");
+                }
+            }
+        });
+    }
+
+    // Toggle conversation `IsRead` status
+    document.getElementById("read-status-icon").addEventListener("click", async function () {
+        if (!currentConversationId) {
+            console.error("No active conversation to update read status.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/facebook/webhook/toggle-read/${currentConversationId}`, {
+                method: "POST"
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const isRead = data.isRead;
+
+                // Update the icon based on the new status
+                const icon = document.getElementById("read-status-icon");
+                if (icon) {
+                    if (isRead) {
+                        icon.classList.remove("text-danger");
+                    } else {
+                        icon.classList.add("text-danger");
+                    }
+                }
+
+                // Handle the unread badge and message content on the front end
+                const conversationDiv = document.getElementById(`conversation-${currentConversationId}`);
+                const unreadBadge = conversationDiv?.querySelector('.unread-count');
+                const messageContent = conversationDiv?.querySelector('.message-content');
+
+                if (isRead) {
+                    // Remove the unread badge and bold styling
+                    if (unreadBadge) unreadBadge.remove();
+                    if (messageContent) messageContent.classList.remove('fw-bolder');
+                } else {
+                    // Add the unread badge and bold styling
+                    if (!unreadBadge) {
+                        const newBadge = document.createElement('span');
+                        newBadge.className = 'badge-circle bg-success mt-1 unread-count';
+                        newBadge.innerText = '1';
+                        conversationDiv.appendChild(newBadge);
+                    }
+                    if (messageContent) messageContent.classList.add('fw-bolder');
+                }
+
+                // Notify other clients using SignalR
+                await messageHubConnection.invoke("UpdateReadStatus", {
+                    conversationId: currentConversationId,
+                    isRead: isRead
+                });
+            } else {
+                console.error("Failed to toggle read status.");
+            }
+        } catch (error) {
+            console.error("Error toggling read status:", error);
+        }
+    });
+
+
+
+    // Close conversation (hide from view and leave SignalR group)
+    document.querySelector(".fa-times").addEventListener("click", async function () {
+        if (currentConversationId) {
+            // Leave the SignalR group for the current conversation
+            try {
+                await messageHubConnection.invoke("LeaveConversation", currentConversationId);
+                console.log(`Left conversation group: ${currentConversationId}`);
+            } catch (error) {
+                console.error("Error leaving conversation:", error);
+            }
+
+            // Clear the current and locked conversation IDs
+            currentConversationId = null;
+            lockedConversationId = null;
+        }
+
+        // Hide the chat UI elements
+        document.querySelector('.chat-header').classList.add('hidden');
+        document.querySelector('.chat-body').classList.add('hidden');
+        document.querySelector('.chat-footer').classList.add('hidden');
+        console.log("Conversation hidden on frontend.");
+    });
+
+    // scroll
+    document.getElementById('scrollable-div').addEventListener('wheel', function (event) {
+        // Prevent the default scrolling of the page when the mouse is over this div
+        event.preventDefault();
+
+        // Adjust the scroll position of the div
+        this.scrollTop += event.deltaY;
+    });
+
+    document.getElementById('instant-message').addEventListener('click', function () {
+        // Instantly set the background color to #0A78BE
+        this.style.backgroundColor = '#0A78BE';
+
+        // After 20 seconds, change the background color to #4a566c
+        setTimeout(() => {
+            this.style.backgroundColor = '#4a566c';
+        }, 20000); // 20 seconds
+    });
+
+
+    // // falre woman
+    // document.getElementById("send-offer-messages-flare-woman").addEventListener("click", async function () {
+    //     const pageId = "109230591424440"; // Replace with the actual page ID
+
+    //     try {
+    //         const response = await fetch(`/api/facebook/webhook/send-offer-messages/${pageId}`, {
+    //             method: "POST"
+    //         });
+
+    //         const result = await response.json();
+    //         console.log(result.message || "Offer messages sent successfully.");
+    //     } catch (error) {
+    //         console.error("Error sending offer messages:", error);
+    //     }
+    // });
+
+    // // moon light
+    // document.getElementById("send-offer-messages-moonlight").addEventListener("click", async function () {
+    //     const pageId = "104568275507926"; // Replace with the actual page ID
+
+    //     try {
+    //         const response = await fetch(`/api/facebook/webhook/send-offer-messages/${pageId}`, {
+    //             method: "POST"
+    //         });
+
+    //         const result = await response.json();
+    //         console.log(result.message || "Offer messages sent successfully.");
+    //     } catch (error) {
+    //         console.error("Error sending offer messages:", error);
+    //     }
+    // });
+
+    // // falre man
+    // document.getElementById("send-offer-messages-flare-man").addEventListener("click", async function () {
+    //     const pageId = "416441791559844"; // Replace with the actual page ID
+
+    //     try {
+    //         const response = await fetch(`/api/facebook/webhook/send-offer-messages/${pageId}`, {
+    //             method: "POST"
+    //         });
+
+    //         const result = await response.json();
+    //         console.log(result.message || "Offer messages sent successfully.");
+    //     } catch (error) {
+    //         console.error("Error sending offer messages:", error);
+    //     }
+    // });
+
+    // // lotus blue
+    // document.getElementById("send-offer-messages-lotusblue").addEventListener("click", async function () {
+    //     const pageId = "101509818947526"; // Replace with the actual page ID
+
+    //     try {
+    //         const response = await fetch(`/api/facebook/webhook/send-offer-messages/${pageId}`, {
+    //             method: "POST"
+    //         });
+
+    //         const result = await response.json();
+    //         console.log(result.message || "Offer messages sent successfully.");
+    //     } catch (error) {
+    //         console.error("Error sending offer messages:", error);
+    //     }
+    // });
+
+
+    // // loxx king man 
+    // document.getElementById("send-offer-messages-loxxking-man").addEventListener("click", async function () {
+    //     const pageId = "211839025349185"; // Replace with the actual page ID
+
+    //     try {
+    //         const response = await fetch(`/api/facebook/webhook/send-offer-messages/${pageId}`, {
+    //             method: "POST"
+    //         });
+
+    //         const result = await response.json();
+    //         console.log(result.message || "Offer messages sent successfully.");
+    //     } catch (error) {
+    //         console.error("Error sending offer messages:", error);
+    //     }
+    // });
+
+    // // loxx king woman
+    // document.getElementById("send-offer-messages-loxxking-woman").addEventListener("click", async function () {
+    //     const pageId = "100736899432829"; // Replace with the actual page ID
+
+    //     try {
+    //         const response = await fetch(`/api/facebook/webhook/send-offer-messages/${pageId}`, {
+    //             method: "POST"
+    //         });
+
+    //         const result = await response.json();
+    //         console.log(result.message || "Offer messages sent successfully.");
+    //     } catch (error) {
+    //         console.error("Error sending offer messages:", error);
+    //     }
+    // });
+
+    // page start up call functions
+    startSignalR();
+    loadAllConversations();
+
+
+</script>
+
+<style>
+
+    .custom-scroll {
+        max-height: 600px; /* Set the desired height for the scrollable area */
+        overflow-y: auto; /* Enable vertical scrolling */
+        border: 1px solid #ddd; /* Optional: Add a border for visibility */
+        padding: 10px; /* Optional: Add some padding */
+    }
+
+
+    .message-border-bottom {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.2) !important;
+        width: 97% !important;
+        margin: 0 auto;
+    }
+
+    /* Badge Circle Styles */
+    .badge-circle {
+        display: flex; /* Use flexbox for centering */
+        justify-content: center; /* Center text horizontally */
+        align-items: center; /* Center text vertically */
+        width: 27px; /* Set width for the circle */
+        height: 27px; /* Set height for the circle */
+        background-color: #2cb90c !important; /* Set background to green */
+        color: white; /* Set text color to white */
+        border-radius: 50%; /* Make it a perfect circle */
+        font-size: 14px; /* Adjust text size */
+    }
+
+
+    .badge-circle {
+        border-radius: 50%;
+    }
+
+    .page-name-text-color {
+        color: #8a898e;
+    }
+
+    .user-name-text-color {
+        color: #616161;
+    }
+    .active{
+        background-color:#57A3FA !important;   
+    }
+
+    .circle {
+        width: 80px;
+        height: 80px;
+        background-color: #697792;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: auto;
+    }
+
+        .circle img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 50%;
+        }
+
+    .icon.search-icon {
+        z-index: 9999 !important;
+    }
+
+    .search-icon {
+        right: 15px;
+        position: absolute;
+        z-index: 1;
+    }
+
+    .icon {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .clear-search-icon {
+        left: 10px;
+        cursor: pointer;
+    }
+
+
+    .filter-tabs {
+        display: flex;
+        gap: 8px;
+    }
+
+    .tab-button {
+        background-color: #f1f3f5; /* Light background for inactive state */
+        border-radius: 15px;
+        color: #555;
+        padding: 8px 16px;
+        border: none;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.3s, color 0.3s;
+        font-weight: bold; /* Make text bold */
+        text-decoration: underline; /* Add underline to text */
+        text-underline-offset: 7px; /* Add space between text and underline */
+    }
+
+        .tab-button:hover {
+            background-color: #e0e4e8; /* Slightly darker hover color */
+            color: #333;
+        }
+
+        .tab-button.active {
+            background-color: #c6d0e4; /* Light green background for active state */
+            color: #4a566c; /* Dark green text for active state */
+            font-weight: 600;
+        }
+
+            .tab-button.active:hover {
+                background-color: #b3edd3; /* Darker green for active hover */
+            }
+
+
+
+    /* User message (right side) */
+    .from-user {
+        flex-direction: row-reverse;
+        margin-left: auto;
+        text-align: right;
+    }
+
+    /* Other message (left side) */
+    .from-other {
+        text-align: left;
+    }
+
+    /* Ensure RTL alignment for the entire chat body */
+    .chat-body {
+        direction: rtl;
+        text-align: right;
+        padding: 10px;
+    }
+
+    /* General message styles */
+    .message {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        margin-bottom: 10px;
+    }
+
+    /* Message info (name and timestamp) */
+    .message-info {
+        display: flex;
+        justify-content: flex-start;
+        gap: 5px;
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-bottom: 3px;
+    }
+
+    /* User message (right side, light background) */
+    .from-user {
+        align-items: flex-end;
+    }
+
+    /* Other message (left side, green background) */
+    .from-other {
+        align-items: flex-start;
+    }
+
+    /* Bubble styling with adaptive width */
+    .message-bubble {
+        display: inline-block;
+        padding: 10px 15px;
+        border-radius: 15px;
+        position: relative;
+        max-width: 70% !important; /* Limit bubble width to 70% of the chat container */
+        overflow-wrap: break-word;
+        max-width: fit-content; /* Adapt width to content */
+        word-wrap: break-word;
+        padding:7px !important;
+    }
+
+    /* User bubble style */
+    .user-bubble {
+        background-color: #E9E9EB;
+        color: #000;
+    }
+
+    /* Other bubble style */
+    .other-bubble {
+        background-color: #4a566c;
+        color: #fff;
+    }
+
+    /* Triangle for user messages */
+    .triangle-left::before {
+        content: "";
+        position: absolute;
+      
+        bottom: 4px;
+        right: -6px;
+        width: 0;
+        height: 0;
+        border-top: 10px solid transparent;
+        border-left: 10px solid #f1f1f1;
+        border-bottom: 10px solid transparent;
+    }
+
+    /* Triangle for other messages */
+    .triangle-right::before {
+        content: "";
+        position: absolute;
+        bottom: 10px;
+        left: -10px;
+        width: 0;
+        height: 0;
+        border-top: 10px solid transparent;
+        border-right: 10px solid #4a566c;
+        border-bottom: 10px solid transparent;
+    }
+
+    .background-color-custom-in-page {
+        background-color: #4a566c;
+    }
+
+    .text-green-in-page {
+        color: #4a566c !important;
+    }
+
+    .dot {
+        display: inline-block;
+        width: 15px;
+        height: 15px;
+        background-color: #FD942A;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    /* Change .dot color on hover */
+    .nav-link:hover .dot {
+        background-color: white !important; /* Make the dot white on hover */
+        transition: background-color 0.3s ease; /* Smooth transition for the color change */
+    }
+
+
+    .nav-link {
+        display: flex;
+        justify-content: flex-start; /* Keep the dot on the right */
+        align-items: center;
+        padding: 3px;
+        text-align: right;
+    }
+
+        /* Button hover styles */
+        .nav-link:hover {
+            background-color: #FD942A !important; /* Change background color on hover */
+            color: white !important; /* Change text color to white on hover */
+            transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition */
+        }
+
+    .hover-response {
+        cursor: pointer; /* Change mouse pointer to a hand icon */
+    }
+
+        /* Ensure the icon inside the span is also affected */
+        .hover-response:hover i {
+            color: white !important; /* Change icon color on hover */
+            background-color: #FD942A !important; /* Change background color on hover */
+        }
+
+        .hover-response:hover {
+        background-color: #FD942A !important; /* Change background color on hover */
+        color: white !important; /* Change text color to white on hover */
+        transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition */
+        }
+
+        .nav-link span.dot {
+            margin-left: 7px; /* Space between text and circle */
+        }
+
+
+    .dropdown-menu {
+        z-index: 1050;
+        font-size: 0.9rem;
+        min-width: 150px;
+    }
+
+    .country-option {
+        cursor: pointer;
+        padding: 5px 15px;
+    }
+
+        .country-option:hover {
+            background-color: #f0f0f0;
+        }
+
+
+    .list-group-item:hover {
+        background-color: #F0F0F0 !important;
+        cursor: pointer; /* Optional: Add this to indicate it's interactive */
+    }
+</style>

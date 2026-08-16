@@ -1,0 +1,320 @@
+@model List<lotus_blue.Models.ViewModel.CountryOrderDetailsViewModel>
+@using lotus_blue.Models
+@using lotus_blue.Services
+@inject CurrencyExchangeService CurrencyExchangeServiceInstance
+@{
+    ViewData["Title"] = " تقيم الحملات الأعلانية حسب الدولة والمدينة";
+
+}
+<div class="row mb-5">
+    <div class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap">
+        <div class="text-nowrap" id="RangePicker">
+            <div id="selectedFilter">
+                <div>
+                    <span style="font-size:14px; font-weight:400;" class="" id="selectedDateRange">
+                        2023/11/28 <i style="color:#1d273b;" class="fa-light fa-arrow-left "></i> @DateTime.Now.ToString("yyyy/MM/dd") <i style=" padding-left:4px!important;" class="fa-light  fa-calendar-days"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap">
+        <select id="CountryId" name="country" class="form-control">
+         
+        </select>
+    </div>
+
+  
+</div>
+
+<div id="filteredResults" style="display:none;">
+    @foreach (var country in Model)
+    {
+        <div class="container-fluid mx-auto custom-shadow pt-2 pb-2 row mb-4">
+            <h2 id="CountryId" class="country-name">@country.Country</h2>
+            <h3>عدد الطلبات الإجمالي: @country.TotalOrders</h3>
+            <h2 class="country-percentage">نسبة عدد الطلبات @country.PercentageOfAllOrders%</h2>
+            @if (User.IsInRole("Admin"))
+            {
+                <h3>السعر الإجمالي: @DecimalFormattingService.FormatDecimal(country.TotalPriceUSD) USD</h3>
+            }
+            @foreach (var cityInfo in country.CitiesOrderInfo.OrderByDescending(ci => ci.PercentageOfTotalOrders))
+            {
+                @if (cityInfo.TotalOrders > 0)
+                {
+                    <div class="col-lg-3 city-data">
+                        <div class="mb-3">
+                            <h4 id="city" class="city-name">@cityInfo.CityName</h4>
+                            <p>نسبة الطلبات: <span class="percentage-orders">@cityInfo.PercentageOfTotalOrders</span>%</p>
+                            <p>عدد الطلبات: <span class="total-orders">@cityInfo.TotalOrders</span></p>
+                            @if (User.IsInRole("Admin"))
+                            {
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>مصدر الطلب</th>
+                                            <th>عدد الطلبات</th>
+                                            <th>السعر  USD</th>
+                                            <th>السعر  TRY</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var source in cityInfo.OrdersBySource)
+                                        {
+                                            <tr>
+                                                <td>@source.Key</td>
+                                                <td>@source.Value</td>
+                                                <td>@DecimalFormattingService.FormatDecimal(cityInfo.TotalPriceBySourceUSD[source.Key]) USD</td>
+                                                <td>@DecimalFormattingService.FormatDecimal(CurrencyExchangeServiceInstance.ConvertToTurkishLira(cityInfo.TotalPriceBySourceUSD[source.Key])) TRY</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td>الأجمالي</td>
+                                            <td>@cityInfo.OrdersBySource.Sum(src => src.Value)</td>
+                                            <td>@DecimalFormattingService.FormatDecimal(cityInfo.TotalPriceBySourceUSD.Sum(src => src.Value)) USD</td>
+                                            <td>@DecimalFormattingService.FormatDecimal(CurrencyExchangeServiceInstance.ConvertToTurkishLira(cityInfo.TotalPriceBySourceUSD.Sum(src => src.Value))) TRY</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    }
+</div>
+
+<div id="chartContainer" style="height:500px; width: 100%; display: none;"></div>
+
+<script>
+
+    $(document).ready(function () {
+
+
+        chart.options.data[0].click = function (e) {
+            // Determine if a country or city is clicked based on the current filter applied
+            var selectedFilter = $('#CountryId').val() ? 'city' : 'country';
+
+            // Prepare the base URL
+            var baseUrl = '/rating/EmployeOrdersDetails';
+
+            // Retrieve the clicked segment label (country or city name)
+            var clickedLabel = e.dataPoint.label;
+
+            // Prepare the filters based on selection
+            var filters = {
+                selectedDateRange: $('#selectedDateRange').text(),
+                gender : $('#Gender').val(),
+            };
+
+            // Add country or city to the filters
+            if (selectedFilter === 'city') {
+                filters.selectedCity = clickedLabel;
+                // Assuming you have a way to know the country when a city is clicked, you might need to set it too
+            } else if (selectedFilter === 'country') {
+                filters.selectedCountry = clickedLabel;
+            }
+
+            // Construct the URL with filters
+            var urlWithParams = baseUrl + '?' + $.param(filters);
+
+            // Redirect
+            window.location.href = urlWithParams;
+        };
+
+    });
+
+
+
+
+    function loadData() {
+        const selectedDateRange = $('#selectedDateRange').text().replace(/ .+? /, ' إلى '); // Adjusted to match format
+        var countryId = $('#CountryId').val();
+
+        $.ajax({
+            url: '/rating/CityByCountryDetails',
+            data: {
+                selectedDateRange: selectedDateRange, countryId: countryId // Pass the selected gender value to the server
+            },
+            success: function (result) {
+                var tableRows = $(result).find('#filteredResults').html();
+                $('#filteredResults').html(tableRows);
+                $('#chartContainer').show();
+                updateChartFromHTML();
+            },
+            error: function () {
+                alert("Error loading data.");
+            }
+        });
+    }
+
+
+
+    function updateChartFromHTML() {
+        var dataPoints = [];
+        var country = $('#CountryId').val();
+        var selectedGender = $('#Gender').val(); // Get the selected gender value
+
+        if (country) {
+            // If country filter is applied, parse city data
+            $('#filteredResults .city-data').each(function () {
+                var cityName = $(this).find('.city-name').text();
+                var percentageOrders = parseFloat($(this).find('.percentage-orders').text());
+                dataPoints.push({ label: cityName, y: percentageOrders });
+            });
+        } else {
+            // If no country filter is applied, or you want to display aggregate data
+            $('#filteredResults .container-fluid').each(function () {
+                var countryName = $(this).find('.country-name').text();
+                var percentageOrders = parseFloat($(this).find('.country-percentage').text().match(/[\d\.]+/)[0]);
+                dataPoints.push({ label: countryName, y: percentageOrders });
+            });
+        }
+
+        chart.options.data[0].dataPoints = dataPoints;
+        chart.render();
+    }
+
+
+    $('#CountryId').change(loadData);
+
+   
+
+    function getRangeStart(hours) {
+        var now = moment();
+        var start = now.clone().startOf('day').add(hours, 'hours'); // Initially set to 11:00 AM today
+        if (now.hour() < hours) {
+            // If current time is before 11:00 AM, adjust start to 11:00 AM the previous day
+            start = now.clone().subtract(1, 'days').startOf('day').add(hours, 'hours');
+        }
+        return start;
+    }
+
+    function getRangeEnd(hours) {
+        var now = moment();
+        var end = now.clone().startOf('day').add(1, 'days').add(hours, 'hours'); // Set end to 11:00 AM the next day
+        if (now.hour() < hours) {
+            // If current time is before 11:00 AM, set end to 11:00 AM today
+            end = now.clone().startOf('day').add(hours, 'hours');
+        }
+        return end;
+    }
+
+    $('#RangePicker').daterangepicker({
+        ranges: {
+            'اليوم': [getRangeStart(10), getRangeEnd(10)],
+            'امس': [getRangeStart(10).subtract(1, 'days'), getRangeEnd(10).subtract(1, 'days')],
+            'اخر 7 ايام': [getRangeStart(10).subtract(6, 'days'), getRangeEnd(10)],
+            'الأسبوع الحالي': [moment().startOf('week').add(10, 'hours'), getRangeEnd(10)],
+            'اخر 30 يوم': [getRangeStart(10).subtract(29, 'days'), getRangeEnd(10)],
+            'الشهر الحالي': [moment().startOf('month').add(10, 'hours'), getRangeEnd(10)],
+            'الشهر الأخير': [moment().subtract(1, 'month').startOf('month').add(10, 'hours'), moment().subtract(1, 'month').endOf('month').add(10, 'hours')],
+        },
+        "alwaysShowCalendars": true,
+        "startDate": "01/16/2024",
+        "endDate": "01/22/2024"
+    }, function (start, end, label) {
+        var now = moment();
+        var hours = 10;
+        // Adjust the display based on the selected range directly for debugging
+        var debugStart = getRangeStart(hours);
+        var debugEnd = getRangeEnd(hours);
+
+        var selectedText = start.format('YYYY-MM-DD ') + ' إلى ' + end.format('YYYY-MM-DD ');
+        $('#selectedFilter span').text(selectedText);
+        loadData();
+        // Debug logging
+        console.log('Debug - Start of "today": ' + debugStart.format('YYYY-MM-DD HH:mm'));
+        console.log('Debug - End of "today": ' + debugEnd.format('YYYY-MM-DD HH:mm'));
+    });
+
+    function onDateRangeChange() {
+        console.log("enterd fucntion")
+        var selectedDateRangeText = $('#selectedDateRange').text(); // Get the text of the element
+        if (selectedDateRangeText && selectedDateRangeText.includes("إلى")) {
+            console.log("enterd fucntion inside if ")
+
+            var dateRangeParts = selectedDateRangeText.split("إلى"); // Split the text by 'إلى'
+            if (dateRangeParts.length === 2) {
+                // Check if both dates are valid, then proceed
+                var startDate = dateRangeParts[0].trim();
+                var endDate = dateRangeParts[1].trim();
+                // You can add more validation for startDate and endDate here if needed
+
+                loadData();
+            }
+        }
+    }
+
+
+    var selectedDateRangeElement = document.getElementById('selectedDateRange');
+
+    var observer = new MutationObserver(function (mutations) {
+        mutations.forEach(function (mutation) {
+            if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                onDateRangeChange();
+            }
+        });
+    });
+
+    // Configuration of the observer:
+    var config = { childList: true, characterData: true, subtree: true };
+
+    // Start observing the target element
+    observer.observe(selectedDateRangeElement, config);
+
+
+
+
+    var chart = new CanvasJS.Chart("chartContainer", {
+        animationEnabled: true,
+
+        data: [{
+            type: "pie",
+            startAngle: 240,
+            yValueFormatString: "##0.00\"%\"",
+            indexLabel: "{label} {y}",
+            dataPoints: [] // Initialize with an empty array
+        }]
+    });
+
+
+    function initializeChartWithCountryData() {
+        var dataPoints = [];
+        $('.country-name').each(function (index, element) {
+            var countryName = $(element).text();
+            var percentage = parseFloat($('.country-percentage').eq(index).text().match(/[\d\.]+/)[0]);
+
+            dataPoints.push({ label: countryName, y: percentage });
+        });
+
+        chart.options.data[0].dataPoints = dataPoints;
+        $('#chartContainer').show(); // Show the chart container
+
+        chart.render();
+    }
+
+
+
+
+
+
+
+
+
+
+    $('#chartContainer').show(); // Show the chart container
+
+    // Initialize the chart
+    chart.render();
+
+
+    initializeChartWithCountryData();
+
+
+
+</script>

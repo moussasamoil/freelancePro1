@@ -1,0 +1,385 @@
+@using System
+@using System.Linq
+@using System.Collections.Generic
+@model lotus_blue.Controllers.EmployeeTransactionStatementPdfViewModel
+
+@{
+    Layout = null;
+
+    Func<string, string> Show = value => string.IsNullOrWhiteSpace(value) ? "-" : value;
+
+    var employeeNameToShow = Show(Model.EmployeeName);
+    var employeeCodeToShow = Show(Model.EmployeeCode);
+    var employeeIdNumberToShow = Show(Model.EmployeeIdNumber);
+    var employeePhoneToShow = Show(Model.EmployeePhoneNumber);
+    var employeeAddressToShow = Show(Model.EmployeeAddress);
+    var employeeSalaryToShow = Show(Model.EmployeeSalary);
+    var employeeAcademicLevelToShow = Show(Model.EmployeeAcademicLevel);
+    var employeeTasksToShow = Show(Model.EmployeeTasks);
+    var employeeDateOfBirthToShow = Show(Model.EmployeeDateOfBirth);
+    var employeeGenderToShow = Show(Model.EmployeeGender);
+    var employeeCountryToShow = Show(Model.EmployeeCountry);
+    var employeeDateAddedToShow = Show(Model.EmployeeDateAdded);
+    var employeeStatusToShow = Show(Model.EmployeeStatus);
+    var accountTypeToShow = Show(Model.AccountType);
+
+    var rows = Model.Rows ?? new List<lotus_blue.Controllers.EmployeeTransactionStatementPdfRowViewModel>();
+    var rowsPerPage = 18;
+    var tablePagesCount = Math.Max(1, (int)Math.Ceiling(rows.Count / (decimal)rowsPerPage));
+}
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <style>
+        * { box-sizing: border-box; }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+            color: #111827;
+            font-family: Arial, Tahoma, sans-serif;
+            direction: rtl;
+        }
+
+        body {
+            font-size: 12px;
+            line-height: 1.45;
+            padding-bottom: 66px;
+        }
+
+        .pdf-page {
+            width: 100%;
+            padding: 8px 18px 76px;
+            background: #ffffff;
+        }
+
+        .brand-header {
+            width: 100%;
+            height: 56px;
+            margin: 0 0 18px;
+            background: #a3c8be;
+            background: -webkit-linear-gradient(left, #0b7a63 0%, #218b75 14%, #4fa18e 30%, #7eb7a9 48%, #a3c8be 66%, #c1dbd3 84%, #dcebe7 100%);
+            background: linear-gradient(to right, #0b7a63 0%, #218b75 14%, #4fa18e 30%, #7eb7a9 48%, #a3c8be 66%, #c1dbd3 84%, #dcebe7 100%);
+            overflow: hidden;
+            direction: ltr;
+            display: table;
+            table-layout: fixed;
+        }
+
+        .brand-logo-wrap {
+            height: 56px;
+            display: table-cell;
+            vertical-align: middle;
+            padding-left: 18px;
+            width: 260px;
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .brand-subtitle {
+            display: table-cell;
+            vertical-align: middle;
+            text-align: right;
+            padding-right: 20px;
+            color: #073b31;
+            font-size: 15px;
+            font-weight: 900;
+            direction: rtl;
+        }
+
+        .account-title-row {
+            margin: 0 0 11px;
+            border-bottom: 1px solid #b8c2cc;
+            padding: 0 4px 7px;
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 700;
+            text-align: right;
+        }
+
+        .account-details {
+            width: 100%;
+            display: table;
+            table-layout: fixed;
+            margin-bottom: 18px;
+            direction: rtl;
+        }
+
+        .details-column {
+            display: table-cell;
+            vertical-align: top;
+            width: 50%;
+        }
+
+        .details-column.right-column { padding-left: 18px; }
+        .details-column.left-column { padding-right: 18px; }
+
+        .detail-row {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+            margin-bottom: 5px;
+            page-break-inside: avoid;
+        }
+
+        .detail-label,
+        .detail-colon,
+        .detail-value {
+            display: table-cell;
+            vertical-align: top;
+            font-size: 11.5px;
+            line-height: 1.5;
+        }
+
+        .detail-label {
+            width: 120px;
+            color: #111827;
+            font-weight: 900;
+            white-space: nowrap;
+            text-align: right;
+        }
+
+        .detail-colon {
+            width: 10px;
+            color: #111827;
+            font-weight: 900;
+            text-align: center;
+        }
+
+        .detail-value {
+            color: #111827;
+            font-weight: 600;
+            text-align: right;
+            word-break: break-word;
+        }
+
+        .employee-main-value {
+            color: #087a63;
+            font-weight: 900;
+        }
+
+        .table-page {
+            width: 100%;
+            page-break-inside: avoid;
+        }
+
+        .table-page-break {
+            page-break-before: always;
+            padding-top: 8px;
+        }
+
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-spacing: 0;
+            table-layout: fixed;
+            direction: rtl;
+            margin-top: 8px;
+            font-size: 10px;
+            page-break-inside: auto;
+        }
+
+        .report-table thead { display: table-header-group; }
+        .report-table tr { page-break-inside: avoid; page-break-after: auto; }
+
+        .report-table th,
+        .report-table td {
+            border: 1px solid #111827;
+            padding: 10px 5px;
+            text-align: center;
+            vertical-align: middle;
+            word-break: break-word;
+            line-height: 1.55;
+            background: #ffffff;
+        }
+
+        .report-table th {
+            background: #ffffff;
+            color: #16856e;
+            font-weight: 900;
+            direction: rtl;
+        }
+
+        .report-table td { direction: rtl; }
+        .report-table .serial-cell { width: 34px; }
+        .report-table .employee-cell { width: 15%; color: #087a63; font-weight: 900; }
+        .report-table .time-cell { width: 10%; }
+        .report-table .reason-cell { width: 24%; text-align: right; }
+        .report-table .amount-cell { width: 11%; }
+        .report-table .date-cell { width: 12%; }
+        .report-table .type-cell { width: 9%; }
+
+        .amount-pill {
+            display: inline-block;
+            min-width: 74px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 900;
+            direction: ltr;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .deduction-value {
+            color: #dc2626;
+            background: rgba(220, 38, 38, 0.10);
+            border: 1px solid rgba(220, 38, 38, 0.30);
+        }
+
+        .advance-value {
+            color: #b45309;
+            background: rgba(245, 158, 11, 0.16);
+            border: 1px solid rgba(180, 83, 9, 0.32);
+        }
+
+        .bonus-value {
+            color: #15803d;
+            background: rgba(21, 128, 61, 0.12);
+            border: 1px solid rgba(21, 128, 61, 0.28);
+        }
+
+        .empty-value {
+            color: #64748b;
+            background: rgba(100, 116, 139, 0.08);
+            border: 1px solid rgba(100, 116, 139, 0.22);
+        }
+
+        .totals-row {
+            width: 100%;
+            margin-top: 13px;
+            text-align: left;
+            direction: ltr;
+            clear: both;
+        }
+
+        .total-box {
+            min-width: 170px;
+            display: inline-block;
+            border-radius: 999px;
+            padding: 8px 14px;
+            margin-right: 6px;
+            font-size: 12px;
+            font-weight: 900 !important;
+            text-align: center;
+            direction: rtl;
+            white-space: nowrap;
+        }
+
+        .total-error {
+            color: #dc2626;
+            background: rgba(220, 38, 38, 0.10);
+            border: 1px solid rgba(220, 38, 38, 0.32);
+        }
+
+        .total-advance {
+            color: #b45309;
+            background: rgba(245, 158, 11, 0.16);
+            border: 1px solid rgba(180, 83, 9, 0.32);
+        }
+
+        .total-bonus {
+            color: #15803d;
+            background: rgba(21, 128, 61, 0.12);
+            border: 1px solid rgba(21, 128, 61, 0.28);
+        }
+    </style>
+</head>
+<body>
+    <div class="pdf-page">
+        <div class="brand-header">
+            <div class="brand-logo-wrap">LUXIRA</div>
+            <div class="brand-subtitle">@(Model.IsSingleEmployee ? "سجل حركة المكافآت والخصومات" : "كشف حركات المكافآت والخصومات")</div>
+        </div>
+
+        <div class="account-title-row">
+            @(Model.IsSingleEmployee ? "بيان حركة موظف" : "كشف حركات الموظفين") - تم إنشاؤه بتاريخ @Model.GeneratedAt.ToString("yyyy/MM/dd HH:mm")
+        </div>
+
+        <div class="account-details">
+            <div class="details-column right-column">
+                <div class="detail-row"><span class="detail-label">اسم الموظف</span><span class="detail-colon">:</span><span class="detail-value employee-main-value">@employeeNameToShow</span></div>
+                <div class="detail-row"><span class="detail-label">كود الموظف</span><span class="detail-colon">:</span><span class="detail-value">@employeeCodeToShow</span></div>
+                <div class="detail-row"><span class="detail-label">رقم الهوية</span><span class="detail-colon">:</span><span class="detail-value">@employeeIdNumberToShow</span></div>
+                <div class="detail-row"><span class="detail-label">رقم الهاتف</span><span class="detail-colon">:</span><span class="detail-value">@employeePhoneToShow</span></div>
+                <div class="detail-row"><span class="detail-label">العنوان</span><span class="detail-colon">:</span><span class="detail-value">@employeeAddressToShow</span></div>
+                <div class="detail-row"><span class="detail-label">الراتب</span><span class="detail-colon">:</span><span class="detail-value">@employeeSalaryToShow</span></div>
+            </div>
+
+            <div class="details-column left-column">
+                <div class="detail-row"><span class="detail-label">المؤهل</span><span class="detail-colon">:</span><span class="detail-value">@employeeAcademicLevelToShow</span></div>
+                <div class="detail-row"><span class="detail-label">المسمى الوظيفي</span><span class="detail-colon">:</span><span class="detail-value">@employeeTasksToShow</span></div>
+                <div class="detail-row"><span class="detail-label">تاريخ الميلاد</span><span class="detail-colon">:</span><span class="detail-value">@employeeDateOfBirthToShow</span></div>
+                <div class="detail-row"><span class="detail-label">النوع</span><span class="detail-colon">:</span><span class="detail-value">@employeeGenderToShow</span></div>
+                <div class="detail-row"><span class="detail-label">الدولة</span><span class="detail-colon">:</span><span class="detail-value">@employeeCountryToShow</span></div>
+                <div class="detail-row"><span class="detail-label">حالة الموظف</span><span class="detail-colon">:</span><span class="detail-value">@employeeStatusToShow</span></div>
+            </div>
+        </div>
+
+        @for (var pageIndex = 0; pageIndex < tablePagesCount; pageIndex++)
+        {
+            var pageRows = rows.Skip(pageIndex * rowsPerPage).Take(rowsPerPage).ToList();
+            <div class="table-page @(pageIndex > 0 ? "table-page-break" : "")">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th class="serial-cell">#</th>
+                            <th class="employee-cell">الاسم</th>
+                            <th class="time-cell">بداية دوامه</th>
+                            <th class="time-cell">نهاية دوامه</th>
+                            <th class="reason-cell">سبب الخصم</th>
+                            <th class="amount-cell">خصم</th>
+                            <th class="amount-cell">سلفة</th>
+                            <th class="amount-cell">مكافأة</th>
+                            <th class="date-cell">تاريخ اليوم</th>
+                            <th class="type-cell">نوع الحركة</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!pageRows.Any())
+                        {
+                            <tr>
+                                <td colspan="10">لا توجد حركات</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            for (var i = 0; i < pageRows.Count; i++)
+                            {
+                                var row = pageRows[i];
+                                var serial = pageIndex * rowsPerPage + i + 1;
+                                <tr>
+                                    <td class="serial-cell">@serial</td>
+                                    <td class="employee-cell">@Show(row.EmployeeName)</td>
+                                    <td class="time-cell">@Show(row.ShiftStartTime)</td>
+                                    <td class="time-cell">@Show(row.ShiftEndTime)</td>
+                                    <td class="reason-cell">@Show(row.Reason)</td>
+                                    <td class="amount-cell"><span class="amount-pill @(row.DeductionAmount > 0 ? "deduction-value" : "empty-value")">@(row.DeductionAmount > 0 ? row.DeductionAmount.ToString("0.##") : "-")</span></td>
+                                    <td class="amount-cell"><span class="amount-pill @(row.AdvanceAmount > 0 ? "advance-value" : "empty-value")">@(row.AdvanceAmount > 0 ? row.AdvanceAmount.ToString("0.##") : "-")</span></td>
+                                    <td class="amount-cell"><span class="amount-pill @(row.BonusAmount > 0 ? "bonus-value" : "empty-value")">@(row.BonusAmount > 0 ? row.BonusAmount.ToString("0.##") : "-")</span></td>
+                                    <td class="date-cell">@Show(row.TransactionDate)</td>
+                                    <td class="type-cell">@Show(row.TransactionType)</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <div class="totals-row">
+            <span class="total-box total-error">إجمالي الخصم: @Model.TotalDeductions.ToString("0.##")</span>
+            <span class="total-box total-advance">إجمالي السلف: @Model.TotalAdvances.ToString("0.##")</span>
+            <span class="total-box total-bonus">إجمالي المكافآت: @Model.TotalBonuses.ToString("0.##")</span>
+        </div>
+    </div>
+</body>
+</html>

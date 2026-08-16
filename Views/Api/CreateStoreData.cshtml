@@ -1,0 +1,60 @@
+﻿@model lotus_blue.Models.ViewModel.StoreDataViewModel
+
+@{
+
+    Layout = null;
+}
+
+<form asp-controller="Api" asp-action="CreateStoreData" method="post">
+    <div>
+        <label asp-for="Name">Store Name</label>
+        <input asp-for="Name" />
+    </div>
+    <div>
+        <label asp-for="Address">Address</label>
+        <input asp-for="Address" />
+    </div>
+    <div>
+        <label asp-for="TaxRegistrationNumber">Tax Registration Number</label>
+        <input asp-for="TaxRegistrationNumber" />
+    </div>
+    <div>
+        <label asp-for="IdNumber">ID Number</label>
+        <input asp-for="IdNumber" />
+    </div>
+    <div>
+        <label asp-for="LogoUrl">logo</label>
+        <input asp-for="LogoUrl" />
+    </div>
+    <div>
+        <label asp-for="InformationUrl">InformationUrl</label>
+        <input asp-for="InformationUrl" />
+    </div>
+    <div>
+        <label asp-for="PhoneNumber">Phone Number</label>
+        <input asp-for="PhoneNumber" />
+    </div>
+    <div>
+        <label asp-for="Specialty">Specialty</label>
+        <input asp-for="Specialty" />
+    </div>
+    <div>
+        <label asp-for="Website">Website</label>
+        <input asp-for="Website" />
+    </div>
+    <div>
+        <label asp-for="Notes">Notes</label>
+        <input asp-for="Notes" />
+    </div>
+    <div>
+        <label asp-for="SelectedCountry">Selected Country</label>
+        <input asp-for="SelectedCountry" />
+    </div>
+    <div>
+        <label asp-for="City">City</label>
+        <input asp-for="City" />
+    </div>
+    <!-- Add more fields for other properties if needed -->
+
+    <button type="submit">Submit</button>
+</form>

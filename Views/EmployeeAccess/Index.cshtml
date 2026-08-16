@@ -1,0 +1,29 @@
+﻿@model List<lotus_blue.Models.ViewModel.EmployeeAccessViewModel>
+
+@{
+    ViewData["Title"] = "المتاجر";
+}
+
+<h1>المتاجر</h1>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>اسم الشركة</th>
+            <th>عدد الموظفين</th>
+            <th>الإجراءات</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var company in Model)
+        {
+            <tr>
+                <td>@company.CompanyName</td>
+                <td>@company.EmployeeCount</td>
+                <td>
+                    <a class="btn btn-primary" href="@Url.Action("Details", "EmployeeAccess", new { id = company.Id })">عرض التفاصيل</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

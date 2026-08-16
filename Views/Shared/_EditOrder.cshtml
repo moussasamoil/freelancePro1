@@ -1,0 +1,2859 @@
+﻿﻿
+<style>
+    /* يمنع رعشة حقول الأرقام أثناء الكتابة */
+    #TelephoneNumber.error,
+    #SecondTelephoneNumber.error,
+    #TotalPrice.error,
+    #DeliveryPrice.error,
+    input.amount.error,
+    .numeric-no-shake.error {
+        animation: none !important;
+        transform: none !important;
+    }
+</style>
+
+@model lotus_blue.Models.ViewModel.OrderViewModel
+@inject lotus_blue.Services.GetCurrentTimeInIstanbul TimeService
+@using lotus_blue.Models
+@using lotus_blue.Models.ViewModel
+@using OrderSourceEnum = lotus_blue.Models.OrderSourceEnum
+@* Prevents accidental close during order editing — static backdrop and no keyboard dismiss *@
+<div class="modal   rtl  modal-dialog-centered" id="Edit" data-bs-keyboard="false" data-bs-backdrop="static" tabindex="-1" aria-labelledby="Edit" aria-hidden="true">
+    @* Large size to fit the full order form without scrolling *@
+    <div class="modal-dialog modal-lg modal-dialog-centered " style="position: relative;">
+        @* Relative position required so the loading overlay (absolute) is scoped to this panel *@
+        <div class="modal-content background-white-green" style="position: relative;">
+            <div id="overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(33, 37, 41, 0.1); z-index: 10;"></div>
+            <div id="deleteProductConfirmEdit" style="position: fixed; inset: 0; z-index: 9999; display: none; background: rgba(33,37,41,0.55); align-items: center; justify-content: center;">
+                <div class="row justify-content-center align-items-center" style="width: 100%; margin: 0;">
+                    <div style="background-color:white" class="w-30 flex-column b-r-8 d-flex justify-content-center">
+                        <div class="">
+                            <div class="text-center pt-3">
+                                <img src="/static/trash-can-regular.svg" width="50">
+                            </div>
+                            <p class="text-center pb-3 text-nowrap"> هل أنت متأكد من حذف المستودع .</p>
+                        </div>
+                        <div class="border-top">
+                            <div class="row">
+                                <div class="col-6 py-2 text-center text-green-v2 text-decoration-underline" id="confirm-remove">
+                                    موافقه
+                                </div>
+                                <div class="col-6 py-2 text-center border-right text-grey-v2 text-decoration-underline" id="cancel-remove">
+                                    تراجع
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @* Modal header: title + cancel/confirm dismiss buttons *@
+            <div class="modal-header">
+                <button type="button" class="btn head-16 text-green" data-bs-dismiss="modal" aria-label="Close"> تراجع</button>
+                <h5 class="modal-title  head text center" id="editOrderModalTitle"> تعديل الطلب</h5>
+                <button type="button" class="btn head-16 text-green" data-bs-dismiss="modal" aria-label="Close"> انتهى</button>
+            </div>
+            <div class="modal-body">
+                <form id="editOrderForm">
+                    @* Hidden Id so OrderController.Edit(int id, OrderViewModel) binds correctly *@
+                    <input type="hidden" name="Id" value="@Model.Id" />
+                    <div class="row d-flex justify-content-center">
+                        @* Country and city selection — server-prefilled *@
+                        <div class="row">
+                            <div class="col-6" id="countryCol">
+                                <div class="form-group">
+                                    <input type="text" class="form-control with-bg-image-country" readonly
+                                           value="@Model.Country"
+                                           style="background-image: url('@Common.GetImageUrlByCountryName(Model.Country.ToString())');" />
+                                    <input type="hidden" name="Country" value="@Model.Country" id="countryDropdown" />
+                                </div>
+                            </div>
+                            @* Cities server-rendered for the order's country *@
+                            <div class="col-6" id="cityCol">
+                                <div class="form-group ">
+                                    <select asp-for="State" class="form-control" id="cityDropdown" required>
+                                        <option data-image="/static/city-regular.svg" value="">المدينة</option>
+                                        @if (lotus_blue.Models.Common.CitiesByCountry.ContainsKey(Model.Country))
+                                        {
+                                            foreach (var city in lotus_blue.Models.Common.CitiesByCountry[Model.Country])
+                                            {
+                                                <option value="@city"
+                                                        data-image="/static/city-regular.svg"
+                                                        selected="@(city == Model.State ? "selected" : null)">@city</option>
+                                            }
+                                        }
+                                    </select>
+                                    <span asp-validation-for="State" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        @* Order source type and page name *@
+                        <div class="row mt-3">
+                            @* Shown when a non-WhatsApp source is selected *@
+                            <div class="col-6 " id="sourceNameCol" style="@(Model.OrderSource != OrderSourceEnum.واتساب ? "" : "display: none;")">
+                                <div class="form-group input-wrapper w-sm-100">
+                                    <input placeholder="اسم الصفحة" id="SourceName" asp-for="SourceName" disabled="@(Model.OrderSource != OrderSourceEnum.واتساب ? null : "disabled")" class=" form-control with-bg-image-pagename" />
+                                    <i class="fa-duotone fa-spinner-third fa-spin spinner-icon"></i>
+                                    <span asp-validation-for="SourceName" class="text-danger"></span>
+                                </div>
+                            </div>
+                            @* Source dropdown — shrinks to col-6 if source is selected *@
+                            <div class="col-@(Model.OrderSource != OrderSourceEnum.واتساب ? "6" : "12") " id="orderSourceCol">
+                                <div class="form-group">
+                                    <select asp-for="OrderSource" class="form-control" id="orderSourceDropdown" required>
+                                        <option data-image="/static/hashtag-regular.svg" value="" disabled>نوع الصفحة</option>
+                                        @foreach (OrderSourceEnum source in Enum.GetValues(typeof(OrderSourceEnum)))
+                                        {
+                                            <option value="@((int)source)"
+                                                    data-image="@Common.GetSocialMediaIconUrl(source)"
+                                                    selected="@((int)source == (int)Model.OrderSource ? "selected" : null)">
+                                                @source
+                                            </option>
+                                        }
+                                    </select>
+                                    <span asp-validation-for="OrderSource" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        @* Store (manufacturing company) and merged delivery party selection *@
+                        <div class="row mt-3">
+                            @{
+                                bool showDeliveryCol = Model.AvailableDeliveryParties != null && Model.AvailableDeliveryParties.Count > 1;
+                            }
+                            @* Store column: server-rendered with preselected store *@
+                            <div class="@(showDeliveryCol ? "col-6" : "col-12") " id="storeCol">
+                                <div class="form-group">
+                                    <select asp-for="ManufacturingCompanyId" class="form-control" id="manufacturingCompanyDropdown" required>
+                                        <option data-image="/static/building-regular.svg" value="" disabled>اسم المتجر </option>
+                                        @if (Model.AvailableStores != null)
+                                        {
+                                            foreach (var store in Model.AvailableStores)
+                                            {
+                                                <option value="@store.id"
+                                                        data-image="@store.logoUrl"
+                                                        data-main-warehouse-id="@(store.mainWarehouseId?.ToString() ?? "")"
+                                                        selected="@(store.id == Model.ManufacturingCompanyId ? "selected" : null)">@store.name</option>
+                                            }
+                                        }
+                                    </select>
+                                    <span asp-validation-for="ManufacturingCompanyId" class="text-danger"></span>
+                                </div>
+                            </div>
+                            @* Merged delivery party column: server-rendered; shown only when more than one option *@
+                            <div class="col-6 " id="deliveryCompanyCol" style="@(showDeliveryCol ? "" : "display: none;")">
+                                <div class="form-group">
+                                    <select id="deliveryPartyDropdown" asp-for="DeliveryCompanyId" class="form-control" required>
+                                        <option data-image="/static/truck-regular.svg" value="" disabled>اختر طرف التوصيل</option>
+                                        @if (Model.AvailableDeliveryParties != null)
+                                        {
+                                            foreach (var dp in Model.AvailableDeliveryParties)
+                                            {
+                                                <option value="@dp.id"
+                                                        data-image="@dp.logoUrl"
+                                                        data-is-delivery-rep="@(dp.isRepresentative ? "true" : "false")"
+                                                        selected="@(dp.id == Model.DeliveryCompanyId ? "selected" : null)">@dp.name</option>
+                                            }
+                                        }
+                                    </select>
+                                    <span asp-validation-for="DeliveryCompanyId" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        @* Customer contact: primary and secondary phone numbers *@
+                        <div class="row mt-3" id="phoneRow">
+                            <div class="col-6" id="primaryPhoneCol">
+                                <div class="form-group w-sm-100 input-wrapper">
+                                    <input type="tel" inputmode="tel" autocomplete="off" required placeholder="رقم الهاتف الأول" asp-for="TelephoneNumber" class="  form-control with-bg-image-phonenumber  numeric-no-shake" />
+                                    <i class="fa-duotone fa-spinner-third fa-spin spinner-icon"></i>
+                                    <span asp-validation-for="TelephoneNumber" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-6" id="secondPhoneCol">
+                                <div class="form-group">
+                                    <input type="tel" inputmode="tel" autocomplete="off" placeholder="رقم الهاتف الثاني (اختياري) " id="SecondTelephoneNumber" asp-for="SecondTelephoneNumber" class="form-control with-bg-image-phonenumber numeric-no-shake" />
+                                    <span asp-validation-for="SecondTelephoneNumber" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        @* Customer name. Notes moved to its own row beneath payment status. *@
+                        <div class="row mt-3">
+                            <div class="col-12 ">
+                                <div class="form-group w-sm-100 input-wrapper">
+                                    <input required placeholder="اسم العميل " id="CustomerName" asp-for="CustomerName" class="form-control  with-bg-image-client" />
+                                    <i class="fa-duotone fa-spinner-third fa-spin spinner-icon"></i>
+                                    <span asp-validation-for="CustomerName" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        @* Order metadata: from-comments flag, creation date, payment status *@
+                        <div class="row mt-3 ">
+                            <div class="form-group col-6 " style="display: none;">
+                                <div class="form-group ">
+                                    <select asp-for="FromComments" class="form-control w-100" id="CommentsDropdown">
+                                        <option value="" data-image="/static/comment-regular.svg">التعليقات</option>
+                                        <option value="true" data-image="/static/check-regular.svg" selected="@(Model.FromComments ? "selected" : null)">نعم </option>
+                                        <option value="false" data-image="/static/x-regular.svg" selected="@(!Model.FromComments ? "selected" : null)">لا</option>
+                                    </select>
+                                    <span asp-validation-for="FromComments" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="form-group col-6  ">
+                                <div class="form-group ">
+                                    <input required asp-for="CreatedDate" name="CreatedDate" value="@Model.CreatedDate.ToString("yyyy-MM-ddTHH:mm:ss")" type="datetime-local" class="form-control text-end with-bg-image-calendar calendar  pe-2 ps-2" />
+                                    <span asp-validation-for="CreatedDate" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="form-group col-6  " id="paymentCol">
+                                <div class="form-group ">
+                                    <select asp-for="IsPaid" class="form-control w-sm-100 " id="IsPaid">
+                                        <option data-image="/static/credit-card-front-regular.svg" value="">طريقة الدفع (اختياري)</option>
+                                        <option value="true" data-image="/static/credit-card-front-regular.svg" selected="@(Model.IsPaid ? "selected" : null)">تم التحويل حوالة بنكية</option>
+                                        <option value="false" data-image="/static/credit-card-front-regular.svg" selected="@(!Model.IsPaid ? "selected" : null)">غير مدفوع</option>
+                                    </select>
+                                    <span asp-validation-for="Gender" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        @* Payment receipt — paste-only field, optional on edit. Visible only when IsPaid is "paid".
+                        Prefilled with the saved receipt when present; ExistingPaymentReceiptUrl is posted back so the controller keeps the original if untouched. *@
+                        <div class="row mt-3" id="paymentReceiptRow" style="@(Model.IsPaid ? "" : "display: none;")">
+                            <div class="col-12 ">
+                                <div class="form-group w-100 input-wrapper">
+                                    <div id="PaymentReceiptPaste" class="form-control" contenteditable="true" data-placeholder="صورة إيصال الحوالة بنكية" style="min-height:38px;cursor:text;">@if (!string.IsNullOrEmpty(Model.PaymentReceiptUrl))
+                                        {
+                                            <img src="@Model.PaymentReceiptUrl" style="max-height:120px;max-width:100%;object-fit:contain;" />
+                                        }</div>
+                                    <input type="file" name="PaymentReceiptFile" id="PaymentReceiptFile" accept="image/*" style="display:none;" />
+                                    <input type="hidden" name="ExistingPaymentReceiptUrl" value="@Model.PaymentReceiptUrl" />
+                                </div>
+                            </div>
+                        </div>
+                        @* Notes — own row beneath payment status. Optional. *@
+                        <div class="row mt-3">
+                            <div class="col-12 ">
+                                <div class="form-group">
+                                    <input placeholder="الملاحظات (اختياري)" id="Notes" asp-for="Notes" class="form-control with-bg-image-note" />
+                                    <span asp-validation-for="Notes" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        @* Full delivery address *@
+                        <div class="row mt-3 ">
+                            <div class="col-12 ">
+                                <div class="form-group w-100 input-wrapper">
+                                    <input required placeholder="العنوان بالكامل" id="Address" asp-for="Address" class="form-control with-bg-image-address" />
+                                    <i class="fa-duotone fa-spinner-third fa-spin spinner-icon"></i>
+                                    <span asp-validation-for="Address" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        @* Chat URL — hidden for WhatsApp *@
+                        <div class="row mt-3 " id="chatUrlRow" style="@(Model.OrderSource != OrderSourceEnum.واتساب ? "" : "display: none;")">
+                            <div class="col-12 ">
+                                <div class="form-group w-100 input-wrapper">
+                                    <input @(Model.OrderSource != OrderSourceEnum.واتساب ? "required" : "") placeholder="رابط المحادثة" id="ChatUrl" name="chatUrl" value="@Model.chatUrl" class="form-control with-bg-image-address" />
+                                    <i class="fa-duotone fa-spinner-third fa-spin spinner-icon"></i>
+                                    <span asp-validation-for="chatUrl" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        @* Ad campaign selection — gallery only, dropdown hidden *@
+                        <div class="row mt-3 " id="campaignRow" style="display: none;">
+                            <div class="col-12 ">
+                                <div class="form-group" style="position: relative;">
+                                    <select id="campaignDropdown" asp-for="CampaignId" class="form-control" data-touched="true" style="display: none;">
+                                        <option value="" disabled hidden>اختر الإعلان</option>
+                                        <option data-image="/static/truck-regular.svg" value="none" selected="@(!Model.CampaignId.HasValue ? "selected" : null)">بدون إعلان</option>
+                                        @if (Model.AvailableCampaigns != null)
+                                        {
+                                            foreach (var campaign in Model.AvailableCampaigns)
+                                            {
+                                                if (campaign.manufacturingCompanyId.HasValue && campaign.manufacturingCompanyId == Model.ManufacturingCompanyId)
+                                                {
+                                                    <option value="@campaign.id"
+                                                            data-image="@campaign.imageUrl"
+                                                            selected="@(campaign.id == Model.CampaignId ? "selected" : null)">@campaign.name</option>
+                                                }
+                                            }
+                                        }
+                                    </select>
+                                    <span asp-validation-for="CampaignId" class="text-danger"></span>
+                                    <div id="campaignGalleryWrap" style="display: none;">
+                                        <div id="campaignGallery" class="campaign-gallery"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @* Order screenshot — paste-only field. Prefilled with the saved photo when present.
+                        If the user pastes a new image, the hidden #OrderPhotoFile is set and the new file is uploaded;
+                        if untouched, ExistingPhotoUrl is posted back so the controller keeps the original. *@
+                        <div class="row mt-3 ">
+                            <div class="col-12 ">
+                                <div class="form-group w-100 input-wrapper">
+                                    <div id="OrderPhotoPaste" class="form-control" contenteditable="true" data-placeholder="صورة الحجز" style="min-height:38px;cursor:text;">@if (!string.IsNullOrEmpty(Model.PhotoUrl))
+                                        {
+                                            <img src="@Model.PhotoUrl" style="max-height:120px;max-width:100%;object-fit:contain;" />
+                                        }</div>
+                                    <input type="file" name="PhotoFile" id="OrderPhotoFile" accept="image/*" style="display:none;" />
+                                    <input type="hidden" name="ExistingPhotoUrl" value="@Model.PhotoUrl" />
+                                </div>
+                            </div>
+                        </div>
+                        @* Product picker + pre-rendered selected warehouses *@
+                        <div id="selectedProductsList" class="row mt-3">
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <div class="warehouse-item">
+                                        <select class="form-control warehouse-select" id="productDropdown" disabled>
+                                            <option data-image="/static/box-open-2.svg" disabled selected value="">قم بإختيار إحدى المنتجات</option>
+                                            @if (Model.AvailableWarehouses != null)
+                                            {
+                                                foreach (var wh in Model.AvailableWarehouses)
+                                                {
+                                                    <option value="@wh.id"
+                                                            data-image="@wh.productImage">@wh.name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @for (int i = 0; i < Model.SelectedWarehouses.Count; i++)
+                            {
+                                <div class="appended-warehouse-row row ms-0 mt-3"
+                                     data-warehouse-id="@Model.SelectedWarehouses[i].WarehouseId"
+                                     data-warehouse-name="@Model.SelectedWarehouses[i].WarehouseName"
+                                     data-warehouse-amount="@Model.SelectedWarehouses[i].RemainingAmount"
+                                     data-warehouse-remaining-amount="@Model.SelectedWarehouses[i].RemainingAmount"
+                                     data-main-warehouse-id="@Model.SelectedWarehouses[i].MainWarehouseId">
+                                    <div class="col-lg-6">
+                                        <div class="form-group appenddiv blue-warehouse">
+                                            <div class="warehouse-item">
+                                                <span class="selected-warehouse">@Model.SelectedWarehouses[i].WarehouseName</span>
+                                                <input type="hidden" name="SelectedWarehouses[@i].WarehouseId" value="@Model.SelectedWarehouses[i].WarehouseId">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-6 pe-4 ps-0">
+                                        <div class="form-group">
+                                            <div class="input-group my-input-group" style="width: 105%!important">
+                                                <button type="button" class="btn decrease rounded-btn">-</button>
+                                                <input min="1" type="text" inputmode="numeric" autocomplete="off" required placeholder="الكمية" class="form-control amount numeric-no-shake" asp-for="@Model.SelectedWarehouses[i].Amount" />
+                                                <button type="button" class="btn increase rounded-btn">+</button>
+                                            </div>
+                                            <span asp-validation-for="@Model.SelectedWarehouses[i].Amount" class="text-danger"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <div class="row mt-3">
+                            <div class="d-flex justify-content-center">
+                            </div>
+                        </div>
+                        @* Total price + delivery price (role-gated) *@
+                        @if (User.IsInRole("Admin") || User.IsInRole("FollowUpDepartment") || User.IsInRole("ExecutiveDirector"))
+                        {
+                            <div class="row mt-3">
+                                <div class="col-lg-6">
+                                    <div class="form-group input-wrapper d-flex justify-content-center">
+                                        <input type="text" inputmode="decimal" autocomplete="off" id="TotalPrice" required asp-for="TotalPrice" class="form-control fw-bold with-bg-image-price text-green numeric-no-shake" placeholder="السعر الأجمالي" />
+                                        <i class="fa-duotone fa-spinner-third fa-spin spinner-icon"></i>
+                                        <span asp-validation-for="TotalPrice" class="text-danger"></span>
+                                    </div>
+                                </div>
+                                <div class="col-lg-6">
+                                    <div class="form-group input-wrapper d-flex justify-content-center">
+                                        <input type="text" inputmode="decimal" autocomplete="off" id="DeliveryPrice" asp-for="DeliveryPrice" class="form-control fw-bold with-bg-image-price text-green numeric-no-shake" placeholder="سعر التوصيل" />
+                                        <span asp-validation-for="DeliveryPrice" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <input type="hidden" asp-for="DeliveryPrice" />
+                            <div class="d-flex  justify-content-center">
+                                <div class="w-25 w-sm-50">
+                                    <div class="form-group input-wrapper d-flex justify-content-center">
+                                        <input type="text" inputmode="decimal" autocomplete="off" id="TotalPrice" required asp-for="TotalPrice" class="form-control fw-bold with-bg-image-price text-green numeric-no-shake" placeholder="السعر الأجمالي" />
+                                        <i class="fa-duotone fa-spinner-third fa-spin spinner-icon"></i>
+                                        <span asp-validation-for="TotalPrice" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        @* Submit button *@
+                        <div class="d-flex mb-3 justify-content-center ">
+                            <button style="font-size:1.3rem;" type="submit" id="submitButton" class="btn py-1 background-gold text-white mb-3  w-65 mt-3">تاكيد تعديل الطلب</button>
+                        </div>
+                        @* Inline error panel shown on submission failure — Edit-scoped ids *@
+                        <div style="width:23% !important" id="failedmessageEdit" class="container centered hidden legacy-popup-error-disabled" style="display:none !important; pointer-events:none !important;">
+                            <div class="row justify-content-center align-items-center" style="min-height: 100vh;">
+                                <div style="background-color:white" class=" flex-column b-r-8 d-flex justify-content-center">
+                                    <div class="">
+                                        <div class="text-center pt-3">
+                                            <img src="/static/x-shadow-red.svg" width="50" />
+                                        </div>
+                                        <p class="text-center pb-3 text-black fw-bolder text-nowrap">خطأ في التعديل.</p>
+                                        <p class="text-center text-black pb-3 message text-nowrap"></p>
+                                    </div>
+                                    <div class="border-top grey-hover">
+                                        <div class="row">
+                                            <div class="py-2 closeFailedMessage  text-center grey-hover text-green-v2 text-decoration-underline">
+                                                موافق
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+    .with-bg-image-country {
+        background-position: right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 14px 14px;
+    }
+    /* The global site.css positions #decrease / #increase by id; our buttons use classes only
+           (avoiding duplicate-id collisions with the Create modal on the same page), so re-apply
+           the same positioning via class selectors scoped to .my-input-group. */
+    #Edit .my-input-group .btn.decrease {
+        border-end-end-radius: 0;
+        border-start-end-radius: 0;
+        position: absolute;
+        right: 4px;
+    }
+
+    #Edit .my-input-group .btn.increase {
+        border-start-start-radius: 0;
+        border-end-start-radius: 0;
+        position: absolute;
+        left: 4px;
+    }
+
+    #campaignGalleryWrap {
+        position: absolute;
+        top: 50%;
+        left: calc(100% + 32px);
+        transform: translateY(-50%);
+        width: 200px;
+        background: #f6f6f6;
+        border-radius: 16px;
+        box-shadow: 0 0 4px rgba(0,0,0,.39);
+        overflow: hidden;
+        z-index: 10;
+    }
+    /* Campaign dropdown is intentionally fully hidden — gallery is the only UI.
+           Select2 stays initialized on it (so all the existing data-flow stays intact),
+           but neither the native select nor its rendered Select2 widget are ever shown. */
+    #Edit #campaignDropdown,
+    #Edit #campaignDropdown + .select2-container {
+        display: none !important;
+    }
+    /* Select2 success state: green background on the container */
+    .select2-container:has(.select2-selection__rendered.success) .select2-selection {
+        background: #1d273b !important;
+        background-color: #1d273b !important;
+        border-color: #1d273b !important;
+        border-radius: 4px;
+    }
+    /* Selected text and arrow become white */
+    .select2-container:has(.select2-selection__rendered.success) .select2-selection__rendered {
+        color: white !important;
+    }
+
+    .select2-container:has(.select2-selection__rendered.success) .select2-selection__arrow b {
+        border-color: white transparent transparent transparent !important;
+    }
+    /* Inverted tick icon: white circle, green checkmark */
+    .select2-container:has(.select2-selection__rendered.success) .select2-selection__rendered.success {
+        background-image: url('/static/turesign-inverted.svg') !important;
+        background-position: left 10px center !important;
+        background-repeat: no-repeat !important;
+        background-size: 20px 20px !important;
+        padding-left: 32px !important;
+    }
+
+    .campaign-gallery {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        padding: 16px 16px 8px;
+    }
+
+    .campaign-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+        position: relative;
+    }
+
+    .campaign-card-img-wrap {
+        background: #f6f6f6;
+        border-radius: 16px;
+        width: 100%;
+        aspect-ratio: 1;
+        overflow: hidden;
+        box-shadow: 0 0 4px rgba(0,0,0,.39);
+        margin-bottom: 4px;
+    }
+
+        .campaign-card-img-wrap:hover {
+            background: #c6cbd6;
+        }
+
+        .campaign-card-img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            transition: transform .2s;
+        }
+
+        .campaign-card-img-wrap:hover img {
+            transform: scale(1.15);
+        }
+
+    .campaign-card-name {
+        font-weight: 700;
+        font-size: 8px;
+        color: #000;
+        text-align: center;
+        width: 100%;
+    }
+
+    .campaign-card.selected .campaign-card-img-wrap {
+        background: #c6cbd6;
+        outline: 2px solid #1d273b;
+    }
+
+    .campaign-card-badge {
+        position: absolute;
+        top: 0;
+        left: 0;
+        background: #1d273b;
+        color: white;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .campaign-card.selected .campaign-card-badge {
+        display: flex;
+    }
+
+    #failedmessageEdit {
+        display: none;
+        background-color: transparent;
+        z-index: 11;
+    }
+
+        #failedmessageEdit.visible {
+            display: block;
+            width: 23% !important;
+            min-height: 100vh;
+        }
+
+    .required-message {
+        color: #FFFFFF;
+        background-color: #FF0000;
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin-top: 0.25rem;
+    }
+
+    .error {
+        background-image: url('/static/exclamation.svg');
+        background-position: left 10px center;
+        background-repeat: no-repeat;
+        padding-right: 50px;
+        background-size: 21px;
+    }
+
+    @@keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    .spinner-icon {
+        color: black;
+        position: absolute;
+        left: 10px;
+        top: 30%;
+        transform: translateY(-50%);
+        font-size: 14px;
+        display: none;
+    }
+
+    .input-wrapper {
+        position: relative;
+        display: block;
+    }
+
+    .success {
+        background-image: url('/static/turesign.svg');
+        background-position: left 10px center;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 25px;
+        background-color: #1d273b !important;
+        color: white !important;
+    }
+
+    .with-bg-image-pagename {
+        background-image: url('/static/page-regular.svg');
+        background-position: right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 14px 14px;
+    }
+
+    .success.with-bg-image-pagename {
+        background-image: url('/static/turesign.svg'), url('/static/page-regular.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 25px 25px, 14px 14px;
+        color: white !important;
+    }
+
+    .error.with-bg-image-pagename {
+        background-image: url('/static/exclamation.svg'), url('/static/page-regular.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 21px 21px, 14px 14px;
+    }
+
+    .with-bg-image-phonenumber {
+        background-image: url('/static/phone-regular.svg');
+        background-position: right 10px center;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 14px 14px;
+    }
+
+    .success.with-bg-image-phonenumber {
+        background-image: url('/static/turesign.svg'), url('/static/phone-regular.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 25px 25px, 14px 14px;
+        color: white !important;
+    }
+
+    .error.with-bg-image-phonenumber {
+        background-image: url('/static/exclamation.svg'), url('/static/page-regular.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 21px 21px, 14px 14px;
+    }
+
+    .with-bg-image-address {
+        background-image: url('/static/location-dot-light.svg');
+        background-position: right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 14px 14px;
+    }
+
+    .success.with-bg-image-address {
+        background-image: url('/static/turesign.svg'), url('/static/location-dot-light.svg') !important;
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 25px 25px, 14px 14px !important;
+        color: white !important;
+    }
+
+    .with-bg-image-note {
+        background-image: url('/static/note-regular.svg');
+        background-position: right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 14px 14px;
+    }
+
+    .with-bg-image-client {
+        background-image: url('/static/client.svg');
+        background-position: right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 14px 14px;
+    }
+
+    .success.with-bg-image-client {
+        background-image: url('/static/turesign.svg'), url('/static/client.svg') !important;
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 25px 25px, 14px 14px !important;
+        color: white !important;
+    }
+
+    .with-bg-image-price {
+        background-image: url('/static/dollar.svg');
+        background-position: right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 14px 14px;
+    }
+
+    .error.with-bg-image-price {
+        background-image: url('/static/exclamation.svg'), url('/static/dollar.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 21px 21px, 14px 14px;
+    }
+
+    .success.with-bg-image-price {
+        background-image: url('/static/turesign.svg'), url('/static/dollar.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 25px 25px, 14px 14px;
+        color: white !important;
+    }
+
+    .with-bg-image-calendar {
+        background-image: url('/static/turesign.svg'), url('/static/calendar.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 25px 25px, 14px 14px;
+    }
+
+    .img-flag {
+        width: 20px;
+        height: 14px;
+        margin-right: 10px;
+        vertical-align: middle;
+    }
+
+    .head {
+        font-size: 18px;
+        text-decoration: none;
+        color: black;
+    }
+
+    .head-16 {
+        font-size: 16px;
+        text-decoration: none;
+        color: grey;
+    }
+
+    .appenddiv {
+        box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2) !important;
+        border-radius: 8px !important;
+        padding: 5px !important;
+        width: 105%;
+    }
+
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none !important;
+        margin: 0;
+    }
+
+    input[type="number"] {
+        -moz-appearance: textfield !important;
+    }
+    /* Placeholder for the contenteditable order-photo + payment-receipt paste fields. */
+    #OrderPhotoPaste:empty:before,
+    #PaymentReceiptPaste:empty:before {
+        content: attr(data-placeholder);
+        color: #6c757d;
+    }
+</style>
+
+<style>
+    /* Inputs should behave normally: no shake, no transform, no focus-loss animation. */
+    input,
+    textarea,
+    select,
+    .select2-container,
+    #TelephoneNumber,
+    #SecondTelephoneNumber,
+    #TotalPrice,
+    #DeliveryPrice,
+    input.amount {
+        scroll-margin-top: 120px;
+    }
+
+        #TelephoneNumber.error,
+        #SecondTelephoneNumber.error,
+        #TotalPrice.error,
+        #DeliveryPrice.error,
+        input.amount.error,
+        .numeric-no-shake.error {
+            animation: none !important;
+            transform: none !important;
+        }
+</style>
+
+
+<style>
+    /* Popup warning message for Create/Edit validation and server errors.
+       Keeps long messages inside the popup without overflowing. */
+    .form-inline-error-message {
+        display: none;
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: min(440px, calc(100vw - 32px)) !important;
+        max-width: calc(100vw - 32px) !important;
+        max-height: min(70vh, 520px) !important;
+        margin: 0 !important;
+        padding: 22px 22px 16px !important;
+        border-radius: 18px !important;
+        background: #ffffff !important;
+        border: 1px solid #fde68a !important;
+        color: #334155 !important;
+        font-weight: 800 !important;
+        font-size: 14px !important;
+        line-height: 1.8 !important;
+        box-shadow:
+            0 24px 70px rgba(15, 23, 42, 0.26),
+            0 0 0 9999px rgba(15, 23, 42, 0.42) !important;
+        direction: rtl !important;
+        text-align: center !important;
+        z-index: 2147483647 !important;
+        box-sizing: border-box !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+        overflow-wrap: anywhere !important;
+        pointer-events: auto !important;
+    }
+
+        .form-inline-error-message::before {
+            content: "⚠";
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 54px;
+            height: 54px;
+            margin: 0 auto 12px;
+            border-radius: 50%;
+            background: #f59e0b;
+            color: #ffffff;
+            font-size: 30px;
+            font-weight: 900;
+            line-height: 1;
+            box-shadow: 0 8px 20px rgba(245, 158, 11, 0.28);
+        }
+
+    .form-inline-error-title {
+        display: block;
+        color: #111827;
+        font-size: 17px;
+        font-weight: 900;
+        margin-bottom: 8px;
+        line-height: 1.5;
+        white-space: normal !important;
+    }
+
+    .form-inline-error-text {
+        display: block;
+        color: #475569;
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 1.8;
+        max-width: 100%;
+        white-space: normal !important;
+        word-break: break-word !important;
+        overflow-wrap: anywhere !important;
+        text-align: center;
+    }
+
+    .form-inline-error-close {
+        position: absolute;
+        top: 10px;
+        left: 12px;
+        width: 30px;
+        height: 30px;
+        border: 0;
+        border-radius: 50%;
+        background: #f1f5f9;
+        color: #64748b;
+        font-size: 22px;
+        font-weight: 900;
+        cursor: pointer;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .form-inline-error-close:hover {
+            background: #e2e8f0;
+            color: #111827;
+        }
+
+    .form-inline-error-ok {
+        margin-top: 16px;
+        border: 0;
+        border-radius: 999px;
+        min-height: 38px;
+        min-width: 130px;
+        padding: 7px 20px;
+        background: #1d273b;
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 900;
+        box-shadow: 0 8px 18px rgba(24, 160, 136, 0.22);
+        cursor: pointer;
+    }
+
+    .form-inline-error-message.show-error {
+        display: block !important;
+    }
+
+    body.form-warning-popup-open {
+        overflow: hidden;
+    }
+</style>
+
+<script>
+    //# sourceURL=_EditOrder.js
+    (function () {
+        // ============================================================
+        // STATE & CONSTANTS
+        // ============================================================
+        var $modalRoot = $('#Edit');
+        function $c(id) { return $modalRoot.find('#' + id.replace(/^#/, '')); }
+
+        var showDebugQuery = false;
+        var warehouseOptions = [];
+        var allWarehouseOptions = [];
+        var storesData = [];
+        var selectedStoreId = null;
+        var allCampaigns = [];
+        var citiesByCountry = @Html.Raw(Json.Serialize(lotus_blue.Models.Common.CitiesByCountry));
+        var phoneCodesByCountry = @Html.Raw(Json.Serialize(lotus_blue.Models.Common.PhoneNumberCodesByCountry.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value)));
+        var modelState = @Html.Raw(Json.Serialize(Model?.State));
+        var $currentRowToDelete;
+        var productDropdownSelect;
+        var productMinimumSellingPriceIsValid = true;
+        var productMinimumSellingPriceMessage = '';
+        var productMinimumSellingPriceXhr;
+        var productMinimumSellingPriceTimer;
+
+        function normalizePhoneForDisplay(raw, countryName) {
+            if (!raw) return '';
+            var cleaned = String(raw).replace(/[-\s]/g, '');
+            if (!cleaned) return '';
+            var code = phoneCodesByCountry[countryName];
+            if (!code) return cleaned;
+            var digits = code.replace(/^\+/, '');
+            if (cleaned.indexOf('00' + digits) === 0) return '+' + cleaned.substring(2);
+            if (cleaned.indexOf('+' + digits) === 0) return cleaned;
+            if (cleaned.charAt(0) === '0') return '+' + digits + cleaned.substring(1);
+            return '+' + digits + cleaned;
+        }
+
+        // =========================================================================
+        // PASTE-IMAGE FIELD HARDENING (used by #OrderPhotoPaste and #PaymentReceiptPaste)
+        // =========================================================================
+        // A MutationObserver on the contenteditable is the source of truth: any new
+        // <img> child triggers reconciliation against the hidden file input; removing
+        // it clears the input. This survives the cases where paste/input events don't
+        // fire (img-only DOM mutations, embedded webviews where clipboardData.items
+        // is null, browsers whose default contenteditable paste inserts blob: <img>
+        // directly). Replaces the older `input keyup`-driven cleanup that silently
+        // nuked the file input whenever an intermediate DOM state had no <img>.
+        //
+        // rescueIfNeeded() is called at submit time to hydrate the file input
+        // synchronously from any data:-URL <img> still in the field, covering the
+        // environments where DataTransfer assignment quietly no-ops.
+        //
+        // Note: on edit, the field is pre-loaded with <img src="/saved.jpg"> for
+        // existing photos. The observer doesn't fire for initial children, and
+        // rescue is a no-op for http(s)/relative srcs — those are kept server-side
+        // via the ExistingPhotoUrl / ExistingPaymentReceiptUrl hidden inputs.
+        function attachPasteImageField(opts) {
+            var $field = opts.$field;
+            var fileInputId = opts.fileInputId;
+            var onCommit = opts.onCommit || function () {};
+            var onClear = opts.onClear || function () {};
+            var imgStyle = 'max-height:120px;max-width:100%;object-fit:contain;';
+
+            if (!$field || $field.length === 0) return null;
+            var fileInput = document.getElementById(fileInputId);
+            if (!fileInput) return null;
+            var fieldEl = $field[0];
+            var suppressMutation = false;
+
+            function dataUrlToFile(dataUrl, filename) {
+                try {
+                    var arr = dataUrl.split(',');
+                    var mimeMatch = arr[0].match(/:(.*?);/);
+                    if (!mimeMatch) return null;
+                    var mime = mimeMatch[1];
+                    var bstr = atob(arr[1]);
+                    var n = bstr.length;
+                    var u8 = new Uint8Array(n);
+                    while (n--) u8[n] = bstr.charCodeAt(n);
+                    return new File([u8], filename, { type: mime });
+                } catch (err) { return null; }
+            }
+            function setFileInput(file) {
+                try {
+                    var dt = new DataTransfer();
+                    dt.items.add(file);
+                    fileInput.files = dt.files;
+                } catch (err) {
+                    // Some embedded webviews block DataTransfer assignment; the File
+                    // still lives on $field.data so submit-time rescue can re-try.
+                }
+                $field.data('committedFile', file);
+            }
+            function commitFile(file) {
+                setFileInput(file);
+                var reader = new FileReader();
+                reader.onload = function (ev) {
+                    suppressMutation = true;
+                    $field.html('<img src="' + ev.target.result + '" style="' + imgStyle + '" />');
+                    $field.addClass('success').removeClass('error');
+                    setTimeout(function () { suppressMutation = false; }, 0);
+                    onCommit(file);
+                };
+                reader.readAsDataURL(file);
+            }
+            function rescueFromImg(img) {
+                var src = img.getAttribute('src') || '';
+                if (src.indexOf('data:') === 0) {
+                    var f = dataUrlToFile(src, 'pasted-image.png');
+                    if (f) commitFile(f);
+                } else if (src.indexOf('blob:') === 0) {
+                    fetch(src).then(function (r) { return r.blob(); }).then(function (blob) {
+                        var f = new File([blob], 'pasted-image.png', { type: blob.type || 'image/png' });
+                        commitFile(f);
+                    }).catch(function () {});
+                }
+                // http(s)/relative srcs are saved DB images on edit; the controller
+                // keeps them via Existing*Url when no new file is uploaded.
+            }
+            function clearAll() {
+                try { fileInput.value = ''; } catch (e) {}
+                $field.removeData('committedFile');
+                $field.removeClass('success');
+                onClear();
+            }
+
+            var observer = new MutationObserver(function () {
+                if (suppressMutation) return;
+                var $img = $field.find('img').first();
+                if ($img.length === 0) {
+                    if ((fileInput.files && fileInput.files.length > 0) || $field.data('committedFile')) {
+                        clearAll();
+                    } else {
+                        $field.removeClass('success');
+                        onClear();
+                    }
+                    return;
+                }
+                if (fileInput.files && fileInput.files.length > 0) return;
+                rescueFromImg($img[0]);
+            });
+            observer.observe(fieldEl, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
+
+            $field.on('paste.pasteField', function (e) {
+                var orig = e.originalEvent || e;
+                var items = orig.clipboardData && orig.clipboardData.items;
+                if (!items) return; // Let browser default run; observer reconciles.
+                var hasText = false;
+                for (var i = 0; i < items.length; i++) {
+                    if (items[i].kind === 'file' && items[i].type.indexOf('image/') === 0) {
+                        e.preventDefault();
+                        var file = items[i].getAsFile();
+                        if (file) commitFile(file);
+                        return;
+                    }
+                    if (items[i].kind === 'string') hasText = true;
+                }
+                if (hasText) e.preventDefault();
+            });
+
+            return {
+                rescueIfNeeded: function () {
+                    if (fileInput.files && fileInput.files.length > 0) return;
+                    var saved = $field.data('committedFile');
+                    if (saved) {
+                        try {
+                            var dt = new DataTransfer();
+                            dt.items.add(saved);
+                            fileInput.files = dt.files;
+                            return;
+                        } catch (e) {}
+                    }
+                    var $img = $field.find('img').first();
+                    if ($img.length === 0) return;
+                    var src = $img.attr('src') || '';
+                    if (src.indexOf('data:') !== 0) return;
+                    var f = dataUrlToFile(src, 'pasted-image.png');
+                    if (!f) return;
+                    try {
+                        var dt2 = new DataTransfer();
+                        dt2.items.add(f);
+                        fileInput.files = dt2.files;
+                    } catch (e) {}
+                }
+            };
+        }
+
+        $(function () {
+            var orderPhotoField = null;
+            var paymentReceiptField = null;
+            productDropdownSelect = $c('productDropdown');
+
+            // ============================================================
+            // SELECT2 INIT & GENERIC DROPDOWN ERROR HELPERS
+            // ============================================================
+            function formatOption(option) {
+                var imageUrl = $(option.element).data('image');
+                var imageTag = imageUrl ? '<img src="' + imageUrl + '" class="img-flag" style="margin-right: 5px; width: 14px; height: 14px;" />' : '';
+                return $('<span>' + imageTag + option.text + '</span>');
+            }
+            function initAllSelect2Dropdowns() {
+                $modalRoot.find('#orderSourceDropdown, #manufacturingCompanyDropdown, #cityDropdown, #deliveryPartyDropdown, #productDropdown, #GenderDropdown, #IsPaid,#campaignDropdown').each(function () {
+                    var $dropdown = $(this);
+                    $dropdown.select2({
+                        templateResult: formatOption,
+                        templateSelection: formatOption,
+                        dropdownParent: $('#Edit'),
+                        dir: "rtl",
+                        minimumResultsForSearch: 1,
+                    });
+                    $dropdown.on('select2:close', function () {
+                        // The product picker is a special case: its value is reset to the
+                        // placeholder after each pick, so emptiness doesn't mean "nothing chosen".
+                        // Treat any appended product row as a valid selection.
+                        if ($dropdown.attr('id') === 'productDropdown'
+                            && $c('selectedProductsList').find('.appended-warehouse-row').length > 0) {
+                            removeErrorClassAndMessage($dropdown);
+                            return;
+                        }
+                        if (!$dropdown.val()) {
+                            addErrorClassAndMessage($dropdown, getErrorMessage($dropdown));
+                        } else {
+                            removeErrorClassAndMessage($dropdown);
+                        }
+                    });
+                });
+            }
+            initAllSelect2Dropdowns();
+
+            // "بدون إعلان" is a conscious choice; never opening the dropdown is not.
+            $c('campaignDropdown').on('select2:open change', function () {
+                $(this).data('touched', true);
+            });
+
+            // Update gallery when campaign selection changes
+            $c('campaignDropdown').on('change', function () {
+                var selectedValue = $(this).val();
+                $modalRoot.find('.campaign-card').removeClass('selected');
+                // 'none' is the بدون إعلان sentinel — the card with data-campaign-id="none"
+                // should receive the selected state (and ✓ badge) just like any real campaign.
+                if (selectedValue && selectedValue !== '') {
+                    $modalRoot.find('.campaign-card[data-campaign-id="' + selectedValue + '"]').addClass('selected');
+                }
+            });
+
+            // Render campaign gallery when campaigns are available
+            function renderCampaignGallery() {
+                var filtered = getFilteredCampaigns();
+                var $gallery = $c('campaignGallery');
+                var $wrap = $c('campaignGalleryWrap');
+
+                if (!filtered || filtered.length === 0) {
+                    $wrap.hide();
+                    return;
+                }
+
+                var galleryHtml = '';
+                var currentValue = $c('campaignDropdown').val();
+
+                // Real campaigns first (reversed so newest appear first); the
+                // "no selection" card is appended at the end of the gallery.
+                filtered.slice().reverse().forEach(function (campaign) {
+                    var isSelected = currentValue === String(campaign.id);
+                    galleryHtml += '<div class="campaign-card' + (isSelected ? ' selected' : '') + '" data-campaign-id="' + campaign.id + '" onclick="selectCampaignFromGalleryEdit(' + campaign.id + ')">' +
+                        '<div class="campaign-card-img-wrap">' +
+                        '<img src="' + (campaign.imageUrl || '/mainicons/fallback_product.svg') + '" alt="' + campaign.name + '" onerror="this.onerror=null; this.src=\'/mainicons/fallback_product.svg\';" />' +
+                        '</div>' +
+                        '<div class="campaign-card-name">' + campaign.name + '</div>' +
+                        '<div class="campaign-card-badge">&#x2713;</div>' +
+                        '</div>';
+                });
+
+                // "no selection" card last — value is the 'none' sentinel that matches
+                // the static <option value="none">بدون إعلان</option>, so picking it
+                // is a real, conscious choice.
+                var isNoSelectionSelected = currentValue === 'none';
+                galleryHtml += '<div class="campaign-card' + (isNoSelectionSelected ? ' selected' : '') + '" data-campaign-id="none" onclick="selectCampaignFromGalleryEdit(\'none\')">' +
+                    '<div class="campaign-card-img-wrap" style="background: #f0f0f0; display: flex; align-items: center; justify-content: center;">' +
+                    '<span style="color: #999; font-size: 24px;">✕</span>' +
+                    '</div>' +
+                    '<div class="campaign-card-name">بدون إعلان</div>' +
+                    '<div class="campaign-card-badge">&#x2713;</div>' +
+                    '</div>';
+
+                $gallery.html(galleryHtml);
+                $wrap.show();
+            }
+
+            window.selectCampaignFromGalleryEdit = function (campaignId) {
+                var $dd = $c('campaignDropdown');
+                var currentVal = $dd.val();
+                // Click the already-selected card → deselect back to the empty placeholder
+                // (and reset 'touched' so submit-validation requires a fresh choice).
+                if (currentVal === String(campaignId)) {
+                    $dd.val('').trigger('change.select2').trigger('change');
+                    $dd.data('touched', false);
+                } else {
+                    $dd.val(campaignId).trigger('change.select2').trigger('change');
+                    $dd.data('touched', true);
+                }
+                removeErrorClassAndMessage($dd);
+                updateSubmitButtonState();
+            };
+
+            function getErrorMessage($dropdown) {
+                switch ($dropdown.attr('id')) {
+                    case 'countryDropdown':
+                        return 'يرجى إختيار دولة صحيحة.';
+                    case 'cityDropdown':
+                        return 'يرجى إختيار مدينة صحيحة.';
+                    case 'orderSourceDropdown':
+                        return 'يرجى إختيار نوع صفحة صحيح.';
+                    case 'manufacturingCompanyDropdown':
+                        return 'يرجى إختيار اسم متجر صحيح.';
+                    case 'deliveryPartyDropdown':
+                        return 'يرجى إختيار طرف توصيل صحيح.';
+                    case 'campaignDropdown':
+                        return 'يرجى إختيار اعلان  صحيح.';
+                    case 'productDropdown':
+                        return 'يرجى إختيار منتج صحيح.';
+                    case 'GenderDropdown':
+                        return 'يرجى إختيار جنس صحيح.';
+                    case 'CommentsDropdown':
+                        return 'يرجى إختيار  من التعليقات.';
+                    case 'IsPaid':
+                        return 'يرجى إختيار طريقة دفع صحيح.';
+                    default:
+                        return '';
+                }
+            }
+            function addErrorClassAndMessage($dropdown, message) {
+                const $container = $dropdown.next('.select2-container');
+                $container.find('.select2-selection__rendered').addClass('error');
+                $container.next('.required-message').remove();
+                $container.after('<div class="required-message">' + message + '</div>');
+            }
+            function removeErrorClassAndMessage($dropdown) {
+                const $container = $dropdown.next('.select2-container');
+                $container.find('.select2-selection__rendered').removeClass('error').addClass('success');
+                $container.next('.required-message').remove();
+            }
+
+            // ============================================================
+            // ORDER SOURCE (page type) + SourceName cross-validation
+            // ============================================================
+            function containsCapitalOrArabicLetters(input) {
+                var regex = /[؀-ۿ]/;
+                return regex.test(input) || /[A-Z]/.test(input);
+            }
+            var previousValue = $c('orderSourceDropdown').val();
+            $c('orderSourceDropdown').on('select2:select', validateOrderSourceDropdown);
+            $c('SourceName').on('input', validateOrderSourceDropdown);
+            function validateOrderSourceDropdown() {
+                var sourceName = $c('SourceName').val();
+                var selectedOptionValue = $c('orderSourceDropdown').val();
+                if (containsCapitalOrArabicLetters(sourceName) && selectedOptionValue === "2") {
+                    const $container = $c('orderSourceDropdown').next('.select2-container');
+                    $container.find('.select2-selection__rendered').removeClass('success');
+                    $container.find('.select2-selection__rendered').addClass('error');
+                    $container.next('.required-message').remove();
+                    $container.after('<div class="required-message"> لايمكنك اختيار انستغرام , أدخل اسم صفحة صحيح .</div>');
+                    $c('orderSourceDropdown').val(previousValue).trigger('change');
+                } else {
+                    previousValue = selectedOptionValue;
+                }
+            }
+            $c('CustomerName').on('input', function () {
+                this.value = this.value.replace(/[0-9]/g, '');
+            });
+
+            // ============================================================
+            // GENERIC TEXT-INPUT VALIDATION (spinner + error/success classes)
+            // ============================================================
+            function updateFieldStatus(selector, successClass, errorClass, errorMessage) {
+                var $input = $(selector);
+                var value = $input.val().trim();
+                var $container = $input.closest('.form-group');
+                var $spinner = $container.find('.spinner-icon');
+                if (!$input.hasClass(successClass)) {
+                    $spinner.show();
+                }
+                setTimeout(function () {
+                    $spinner.hide();
+                    if (value !== "") {
+                        $input.addClass(successClass).removeClass(errorClass);
+                        $container.next('.required-message').remove();
+                    } else {
+                        $input.removeClass(successClass).addClass(errorClass);
+                        if ($container.next('.required-message').length === 0) {
+                            $container.after('<div class="required-message">' + errorMessage + '</div>');
+                        }
+                    }
+                }, 2000);
+            }
+            $c('SourceName').on('input blur', function () {
+                updateFieldStatus(this, "success", "error", " يرجى إدخال اسم صفحة صحيح.");
+            });
+
+            // ============================================================
+            // CUSTOMER NAME VALIDATION (country-specific — Turkey stricter)
+            // ============================================================
+            let customerNameErrorMessageShown = false;
+            let customerNameSpinnerTimeout;
+            const turkishNameAllowedRegex = /^[A-Za-zÇĞİIÖŞÜçğıiöşü\s]+$/;
+            function validateCustomerNameForCountry() {
+                const val = ($c('CustomerName').val() || '').trim();
+                const country = $c('countryDropdown').val();
+                if (!val) {
+                    return { ok: false, message: ' يرجى إدخال اسم عميل صحيح.' };
+                }
+                if (country === 'تركيا') {
+                    const parts = val.split(/\s+/).filter(Boolean);
+                    if (parts.length < 2) {
+                        return { ok: false, message: 'يرجى إدخال الاسم الكامل (الاسم واللقب) لطلبات تركيا.' };
+                    }
+                    if (!turkishNameAllowedRegex.test(val)) {
+                        return { ok: false, message: 'يُسمح فقط بالأحرف اللاتينية والتركية في اسم العميل لطلبات تركيا.' };
+                    }
+                }
+                return { ok: true };
+            }
+            $c('CustomerName').on('input blur', function (event) {
+                const inputElement = $(this);
+                const result = validateCustomerNameForCountry();
+                const $container = inputElement.closest('.form-group');
+                const $spinner = $container.find('.spinner-icon');
+                inputElement.removeClass('error success');
+                if (event.type === 'input') {
+                    $spinner.show();
+                    if (customerNameErrorMessageShown) {
+                        $container.next('.required-message').hide();
+                    }
+                    clearTimeout(customerNameSpinnerTimeout);
+                    customerNameSpinnerTimeout = setTimeout(function () {
+                        $spinner.hide();
+                        if (!result.ok) {
+                            inputElement.addClass('error');
+                            if (!customerNameErrorMessageShown) {
+                                $container.after('<div class="required-message">' + result.message + '</div>');
+                                customerNameErrorMessageShown = true;
+                            } else {
+                                $container.next('.required-message').text(result.message).show();
+                            }
+                        }
+                    }, 300);
+                }
+                if (result.ok) {
+                    clearTimeout(customerNameSpinnerTimeout);
+                    $spinner.show();
+                    customerNameSpinnerTimeout = setTimeout(function () {
+                        $spinner.hide();
+                        inputElement.addClass('success');
+                        if (customerNameErrorMessageShown) {
+                            $container.next('.required-message').remove();
+                            customerNameErrorMessageShown = false;
+                        }
+                    }, 300);
+                }
+            });
+            let addressErrorMessageShown = false;
+            let addressSpinnerTimeout;
+            $c('Address').on('input blur', function (event) {
+                const inputElement = $(this);
+                const val = inputElement.val();
+                const trimmed = val.trim();
+                const enforceLatin = $c('countryDropdown').val() === 'تركيا';
+                const hasInvalid = enforceLatin && /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/.test(trimmed);
+                const isValid = trimmed.length > 0 && !hasInvalid;
+                const $container = inputElement.closest('.form-group');
+                const $spinner = $container.find('.spinner-icon');
+                inputElement.removeClass('error success');
+                if (event.type === 'input') {
+                    $spinner.show();
+                    if (addressErrorMessageShown) {
+                        $container.next('.required-message').hide();
+                    }
+                    clearTimeout(addressSpinnerTimeout);
+                    addressSpinnerTimeout = setTimeout(function () {
+                        $spinner.hide();
+                        if (hasInvalid) {
+                            inputElement.addClass('error');
+                            if (!addressErrorMessageShown) {
+                                $container.after('<div class="required-message">لا يُسمح بإدخال أحرف أو أرقام عربية في عنوان طلبات تركيا.</div>');
+                                addressErrorMessageShown = true;
+                            } else {
+                                $container.next('.required-message').show();
+                            }
+                        }
+                    }, 300);
+                }
+                if (isValid) {
+                    clearTimeout(addressSpinnerTimeout);
+                    $spinner.show();
+                    addressSpinnerTimeout = setTimeout(function () {
+                        $spinner.hide();
+                        inputElement.addClass('success');
+                        if (addressErrorMessageShown) {
+                            $container.next('.required-message').remove();
+                            addressErrorMessageShown = false;
+                        }
+                    }, 300);
+                }
+            });
+            function validateAddressLatin() {
+                return !/[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/.test($c('Address').val().trim());
+            }
+
+            // ============================================================
+            // CHAT URL VALIDATION (ASCII-only)
+            // ============================================================
+            let chaturlErrorMessageShown = false;
+            let chaturlSpinnerTimeout;
+            $c('ChatUrl').on('input blur', function (event) {
+                const inputElement = $(this);
+                const val = inputElement.val();
+                const hasInvalid = /[^\x20-\x7E]/.test(val);
+                const isValid = val.length > 0 && !hasInvalid;
+                const $container = inputElement.closest('.form-group');
+                const $spinner = $container.find('.spinner-icon');
+                inputElement.removeClass('error success');
+                if (event.type === 'input') {
+                    $spinner.show();
+                    if (chaturlErrorMessageShown) {
+                        $container.next('.required-message').hide();
+                    }
+                    clearTimeout(chaturlSpinnerTimeout);
+                    chaturlSpinnerTimeout = setTimeout(function () {
+                        $spinner.hide();
+                        if (hasInvalid) {
+                            inputElement.addClass('error');
+                            if (!chaturlErrorMessageShown) {
+                                $container.after('<div class="required-message">يحتوي الرابط على أحرف غير صالحة. يُسمح فقط بالأحرف الإنجليزية والأرقام والرموز.</div>');
+                                chaturlErrorMessageShown = true;
+                            } else {
+                                $container.next('.required-message').show();
+                            }
+                        }
+                    }, 300);
+                }
+                if (isValid) {
+                    clearTimeout(chaturlSpinnerTimeout);
+                    $spinner.show();
+                    chaturlSpinnerTimeout = setTimeout(function () {
+                        $spinner.hide();
+                        inputElement.addClass('success');
+                        if (chaturlErrorMessageShown) {
+                            $container.next('.required-message').remove();
+                            chaturlErrorMessageShown = false;
+                        }
+                    }, 300);
+                }
+            });
+            function validateChatUrlAscii() {
+                return !/[^\x20-\x7E]/.test($c('ChatUrl').val());
+            }
+
+
+            // ============================================================
+            // INLINE ERROR MESSAGE
+            // بدل الـ alert popup: تظهر رسالة خطأ داخل الفورم بخلفية Error.
+            // ============================================================
+            function ensureFormErrorBox() {
+                var $box = $modalRoot.find('.form-inline-error-message').first();
+
+                if (!$box.length) {
+                    $box = $(
+                        '<div class="form-inline-error-message" role="alertdialog" aria-live="assertive" aria-modal="true" tabindex="-1">' +
+                        '<button type="button" class="form-inline-error-close" aria-label="إغلاق">×</button>' +
+                        '<span class="form-inline-error-title">تنبيه</span>' +
+                        '<span class="form-inline-error-text"></span>' +
+                        '<button type="button" class="form-inline-error-ok">موافق</button>' +
+                        '</div>'
+                    );
+
+                    var $modalContent = $modalRoot.find('.modal-content').first();
+
+                    if ($modalContent.length) {
+                        $modalContent.append($box);
+                    } else {
+                        $modalRoot.append($box);
+                    }
+                }
+
+                return $box;
+            }
+
+            function showFormError(message) {
+                var $box = ensureFormErrorBox();
+                var safeMessage = message || 'حدث خطأ. برجاء مراجعة البيانات.';
+
+                $box.find('.form-inline-error-text').text(safeMessage);
+                $box.addClass('show-error').stop(true, true).fadeIn(120);
+                $('body').addClass('form-warning-popup-open');
+
+                setTimeout(function () {
+                    try {
+                        $box.trigger('focus');
+                    } catch (e) { }
+                }, 30);
+            }
+
+            function hideFormError() {
+                var $box = $modalRoot.find('.form-inline-error-message');
+
+                if ($box.length) {
+                    $box.removeClass('show-error').stop(true, true).fadeOut(100);
+                }
+
+                $('body').removeClass('form-warning-popup-open');
+            }
+
+            $modalRoot.on('click', '.form-inline-error-close, .form-inline-error-ok', function () {
+                hideFormError();
+            });
+
+            $modalRoot.on('click', '.form-inline-error-message', function (event) {
+                event.stopPropagation();
+            });
+
+            $modalRoot.on('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    hideFormError();
+                }
+            });
+
+            $modalRoot.on('input change', 'input, select, textarea', function () {
+                hideFormError();
+            });
+
+            $modalRoot.on('paste', 'input, textarea', function () {
+                setTimeout(hideFormError, 0);
+            });
+
+            // ============================================================
+            // NUMERIC INPUT NORMALIZER
+            // يحافظ على الكتابة والنسخ واللصق بشكل طبيعي بدون منع Ctrl+V.
+            // ============================================================
+            function normalizeNumberTextInput(input, allowDecimal) {
+                var $input = $(input);
+                var oldValue = $input.val() || '';
+                var value = toAsciiDigits(oldValue);
+
+                if (allowDecimal) {
+                    value = value.replace(/[^0-9.]/g, '');
+                    var firstDotIndex = value.indexOf('.');
+                    if (firstDotIndex !== -1) {
+                        value = value.substring(0, firstDotIndex + 1) + value.substring(firstDotIndex + 1).replace(/\./g, '');
+                    }
+                } else {
+                    value = value.replace(/[^0-9]/g, '');
+                }
+
+                if (value !== oldValue) {
+                    $input.val(value);
+                }
+            }
+
+            $modalRoot.on('input', '#TotalPrice, #DeliveryPrice', function () {
+                normalizeNumberTextInput(this, true);
+                $(this).removeClass('error');
+            });
+
+            $modalRoot.on('paste', '#TotalPrice, #DeliveryPrice', function () {
+                var input = this;
+                setTimeout(function () {
+                    normalizeNumberTextInput(input, true);
+                    $(input).trigger('input');
+                }, 0);
+            });
+
+            $modalRoot.on('input', '.amount, #SecondTelephoneNumber', function () {
+                normalizeNumberTextInput(this, false);
+                $(this).removeClass('error');
+            });
+
+            $modalRoot.on('paste', '.amount, #SecondTelephoneNumber', function () {
+                var input = this;
+                setTimeout(function () {
+                    normalizeNumberTextInput(input, false);
+                    $(input).trigger('input');
+                }, 0);
+            });
+
+            // ============================================================
+            // MISC INPUTS (price, optional fields)
+            // ============================================================
+            // TotalPrice validation:
+            // 1) يتحقق من الحد الأدنى للبيع لكل منتج من ProductMinimumSellingPrices.
+            // 2) بعدها يشغل فحص الحد الأدنى القديم للطلبات CountryMinimumPrices.
+            // Product minimum selling price is enforced for all roles.
+            // Old country minimum check is still bypassed for Admin / FollowUpDepartment / ExecutiveDirector.
+            var isUnrestrictedRole = @Json.Serialize(User.IsInRole("Admin") || User.IsInRole("FollowUpDepartment") || User.IsInRole("ExecutiveDirector"));
+            let totalPriceErrorMessageShown = false;
+            let totalPriceSpinnerTimeout;
+            let totalPriceXhr;
+
+            function getSelectedProductMinimumItems() {
+                var items = [];
+
+                $c('selectedProductsList').find('.appended-warehouse-row').each(function () {
+                    var $row = $(this);
+                    var mainWarehouseId = parseInt($row.attr('data-main-warehouse-id'));
+                    var amount = parseInt($row.find('.amount').val());
+
+                    if (!isNaN(mainWarehouseId) && mainWarehouseId > 0) {
+                        items.push({
+                            mainWarehouseId: mainWarehouseId,
+                            amount: (!isNaN(amount) && amount > 0) ? amount : 1
+                        });
+                    }
+                });
+
+                return items;
+            }
+
+            function getSelectedProductMinimumItemsQuery(items) {
+                return {
+                    mainWarehouseIds: items.map(function (item) { return item.mainWarehouseId; }).join(','),
+                    amounts: items.map(function (item) { return item.amount; }).join(',')
+                };
+            }
+
+            function runTotalPriceValidation() {
+                const inputElement = $c('TotalPrice');
+                if (!inputElement.length) return;
+
+                const $container = inputElement.closest('.form-group');
+                const $spinner = $container.find('.spinner-icon');
+                const raw = inputElement.val().trim();
+                const numeric = parseFloat(raw);
+                const isNumeric = raw !== '' && !isNaN(numeric) && isFinite(numeric);
+
+                inputElement.removeClass('error success');
+
+                function showError(msg) {
+                    productMinimumSellingPriceIsValid = false;
+                    productMinimumSellingPriceMessage = msg || '';
+
+                    inputElement.addClass('error').removeClass('success');
+
+                    if (!totalPriceErrorMessageShown) {
+                        $container.after('<div class="required-message">' + msg + '</div>');
+                        totalPriceErrorMessageShown = true;
+                    } else {
+                        $container.next('.required-message').text(msg).show();
+                    }
+
+                    updateSubmitButtonState();
+                }
+
+                function clearError() {
+                    productMinimumSellingPriceIsValid = true;
+                    productMinimumSellingPriceMessage = '';
+
+                    if (totalPriceErrorMessageShown) {
+                        $container.next('.required-message').remove();
+                        totalPriceErrorMessageShown = false;
+                    }
+                }
+
+                function setSuccess() {
+                    $spinner.hide();
+                    clearError();
+                    inputElement.addClass('success').removeClass('error');
+                    updateSubmitButtonState();
+                }
+
+                if (!isNumeric) {
+                    $spinner.hide();
+
+                    if (raw !== '') {
+                        productMinimumSellingPriceIsValid = false;
+                        showError(' يرجى إدخال رقم صحيح.');
+                    } else {
+                        clearError();
+                        updateSubmitButtonState();
+                    }
+
+                    return;
+                }
+
+                const country = $c('countryDropdown').val();
+                const mcId = $c('manufacturingCompanyDropdown').val();
+
+                if (!country || !mcId) {
+                    setSuccess();
+                    return;
+                }
+
+                function validateCountryMinimumPrice() {
+                    if (isUnrestrictedRole) {
+                        setSuccess();
+                        return;
+                    }
+
+                    if (totalPriceXhr) {
+                        totalPriceXhr.abort();
+                    }
+
+                    totalPriceXhr = $.ajax({
+                        url: '/Order/ValidateTotalPrice',
+                        type: 'GET',
+                        data: {
+                            country: country,
+                            manufacturingCompanyId: mcId,
+                            totalPrice: numeric
+                        },
+                        success: function (res) {
+                            $spinner.hide();
+
+                            if (res && res.valid) {
+                                setSuccess();
+                            } else {
+                                showError((res && res.message) || 'السعر غير صالح');
+                            }
+                        },
+                        error: function (jqXhr, status) {
+                            if (status === 'abort') return;
+
+                            $spinner.hide();
+                            // لو حصل خطأ شبكة، السيرفر سايد فاليديشن لسه هيحمي الحفظ.
+                            setSuccess();
+                        }
+                    });
+                }
+
+                function validateProductMinimumSellingPrice() {
+                    var selectedItems = getSelectedProductMinimumItems();
+
+                    if (selectedItems.length === 0) {
+                        validateCountryMinimumPrice();
+                        return;
+                    }
+
+                    var productQuery = getSelectedProductMinimumItemsQuery(selectedItems);
+
+                    if (productMinimumSellingPriceXhr) {
+                        productMinimumSellingPriceXhr.abort();
+                    }
+
+                    productMinimumSellingPriceXhr = $.ajax({
+                        url: '/Order/ValidateProductMinimumSellingPrice',
+                        type: 'GET',
+                        data: {
+                            country: country,
+                            manufacturingCompanyId: mcId,
+                            totalPrice: numeric,
+                            mainWarehouseIds: productQuery.mainWarehouseIds,
+                            amounts: productQuery.amounts
+                        },
+                        success: function (res) {
+                            if (res && res.valid === false) {
+                                $spinner.hide();
+                                showError(res.message || 'السعر أقل من الحد الأدنى لسعر البيع.');
+                                return;
+                            }
+
+                            validateCountryMinimumPrice();
+                        },
+                        error: function (jqXhr, status) {
+                            if (status === 'abort') return;
+
+                            // لو endpoint وقع، لا نوقف الواجهة؛ server-side validation هيمنع الحفظ.
+                            validateCountryMinimumPrice();
+                        }
+                    });
+                }
+
+                $spinner.show();
+
+                clearTimeout(productMinimumSellingPriceTimer);
+                clearTimeout(totalPriceSpinnerTimeout);
+
+                productMinimumSellingPriceIsValid = false;
+                productMinimumSellingPriceMessage = 'جاري التحقق من الحد الأدنى لسعر البيع.';
+                updateSubmitButtonState();
+
+                productMinimumSellingPriceTimer = setTimeout(function () {
+                    validateProductMinimumSellingPrice();
+                }, 250);
+            }
+
+            $c('TotalPrice').on('input paste', function () {
+                var input = this;
+                setTimeout(function () {
+                    normalizeNumberTextInput(input, true);
+
+                    const inputElement = $c('TotalPrice');
+                    const $container = inputElement.closest('.form-group');
+
+                    // أثناء الكتابة واللصق: لا error ولا AJAX ولا رعشة.
+                    inputElement.removeClass('error success');
+                    $container.next('.required-message').remove();
+                    totalPriceErrorMessageShown = false;
+                    productMinimumSellingPriceIsValid = true;
+                    productMinimumSellingPriceMessage = '';
+
+                    if (productMinimumSellingPriceXhr) productMinimumSellingPriceXhr.abort();
+                    if (totalPriceXhr) totalPriceXhr.abort();
+
+                    updateSubmitButtonState();
+                }, 0);
+            });
+
+            $c('TotalPrice').on('blur change', function () {
+                runTotalPriceValidation();
+            });
+            $modalRoot.find('#countryDropdown, #manufacturingCompanyDropdown').on('change', function () {
+                if ($c('TotalPrice').val().trim() !== '') runTotalPriceValidation();
+            });
+            function updateFieldStatussuccess(selector, successClass) {
+                var value = $(selector).val().trim();
+                var $container = $(selector).closest('.form-group');
+                if (value !== "") {
+                    $(selector).addClass(successClass);
+                    $container.next('.required-message').remove();
+                } else {
+                    $(selector).removeClass(successClass);
+                }
+            }
+            $modalRoot.find('#SecondTelephoneNumber').on('input', function () {
+                normalizeNumberTextInput(this, false);
+                $(this).removeClass('error');
+                updateFieldStatussuccess(this, "success");
+            });
+
+            $modalRoot.find('#Notes').on('input blur', function () {
+                updateFieldStatussuccess(this, "success");
+            });
+            // ============================================================
+            // PHONE NUMBER (per-country length & pattern rules)
+            // ============================================================
+            const COUNTRY_PHONE_CONFIG = {
+                'العراق': { code: '964', lengths: [15, 14, 11], patterns: [/^009647\d{9}$/, /^\+9647\d{9}$/, /^07\d{9}$/] },
+                'تركيا': { code: '90', lengths: [14, 13, 11], patterns: [/^00905\d{9}$/, /^\+905\d{9}$/, /^05\d{9}$/] },
+                'ليبيا': { code: '218', lengths: [14, 13, [9, 10]], patterns: [/^002189\d{8}$/, /^\+2189\d{8}$/, /^0?9\d{8}$/] },
+                'الإمارات': { code: '971', lengths: [14, 13, 10], patterns: [/^009715\d{8}$/, /^\+9715\d{8}$/, /^05\d{8}$/] },
+                'سلطنة_عمان': { code: '968', lengths: [13, 12, 8], patterns: [/^00968[97]\d{7}$/, /^\+968[97]\d{7}$/, /^[97]\d{7}$/] },
+                'البحرين': { code: '973', lengths: [13, 12, 8], patterns: [/^00973[36]\d{7}$/, /^\+973[36]\d{7}$/, /^[36]\d{7}$/] },
+                'تونس': { code: '216', lengths: [13, 12, 8], patterns: [/^00216[23459]\d{7}$/, /^\+216[23459]\d{7}$/, /^[23459]\d{7}$/] },
+                'الكويت': { code: '965', lengths: [13, 12, 8], patterns: [/^00965[4569]\d{7}$/, /^\+965[4569]\d{7}$/, /^[4569]\d{7}$/] },
+                'السعودية': { code: '966', lengths: [14, 13, 10], patterns: [/^009665\d{8}$/, /^\+9665\d{8}$/, /^05\d{8}$/] },
+                'قطر': { code: '974', lengths: [13, 12, 8], patterns: [/^00974[3567]\d{7}$/, /^\+974[3567]\d{7}$/, /^[3567]\d{7}$/] },
+                'فلسطين': { code: '970', lengths: [14, 13, 10], patterns: [/^009705\d{8}$/, /^\+9705\d{8}$/, /^05\d{8}$/] },
+                'الأردن': { code: '962', lengths: [14, 13, 10], patterns: [/^009627\d{8}$/, /^\+9627\d{8}$/, /^07\d{8}$/] },
+            };
+            function detectPhoneType(cleaned) {
+                if (cleaned.startsWith('00')) return 0;
+                if (cleaned.startsWith('+')) return 1;
+                return 2;
+            }
+            function toAsciiDigits(str) {
+                return String(str).replace(/[٠-٩۰-۹]/g, function (d) {
+                    const code = d.charCodeAt(0);
+                    return String.fromCharCode(code - (code >= 0x06F0 ? 0x06F0 : 0x0660) + 0x30);
+                });
+            }
+            function validatePhone(country, raw) {
+                // Whitelist: convert Arabic/Persian digits to ASCII, then strip anything that isn't
+                // a digit or '+'. This neutralizes pasted noise — invisible bidi marks, dashes, spaces,
+                // parentheses, dots, letters — without us having to enumerate every possible character.
+                const cleaned = toAsciiDigits(raw).replace(/[^0-9+]/g, '');
+                const cfg = COUNTRY_PHONE_CONFIG[country];
+                if (!cfg || cleaned.length === 0) return { valid: false, cleaned };
+                const type = detectPhoneType(cleaned);
+                const pattern = cfg.patterns[type];
+                const len = cfg.lengths[type];
+                const lenOk = Array.isArray(len) ? len.includes(cleaned.length) : cleaned.length === len;
+                const valid = lenOk && pattern.test(cleaned);
+                return { valid, cleaned, type };
+            }
+            function updatePhoneNumberValidation(country) {
+                const $phone = $c('TelephoneNumber');
+                const cfg = COUNTRY_PHONE_CONFIG[country];
+                const maxInputLen = cfg ? cfg.lengths[0] + 6 : 20;
+                $phone
+                    .removeAttr('pattern')
+                    .removeAttr('minlength')
+                    .attr('maxlength', maxInputLen)
+                    .data('country', country)
+                    .removeClass('error success');
+                $phone.closest('.form-group').next('.required-message').remove();
+                phoneErrorMessageShown = false;
+            }
+            let phoneErrorMessageShown = false;
+            let spinnerTimeout;
+            $c('TelephoneNumber').on('input paste', function () {
+                const inputElement = $(this);
+
+                setTimeout(function () {
+                    const currentVal = inputElement.val() || '';
+                    const asciiVal = toAsciiDigits(currentVal).replace(/[^0-9+]/g, '');
+
+                    if (asciiVal !== currentVal) {
+                        inputElement.val(asciiVal);
+                    }
+
+                    const country = inputElement.data('country');
+                    const result = validatePhone(country, inputElement.val());
+                    const isValid = result.valid;
+                    const $container = inputElement.closest('.form-group');
+                    const $spinner = $container.find('.spinner-icon');
+
+                    clearTimeout(spinnerTimeout);
+                    $spinner.hide();
+
+                    // أثناء الكتابة لا نمنع ولا نهز ولا نخفي باقي الفورم.
+                    inputElement.removeClass('error');
+                    if (phoneErrorMessageShown) {
+                        $container.next('.required-message').remove();
+                        phoneErrorMessageShown = false;
+                    }
+
+                    if (isValid) {
+                        inputElement.addClass('success');
+                        $c('secondPhoneCol').show();
+                        $c('primaryPhoneCol').removeClass('col-12').addClass('col-6');
+                    } else {
+                        inputElement.removeClass('success');
+                    }
+
+                    updateSubmitButtonState();
+                }, 0);
+            });
+
+            $c('TelephoneNumber').on('blur', function () {
+                const inputElement = $(this);
+                const country = inputElement.data('country');
+                const result = validatePhone(country, inputElement.val());
+                const isValid = result.valid;
+                const $container = inputElement.closest('.form-group');
+                const $spinner = $container.find('.spinner-icon');
+
+                $spinner.hide();
+
+                if (inputElement.val().trim() !== '' && !isValid) {
+                    inputElement.addClass('error').removeClass('success');
+                    if (!phoneErrorMessageShown) {
+                        $container.after('<div class="required-message">يرجى إدخال رقم هاتف صحيح</div>');
+                        phoneErrorMessageShown = true;
+                    } else {
+                        $container.next('.required-message').text('يرجى إدخال رقم هاتف صحيح').show();
+                    }
+                    $c('secondPhoneCol').hide();
+                    $c('primaryPhoneCol').removeClass('col-6').addClass('col-12');
+                } else if (isValid) {
+                    inputElement.addClass('success').removeClass('error');
+                    if (phoneErrorMessageShown) {
+                        $container.next('.required-message').remove();
+                        phoneErrorMessageShown = false;
+                    }
+                    $c('secondPhoneCol').show();
+                    $c('primaryPhoneCol').removeClass('col-12').addClass('col-6');
+                }
+
+                updateSubmitButtonState();
+            });
+            // ============================================================
+            // FAILURE MESSAGE DIALOG — Edit-scoped
+            // ============================================================
+            $modalRoot.find('.text-danger').hide();
+            $modalRoot.on('click', '.closeFailedMessage', function () {
+                $c('failedmessageEdit').addClass('hidden').css('display', 'none');
+                $c('overlay').hide();
+            });
+            // ============================================================
+            // SOURCE NAME / CHAT URL VISIBILITY (driven by order source)
+            // ============================================================
+            function toggleSourceNameInput() {
+                var orderSourceDropdown = $c('orderSourceDropdown');
+                var sourceNameInput = $c('SourceName');
+                var sourceNameCol = $c('sourceNameCol');
+                var orderSourceCol = $c('orderSourceCol');
+                var selectedValue = orderSourceDropdown.val();
+                if (selectedValue && selectedValue !== "4") {
+                    sourceNameInput.prop('disabled', false);
+                    sourceNameInput.attr('required', true);
+                    sourceNameCol.show();
+                    orderSourceCol.removeClass('col-12').addClass('col-6');
+                } else {
+                    sourceNameInput.prop('disabled', true);
+                    sourceNameInput.removeAttr('required');
+                    sourceNameCol.hide();
+                    orderSourceCol.removeClass('col-6').addClass('col-12');
+                }
+                var chaturlInput = $c('ChatUrl');
+                var chatUrlRow = $c('chatUrlRow');
+                if (!selectedValue || selectedValue === "4") {
+                    chaturlInput.removeAttr('required').val('').removeClass('error success');
+                    chaturlInput.closest('.form-group').next('.required-message').remove();
+                    chatUrlRow.hide();
+                } else {
+                    chaturlInput.attr('required', true);
+                    chatUrlRow.show();
+                }
+                orderSourceDropdown.next('.select2-container').css('width', '100%');
+            }
+            function toggleCampaignVisibility() {
+                if (selectedStoreId) {
+                    $c('campaignRow').show();
+                } else {
+                    $c('campaignRow').hide();
+                }
+                $c('campaignDropdown').next('.select2-container').css('width', '100%');
+            }
+            function toggleProductVisibility() {
+                if (selectedStoreId) {
+                    $c('selectedProductsList').show();
+                } else {
+                    $c('selectedProductsList').hide();
+                }
+                $c('productDropdown').next('.select2-container').css('width', '100%');
+            }
+            $c('orderSourceDropdown').change(toggleSourceNameInput);
+
+            // Hide placeholder in every Select2 when it opens
+            $modalRoot.find('select').on('select2:open', function (e) {
+                $('.select2-results__option:first-child').hide();
+                setTimeout(function () {
+                    $('.select2-results__option:first-child').hide();
+                }, 1);
+            });
+            // ============================================================
+            // CASCADING DROPDOWNS — fire only on user-driven changes
+            // ============================================================
+            $c('countryDropdown').change(function () {
+                var selectedCountry = $(this).val();
+                updatePhoneNumberValidation(selectedCountry);
+                $c('editOrderForm').trigger("reset");
+                $c('countryDropdown').val(selectedCountry).trigger('change.select2');
+                if (selectedCountry) {
+                    $c('cityCol').show();
+                    $c('countryCol').removeClass('col-12').addClass('col-6');
+                    $c('phoneRow').show();
+                } else {
+                    $c('cityCol').hide();
+                    $c('countryCol').removeClass('col-6').addClass('col-12');
+                    $c('phoneRow').hide();
+                }
+                $c('countryDropdown').next('.select2-container').css('width', '100%');
+                resetCityDropdown();
+                populateCities(selectedCountry);
+                updatecampagins();
+                $c('manufacturingCompanyDropdown').prop('disabled', false).closest('.form-group').show();
+                removeAppendedWarehouseItems();
+                $c('CustomerName').trigger('blur');
+            });
+            $c('cityDropdown').change(function () {
+                if ($(this).val()) removeErrorClassAndMessage($(this));
+                updateDeliveryParties();
+                $c('deliveryPartyDropdown').val('');
+            });
+            $c('deliveryPartyDropdown').change(function () {
+                if ($(this).val()) removeErrorClassAndMessage($(this));
+                updateWarehouses();
+                refreshDeliveryPrice();
+                productDropdownSelect.prop('disabled', false);
+            });
+            function refreshDeliveryPrice() {
+                var country = $c('countryDropdown').val();
+                var city = $c('cityDropdown').val();
+                var deliveryCompanyId = $c('deliveryPartyDropdown').val();
+                var $deliveryPrice = $c('DeliveryPrice');
+                if (!$deliveryPrice.length) return;
+                if (!country || !city || !deliveryCompanyId) return;
+                $.ajax({
+                    type: 'GET',
+                    url: '@Url.Action("GetDeliveryPrice", "DataList")',
+                    data: { deliveryCompanyId: deliveryCompanyId, countryId: country, cityId: city },
+                    success: function (data) {
+                        $deliveryPrice.val(data && data.price != null ? data.price : 0);
+                    },
+                    error: function (xhr, textStatus, errorThrown) {
+                        console.error('Error: ' + textStatus, errorThrown);
+                    }
+                });
+            }
+            $c('manufacturingCompanyDropdown').change(function () {
+                if ($(this).val()) removeErrorClassAndMessage($(this));
+                if ($(this).val() === "") {
+                    productDropdownSelect.prop('disabled', true);
+                    selectedStoreId = null;
+                } else {
+                    productDropdownSelect.prop('disabled', false);
+                    selectedStoreId = parseInt($(this).val());
+                    populateFirstWarehouseDropdown();
+                }
+                populateCampaignDropdown();
+                toggleCampaignVisibility();
+                toggleProductVisibility();
+            });
+            // ============================================================
+            // CITY DROPDOWN (populated from CitiesByCountry map)
+            // ============================================================
+            function resetCityDropdown() {
+                var cityDropdown = $c('cityDropdown');
+                cityDropdown.empty();
+                cityDropdown.append($('<option>', {
+                    value: '',
+                    text: 'المدينة',
+                    "data-image": "/static/city-regular.svg",
+                    disabled: true,
+                    selected: true
+                })).val('').trigger('change');
+                cityDropdown.select2({
+                    placeholder: 'المدينة',
+                    allowClear: true,
+                    templateResult: formatOption,
+                    templateSelection: formatOption,
+                    dropdownParent: $('#Edit'),
+                    dir: "rtl",
+                    width: '100%'
+                });
+            }
+            function populateCities(selectedCountry) {
+                var cityDropdown = $c('cityDropdown');
+                cityDropdown.empty();
+                cityDropdown.append($('<option>', {
+                    value: '',
+                    text: 'المدينة',
+                    "data-image": "/static/city-regular.svg",
+                    disabled: true,
+                    selected: true
+                }));
+                if (selectedCountry && citiesByCountry[selectedCountry]) {
+                    var cities = citiesByCountry[selectedCountry];
+                    var modelStateExists = cities.some(city => city === modelState);
+                    cities.forEach(function (city) {
+                        cityDropdown.append($('<option>', {
+                            value: city,
+                            text: city,
+                            "data-image": "/static/city-regular.svg"
+                        }));
+                    });
+                    cityDropdown.val(modelStateExists ? modelState : '').trigger('change');
+                } else {
+                    cityDropdown.append($('<option>', {
+                        value: '',
+                        text: 'المدينة',
+                        "data-image": "/static/city-regular.svg"
+                    })).val('').trigger('change');
+                }
+                cityDropdown.select2({
+                    templateResult: formatOption,
+                    templateSelection: formatOption,
+                    dropdownParent: $('#Edit'),
+                    dir: "rtl",
+                    width: '100%'
+                });
+            }
+            // ============================================================
+            // CAMPAIGNS — fetched on user-driven country change, filtered by store
+            // ============================================================
+            function updatecampagins() {
+                var country = $c('countryDropdown').val();
+                $.ajax({
+                    type: 'GET',
+                    url: '@Url.Action("GetCampaignsByCountry", "DataList")',
+                    data: { countryId: country },
+                    success: function (data) {
+                        allCampaigns = data || [];
+                        populateCampaignDropdown();
+                        toggleCampaignVisibility();
+                    },
+                    error: function (xhr, textStatus, errorThrown) {
+                        console.error('Error: ' + textStatus, errorThrown);
+                    }
+                });
+            }
+            function getFilteredCampaigns() {
+                if (!selectedStoreId) {
+                    return [];
+                }
+                return allCampaigns.filter(function (c) {
+                    return c.manufacturingCompanyId === selectedStoreId;
+                });
+            }
+            function populateCampaignDropdown() {
+                var campaignDropdown = $c('campaignDropdown');
+                var previousValue = campaignDropdown.val();
+                var wasTouched = campaignDropdown.data('touched') === true;
+                campaignDropdown.empty();
+                campaignDropdown.append($('<option>', {
+                    value: '',
+                    text: 'اختر الإعلان',
+                    disabled: true,
+                    selected: !wasTouched,
+                    hidden: true
+                }));
+                campaignDropdown.append($('<option>', {
+                    value: 'none',
+                    text: 'بدون إعلان',
+                    "data-image": "/static/truck-regular.svg"
+                }));
+                var filtered = getFilteredCampaigns();
+                $.each(filtered, function (index, ad) {
+                    campaignDropdown.append($('<option>', {
+                        value: ad.id,
+                        text: ad.name,
+                        'data-image': ad.imageUrl
+                    }));
+                });
+                if (previousValue === 'none') {
+                    campaignDropdown.val('none');
+                } else if (previousValue && filtered.some(function (c) { return c.id == previousValue; })) {
+                    campaignDropdown.val(previousValue);
+                }
+                campaignDropdown.select2({
+                    templateResult: formatOption,
+                    templateSelection: formatOption,
+                    dropdownParent: $('#Edit'),
+                    dir: "rtl"
+                });
+                campaignDropdown.trigger('change.select2');
+                renderCampaignGallery();
+            }
+            // ============================================================
+            // DELIVERY COMPANIES & REPRESENTATIVES
+            // ============================================================
+            function updateDeliveryParties() {
+                var country = $c('countryDropdown').val();
+                var city = $c('cityDropdown').val();
+                if (!country || !city) return;
+                $.ajax({
+                    type: 'GET',
+                    url: '@Url.Action("GetAllDeliveryCompaniesAndRepresentatives", "DataList")',
+                    data: { countryId: country, cityId: city },
+                    success: function (data) {
+                        var dd = $c('deliveryPartyDropdown');
+                        dd.empty();
+                        dd.append($('<option>', {
+                            value: '',
+                            text: 'اختر طرف التوصيل',
+                            'data-image': '/static/truck-regular.svg',
+                            disabled: true,
+                            selected: true
+                        }));
+                        $.each(data || [], function (index, p) {
+                            dd.append($('<option>', {
+                                value: p.id,
+                                text: p.name,
+                                'data-image': p.logoUrl,
+                                'data-is-delivery-rep': p.isRepresentative ? 'true' : 'false'
+                            }));
+                        });
+                        dd.select2({
+                            templateResult: formatOption,
+                            templateSelection: formatOption,
+                            dropdownParent: $('#Edit'),
+                            dir: 'rtl',
+                            width: '100%'
+                        });
+                        var $storeCol = $c('storeCol');
+                        var $deliveryCol = $c('deliveryCompanyCol');
+                        if (data && data.length > 1) {
+                            $deliveryCol.show();
+                            $storeCol.removeClass('col-12').addClass('col-6');
+                        } else {
+                            if (data && data.length === 1) {
+                                dd.val(data[0].id).trigger('change');
+                                removeErrorClassAndMessage(dd);
+                            }
+                            $deliveryCol.hide();
+                            $storeCol.removeClass('col-6').addClass('col-12');
+                        }
+                        $c('manufacturingCompanyDropdown').next('.select2-container').css('width', '100%');
+                    },
+                    error: function (xhr, textStatus, errorThrown) {
+                        console.error('Error: ' + textStatus, errorThrown);
+                    }
+                });
+            }
+            // ============================================================
+            // WAREHOUSES & PRODUCT ROWS
+            // ============================================================
+            function updateWarehouses() {
+                var companyIdToSend = $c('deliveryPartyDropdown').val();
+                $.ajax({
+                    type: 'GET',
+                    url: '@Url.Action("GetFilteredWarehouses", "DataList")',
+                    data: { deliveryCompanyId: companyIdToSend },
+                    success: function (data) {
+                        allWarehouseOptions = data;
+                        warehouseOptions = data;
+                        populateFirstWarehouseDropdown();
+                    },
+                    error: function (xhr, textStatus, errorThrown) {
+                        console.error('Error: ' + textStatus, errorThrown);
+                    }
+                });
+            }
+            function populateFirstWarehouseDropdown() {
+                var warehouseDropdown = $c('productDropdown');
+                warehouseDropdown.find('option').not('[value=""]').remove();
+                $.each(warehouseOptions, function (index, warehouse) {
+                    warehouseDropdown.append($('<option>', {
+                        value: warehouse.id,
+                        text: warehouse.name,
+                        'data-image': warehouse.productImage
+                    }));
+                });
+                warehouseDropdown.val('').trigger('change.select2');
+            }
+            // ---- Appended warehouse rows: add / delete / quantity controls ----
+            // Renumber every row's hidden WarehouseId / Amount inputs so indices are
+            // contiguous starting at 0. ASP.NET's default list binder stops at the
+            // first gap, so a missing index 0 silently drops every later entry.
+            function reindexWarehouseRows() {
+                $c('selectedProductsList').find('.appended-warehouse-row').each(function (i) {
+                    $(this).find('input[name^="SelectedWarehouses["][name$=".WarehouseId"]')
+                        .attr('name', 'SelectedWarehouses[' + i + '].WarehouseId');
+                    $(this).find('input[name^="SelectedWarehouses["][name$=".Amount"]')
+                        .attr('name', 'SelectedWarehouses[' + i + '].Amount');
+                });
+            }
+            function addNewWarehouseItem() {
+                var selectedWarehouseId = $c('productDropdown').val();
+                var selectedWarehouse = warehouseOptions.find(warehouse => warehouse.id.toString() === selectedWarehouseId);
+                if (!selectedWarehouse) return;
+                var warehouseIndex = $c('selectedProductsList').find('.appended-warehouse-row').length;
+                var warehouseHtml = `
+                    <div class="appended-warehouse-row row ms-0 mt-3" data-warehouse-id="${selectedWarehouse.id}" data-warehouse-name="${selectedWarehouse.name}" data-warehouse-amount="${selectedWarehouse.amount}" data-main-warehouse-id="${selectedWarehouse.mainWarehouseId}">
+                        <div class="col-lg-6">
+                            <div class="form-group appenddiv gold-warehouse">
+                                <div class="warehouse-item">
+                                    <span><img width="25" height="23" src="${selectedWarehouse.productImage}"></span>
+                                    <span class="selected-warehouse">${selectedWarehouse.name}</span>
+                                    <input type="hidden" name="SelectedWarehouses[${warehouseIndex}].WarehouseId" value="${selectedWarehouse.id}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6 pe-4 ps-0">
+                            <div class="form-group">
+                                <div class="input-group my-input-group" style="width: 105%!important">
+                                    <button type="button" class="btn f-s-1-50rem decrease rounded-btn">-</button>
+                                    <input min="1" type="text" inputmode="numeric" autocomplete="off" required value="1" placeholder="الكمية" class="form-control amount numeric-no-shake" name="SelectedWarehouses[${warehouseIndex}].Amount" />
+                                    <button type="button" class="btn f-s-1-50rem increase rounded-btn">+</button>
+                                </div>
+                                <span class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>`;
+                $c('selectedProductsList').append(warehouseHtml);
+                reindexWarehouseRows();
+                warehouseOptions = warehouseOptions.filter(warehouse => warehouse.id.toString() !== selectedWarehouseId);
+                populateFirstWarehouseDropdown();
+                runTotalPriceValidation();
+                updateSubmitButtonState();
+                const $container = $c('productDropdown').next('.select2-container');
+                const $selection = $container.find('.select2-selection.select2-selection--single');
+                $container.next('.required-message').remove();
+                $selection.addClass('success');
+            }
+            $c('selectedProductsList').on('input', '.amount', function () {
+                var $amountInput = $(this);
+                var enteredValue = parseInt($amountInput.val());
+                var maxAmount = parseInt($amountInput.closest('.row').data('warehouse-amount'));
+                if (!isNaN(enteredValue) && enteredValue > maxAmount) {
+                    showFormError('الكمية المتاحة ' + maxAmount);
+                    $amountInput.val(maxAmount);
+                }
+
+                runTotalPriceValidation();
+                updateSubmitButtonState();
+            });
+            $c('selectedProductsList').on('click', '.increase', function () {
+                var $amountInput = $(this).closest('.my-input-group').find('.amount');
+                var value = parseInt($amountInput.val());
+                var maxAmount = parseInt($amountInput.attr('max'));
+                if (!isNaN(value) && (isNaN(maxAmount) || value < maxAmount)) {
+                    $amountInput.val(value + 1);
+                    runTotalPriceValidation();
+                    updateSubmitButtonState();
+                }
+            });
+            $c('selectedProductsList').on('click', '.decrease', function () {
+                var $amountInput = $(this).closest('.my-input-group').find('.amount');
+                var value = parseInt($amountInput.val());
+                if (!isNaN(value) && value > 1) {
+                    $amountInput.val(value - 1);
+                    runTotalPriceValidation();
+                    updateSubmitButtonState();
+                } else {
+                    $currentRowToDelete = $(this).closest('.row');
+                    $c('deleteProductConfirmEdit').css('display', 'flex');
+                }
+            });
+            $c('confirm-remove').on('click', function () {
+                if ($currentRowToDelete) {
+                    var warehouseId = $currentRowToDelete.data('warehouse-id');
+                    var warehouseName = $currentRowToDelete.data('warehouse-name');
+                    var warehouseAmount = $currentRowToDelete.data('warehouse-amount');
+                    var warehouseToAddBack = allWarehouseOptions.find(w => w.id === warehouseId);
+                    if (!warehouseToAddBack) {
+                        warehouseToAddBack = { id: warehouseId, name: warehouseName, amount: warehouseAmount };
+                    }
+                    warehouseOptions.push(warehouseToAddBack);
+                    populateFirstWarehouseDropdown();
+                    $currentRowToDelete.remove();
+                    $currentRowToDelete = null;
+                    reindexWarehouseRows();
+                    $c('deleteProductConfirmEdit').css('display', 'none');
+                    runTotalPriceValidation();
+                    updateSubmitButtonState();
+                }
+            });
+            $c('cancel-remove').on('click', function () {
+                $c('deleteProductConfirmEdit').css('display', 'none');
+            });
+            $c('productDropdown').change(function () {
+                if ($(this).val()) {
+                    addNewWarehouseItem();
+                }
+            });
+            function removeAppendedWarehouseItems() {
+                $modalRoot.find('.appended-warehouse-row').remove();
+            }
+
+            // ============================================================
+            // SUBMIT BUTTON STATE + FINAL FORM VALIDATION / SUBMIT
+            // ============================================================
+            function areInputsValid() {
+                var isWhatsApp = $c('orderSourceDropdown').val() === "4";
+                const inputIDs = [
+                    'countryDropdown',
+                    'cityDropdown',
+                    'orderSourceDropdown',
+                    'manufacturingCompanyDropdown',
+                    'deliveryPartyDropdown',
+                    'TelephoneNumber',
+                    'CustomerName',
+                    'Address',
+                ];
+                if (!isWhatsApp) {
+                    inputIDs.push('ChatUrl');
+                }
+                const areStandardInputsValid = inputIDs.every(id => {
+                    const value = $c(id).val();
+                    return value !== '' && value != null;
+                });
+                const totalPriceValue = $c('TotalPrice').val().trim();
+                const isTotalPriceValid = totalPriceValue !== '' && !isNaN(parseFloat(totalPriceValue)) && isFinite(totalPriceValue);
+                const hasProduct = $c('selectedProductsList').find('.appended-warehouse-row').filter(function () {
+                    const id = parseInt($(this).find('input[name$=".WarehouseId"]').val(), 10);
+                    const amt = parseInt($(this).find('input.amount').val(), 10);
+                    return id > 0 && amt > 0;
+                }).length > 0;
+                // Photo: a freshly pasted file OR a pre-loaded saved image satisfies the rule.
+                var photoInput = document.getElementById('OrderPhotoFile');
+                const hasNewPhoto = !!(photoInput && photoInput.files && photoInput.files.length > 0);
+                const hasExistingPhoto = $('#OrderPhotoPaste').find('img').length > 0;
+                const photoOk = hasNewPhoto || hasExistingPhoto;
+                // Receipt: required when IsPaid==true. Either a new paste or pre-loaded saved receipt counts.
+                var receiptOk = true;
+                if ($c('IsPaid').val() === 'true') {
+                    var receiptInput = document.getElementById('PaymentReceiptFile');
+                    const hasNewReceipt = !!(receiptInput && receiptInput.files && receiptInput.files.length > 0);
+                    const hasExistingReceipt = $('#PaymentReceiptPaste').find('img').length > 0;
+                    receiptOk = hasNewReceipt || hasExistingReceipt;
+                }
+                const productMinimumOk = productMinimumSellingPriceIsValid && !$c('TotalPrice').hasClass('error');
+
+                return areStandardInputsValid && isTotalPriceValid && productMinimumOk && hasProduct && photoOk && receiptOk;
+            }
+            function updateSubmitButtonState() {
+                const isValid = areInputsValid();
+                if (showDebugQuery) {
+                    console.log(`[DEBUG] updateSubmitButtonState() - isValid: ${isValid}`);
+                }
+                $c('submitButton').prop('disabled', !isValid);
+            }
+            $modalRoot.find('#TotalPrice,#TelephoneNumber,#deliveryPartyDropdown,#CustomerName,#Address,#ChatUrl,#campaignDropdown,#countryDropdown,#cityDropdown,#orderSourceDropdown,#manufacturingCompanyDropdown,#IsPaid').on('input change', function () {
+                updateSubmitButtonState();
+            });
+            // The paste-image fields now drive their own validity updates via
+            // attachPasteImageField onCommit/onClear callbacks; no global delegate
+            // or polling watchdog is needed.
+            $modalRoot.on('change', function () {
+                updateSubmitButtonState();
+            });
+
+            // ============================================================
+            // BOOTSTRAP BLOCK — seed JS state from server-rendered model
+            // ============================================================
+            selectedStoreId = @(Model.ManufacturingCompanyId.HasValue ? Model.ManufacturingCompanyId.Value.ToString() : "null");
+
+            allWarehouseOptions = @Html.Raw(Json.Serialize(Model.AvailableWarehouses ?? new List<WarehouseOptionVm>()));
+            warehouseOptions = allWarehouseOptions.slice();
+
+            allCampaigns = @Html.Raw(Json.Serialize(Model.AvailableCampaigns ?? new List<CampaignOptionVm>()));
+
+            $c('campaignDropdown').data('touched', true);
+
+            updatePhoneNumberValidation(@Html.Raw(Json.Serialize(Model.Country.ToString())));
+            // Restore phone value that updatePhoneNumberValidation clears
+            $c('TelephoneNumber').val(@Html.Raw(Json.Serialize(Model.TelephoneNumber)));
+            $c('TelephoneNumber').data('country', @Html.Raw(Json.Serialize(Model.Country.ToString())));
+
+            toggleSourceNameInput();
+            // toggleSourceNameInput() may have wiped #ChatUrl when its source-detection
+            // ran before .val() reflected the server-rendered selection. Restore the
+            // value from the server model unconditionally after the toggle.
+            $c('ChatUrl').val(@Html.Raw(Json.Serialize(Model.chatUrl ?? "")));
+            toggleCampaignVisibility();
+            toggleProductVisibility();
+            // Seed the campaign gallery from server data. Without this, the gallery
+            // stays empty until the user touches the store dropdown — which is what
+            // triggers populateCampaignDropdown() → renderCampaignGallery().
+            renderCampaignGallery();
+
+            // Seed success state on all pre-filled dropdowns from server model
+            ['orderSourceDropdown', 'manufacturingCompanyDropdown', 'cityDropdown', 'deliveryPartyDropdown', 'campaignDropdown', 'IsPaid'].forEach(function (id) {
+                var $dd = $c(id);
+                if ($dd.val()) removeErrorClassAndMessage($dd);
+            });
+
+            // Ensure product picker is enabled and reflects the seeded warehouse pool.
+            // Server-prerendered product rows must be subtracted from the pool so they
+            // don't appear as still-selectable options in the dropdown.
+            var prerenderedIds = $c('selectedProductsList')
+                .find('.appended-warehouse-row')
+                .map(function () { return String($(this).data('warehouse-id')); })
+                .get();
+            warehouseOptions = warehouseOptions.filter(function (w) {
+                return prerenderedIds.indexOf(String(w.id)) === -1;
+            });
+            productDropdownSelect.prop('disabled', false);
+            populateFirstWarehouseDropdown();
+            reindexWarehouseRows();
+
+            runTotalPriceValidation();
+            updateSubmitButtonState();
+
+            // Run every field's validator once on load so prefilled values get the same
+            // error/success spinner treatment they'd get from a user touching+bluring them.
+            // The input handlers gate spinner UI behind `event.type === 'input'`, so we
+            // dispatch 'blur' (which they also listen to and which falls through to the
+            // success/error path without the input-only gating).
+            $modalRoot.find('#CustomerName, #Address, #ChatUrl, #SourceName, #TelephoneNumber, #TotalPrice')
+                .each(function () { $(this).triggerHandler('blur'); });
+            // Select2 dropdowns validate on `select2:close`; firing it directly runs the
+            // same empty-vs-valid check without opening the picker.
+            $modalRoot.find('#countryDropdown, #cityDropdown, #orderSourceDropdown, #manufacturingCompanyDropdown, #deliveryPartyDropdown, #campaignDropdown, #productDropdown, #GenderDropdown, #IsPaid')
+                .each(function () { $(this).trigger('select2:close'); });
+
+            // ============================================================
+            // PHOTO / RECEIPT PASTE FIELD VALIDATION (mirrors text-input pattern)
+            // ============================================================
+            function validatePasteField($field, message) {
+                var $container = $field.closest('.form-group');
+                $field.removeClass('error success');
+                $container.next('.required-message').remove();
+                if ($field.find('img').length > 0) {
+                    $field.addClass('success');
+                } else {
+                    $field.addClass('error');
+                    $container.after('<div class="required-message">' + message + '</div>');
+                }
+            }
+            function validateOrderPhoto() {
+                validatePasteField($('#OrderPhotoPaste'), 'يرجى إرفاق صورة الحجز.');
+            }
+            function validatePaymentReceipt() {
+                // Receipt only required when IsPaid is true; otherwise clear any state.
+                var $field = $('#PaymentReceiptPaste');
+                if ($c('IsPaid').val() !== 'true') {
+                    $field.removeClass('error success');
+                    $field.closest('.form-group').next('.required-message').remove();
+                    return;
+                }
+                validatePasteField($field, 'يرجى إرفاق صورة إيصال الحوالة البنكية.');
+            }
+            validateOrderPhoto();
+            validatePaymentReceipt();
+
+            // ---- Order photo: hardened via attachPasteImageField. Paste, drag-and-drop,
+            // ---- and a MutationObserver all funnel into the same commit-File path,
+            // ---- so the hidden #OrderPhotoFile is reliably populated regardless of
+            // ---- which mechanism actually delivered the image.
+            orderPhotoField = attachPasteImageField({
+                $field: $c('OrderPhotoPaste'),
+                fileInputId: 'OrderPhotoFile',
+                onCommit: function () { validateOrderPhoto(); updateSubmitButtonState(); },
+                onClear: function () { validateOrderPhoto(); updateSubmitButtonState(); }
+            });
+
+            // ============================================================
+            // PAYMENT STATUS → RECEIPT VISIBILITY (edit form — never required)
+            // ============================================================
+            // First option ("تم التحويل حوالة بنكية" = paid) reveals the
+            // receipt paste row. Any other choice clears and hides it.
+            $c('IsPaid').on('change', function () {
+                if ($(this).val() === 'true') {
+                    $c('paymentReceiptRow').show();
+                } else {
+                    $c('paymentReceiptRow').hide();
+                    $c('PaymentReceiptPaste').empty().removeClass('success');
+                    var rf = document.getElementById('PaymentReceiptFile');
+                    if (rf) rf.value = '';
+                }
+                validatePaymentReceipt();
+            });
+
+            // ============================================================
+            // PAYMENT RECEIPT PASTE — hardened via attachPasteImageField.
+            // ============================================================
+            paymentReceiptField = attachPasteImageField({
+                $field: $c('PaymentReceiptPaste'),
+                fileInputId: 'PaymentReceiptFile',
+                onCommit: function () { validatePaymentReceipt(); updateSubmitButtonState(); },
+                onClear: function () { validatePaymentReceipt(); updateSubmitButtonState(); }
+            });
+
+            // ============================================================
+            // FORM SUBMIT — posts to Order/Edit/{id}; success just closes modal
+            // ============================================================
+            $c('editOrderForm').submit(function (event) {
+                // Belt-and-braces: re-hydrate the hidden file inputs from any
+                // data:-URL <img> still in the paste fields, in case DataTransfer
+                // assignment silently no-op'd during paste/drop.
+                if (orderPhotoField) orderPhotoField.rescueIfNeeded();
+                if (paymentReceiptField) paymentReceiptField.rescueIfNeeded();
+                const country = $c('countryDropdown').val();
+                const phoneNumber = $c('TelephoneNumber').val();
+                const phoneCheck = validatePhone(country, phoneNumber);
+                var deliveryPartyValue = $c('deliveryPartyDropdown').val();
+                var cityDropdown = $c('cityDropdown');
+                var sourceName = $c('SourceName').val();
+                var customerName = $c('CustomerName').val();
+                var address = $c('Address').val();
+                var chaturl = $c('ChatUrl').val();
+                if (!sourceName) {
+                    $c('SourceName').addClass('error');
+                } else {
+                    $c('SourceName').removeClass('error');
+                }
+                if (!customerName) {
+                    $c('CustomerName').addClass('error');
+                } else {
+                    $c('CustomerName').removeClass('error');
+                }
+                if (!address) {
+                    $c('Address').addClass('error');
+                } else {
+                    $c('Address').removeClass('error');
+                }
+                if (!chaturl) {
+                    $c('ChatUrl').addClass('error');
+                } else {
+                    $c('ChatUrl').removeClass('error');
+                }
+                $c('submitButton').prop('disabled', true);
+                setTimeout(function () {
+                    $c('submitButton').prop('disabled', false);
+                }, 40000);
+                if (!deliveryPartyValue) {
+                    showFormError("الرجاء اختيار طرف التوصيل.");
+                    event.preventDefault();
+                    return false;
+                }
+                if ($c('orderSourceDropdown').val() === "2" && containsCapitalOrArabicLetters($c('SourceName').val())) {
+                    showFormError('لايمكنك اختيار انستغرام , أدخل اسم صفحة صحيح .');
+                    event.preventDefault();
+                    return false;
+                }
+                if (!phoneCheck.valid) {
+                    showFormError('يرجى إدخال رقم هاتف صحيح.');
+                    event.preventDefault();
+                    return false;
+                }
+                if (cityDropdown.val() === "" || cityDropdown.val() === "المدينة") {
+                    showFormError("الرجاء اختيار المدينة.");
+                    event.preventDefault();
+                    return false;
+                }
+                if ($c('selectedProductsList').find('.appended-warehouse-row').length === 0) {
+                    showFormError("يجب إختيار مستودع واحد على الأقل.");
+                    event.preventDefault();
+                    return false;
+                }
+                const customerNameResult = validateCustomerNameForCountry();
+                if (!customerNameResult.ok) {
+                    showFormError(customerNameResult.message);
+                    event.preventDefault();
+                    return false;
+                }
+                if ($c('countryDropdown').val() === 'تركيا' && !validateAddressLatin()) {
+                    showFormError('يُسمح فقط بالأحرف اللاتينية والتركية والأرقام والرموز في عناوين طلبات تركيا.');
+                    event.preventDefault();
+                    return false;
+                }
+                if ($c('orderSourceDropdown').val() !== "4" && !validateChatUrlAscii()) {
+                    event.preventDefault();
+                    return false;
+                }
+
+                if (!productMinimumSellingPriceIsValid || $c('TotalPrice').hasClass('error')) {
+                    var productMinimumMessage = productMinimumSellingPriceMessage || 'السعر أقل من الحد الأدنى لسعر البيع.';
+                    showFormError(productMinimumMessage);
+                    runTotalPriceValidation();
+                    event.preventDefault();
+                    return false;
+                }
+                // Payment receipt is required when payment status is "paid". Either a freshly
+                // pasted file (#PaymentReceiptFile) or an existing saved receipt (kept as the
+                // <img> already inside #PaymentReceiptPaste) satisfies the rule.
+                if ($c('IsPaid').val() === 'true') {
+                    var receiptInput = document.getElementById('PaymentReceiptFile');
+                    var hasNewReceipt = receiptInput && receiptInput.files && receiptInput.files.length > 0;
+                    var hasExistingReceipt = $('#PaymentReceiptPaste').find('img').length > 0;
+                    if (!hasNewReceipt && !hasExistingReceipt) {
+                        showFormError('يرجى لصق صورة إيصال الحوالة بنكية.');
+                        $('#PaymentReceiptPaste').addClass('error');
+                        event.preventDefault();
+                        return false;
+                    }
+                    $('#PaymentReceiptPaste').removeClass('error');
+                }
+                var $campaign = $c('campaignDropdown');
+                if ($campaign.data('touched') !== true) {
+                    addErrorClassAndMessage($campaign, 'يرجى اختيار الإعلان أو "بدون إعلان".');
+                    showFormError('يرجى اختيار الإعلان أو "بدون إعلان".');
+                    event.preventDefault();
+                    return false;
+                }
+                // Sentinel "none" → submit as empty so server stores null CampaignId
+                if ($campaign.val() === 'none') {
+                    $campaign.find('option[value="none"]').val('');
+                    $campaign.val('');
+                }
+                $c('productDropdown').prop('disabled', true);
+                var formData = new FormData(this);
+                var cfg = COUNTRY_PHONE_CONFIG[country];
+                var normalizedPhone = phoneCheck.cleaned;
+                if (cfg) {
+                    var code = cfg.code;
+                    if (normalizedPhone.startsWith('00' + code)) {
+                        normalizedPhone = '0' + normalizedPhone.slice(('00' + code).length);
+                    } else if (normalizedPhone.startsWith('+' + code)) {
+                        normalizedPhone = '0' + normalizedPhone.slice(('+' + code).length);
+                    } else if (country === 'ليبيا' && /^9\d{8}$/.test(normalizedPhone)) {
+                        // Libya accepts local form with or without leading 0; canonicalize to "09…" on submit.
+                        normalizedPhone = '0' + normalizedPhone;
+                    }
+                }
+                formData.set('TelephoneNumber', normalizedPhone);
+                $.ajax({
+                    type: "POST",
+                    url: '@Url.Action("Edit", "Order", new { id = Model.Id })',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (response) {
+                        if (response.message) {
+                            var errorMessage = response.message;
+                            $modalRoot.find('.message').text(errorMessage);
+                            $c('failedmessageEdit').removeClass('hidden').css('display', 'block');
+                            $c('overlay').show();
+                        } else {
+                            // Just close — _DetailsPartial's hidden.bs.modal handler refreshes the parent.
+                            $modalRoot.modal('hide');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("AJAX Error:", status, error);
+
+                        var errorMessage = "حدث خطأ أثناء التعديل. الرجاء المحاولة مرة أخرى.";
+
+                        try {
+                            var response = xhr.responseJSON || JSON.parse(xhr.responseText || "{}");
+                            errorMessage = response.message || errorMessage;
+                        } catch (e) {
+                            if (xhr.responseText) {
+                                errorMessage = xhr.responseText;
+                            }
+                        }
+
+                        // تظهر الرسالة داخل الفورم فوق زر تأكيد التعديل بدل الـ popup/overlay.
+                        showFormError(errorMessage);
+
+                        $c('submitButton').prop('disabled', false);
+                        $c('overlay').hide();
+                        $c('failedmessageEdit').addClass('hidden').hide();
+                    }
+                });
+                event.preventDefault();
+            });
+
+            // ============================================================
+            // SELECT2 CLEANUP — destroy instances on modal close to prevent
+            // orphaned containers when the next AJAX-injected open arrives.
+            // ============================================================
+            $modalRoot.on('hidden.bs.modal', function () {
+                $modalRoot.find('.select2-hidden-accessible').each(function () {
+                    try { $(this).select2('destroy'); } catch (e) { }
+                });
+            });
+        });
+    })();
+</script>
+
+
+<style>
+    /* تعطيل البوب أب القديم نهائيًا عشان مايغطيش المدخلات ولا يمنع Ctrl+V */
+    .legacy-popup-error-disabled,
+    #failedmessage.legacy-popup-error-disabled,
+    #failedmessageEdit.legacy-popup-error-disabled {
+        display: none !important;
+        pointer-events: none !important;
+        visibility: hidden !important;
+    }
+
+    /* رسالة الخطأ الجديدة تظهر فوق زر التأكيد مباشرة */
+    .form-inline-error-message {
+        margin: 12px auto 14px auto !important;
+        max-width: 92% !important;
+    }
+</style>

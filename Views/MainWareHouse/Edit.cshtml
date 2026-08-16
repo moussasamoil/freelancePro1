@@ -1,0 +1,33 @@
+﻿@model MainWarehouseViewModel
+
+@{
+    ViewData["Title"] = "تعديل المستودع";
+}
+
+<div class="container">
+
+
+<form asp-action="Edit" method="post" enctype="multipart/form-data">
+    <input type="hidden" asp-for="Id" />
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="form-group">
+                <label asp-for="Name">الاسم</label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="form-group">
+                <label for="file">تغيير الصورة</label>
+                <input type="file" name="productImage" class="form-control" />
+                <img src="@Model.ImageUrl" alt="Current Image" style="width:100px;" />
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
+</form>
+</div>

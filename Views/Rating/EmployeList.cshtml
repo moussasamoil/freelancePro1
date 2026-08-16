@@ -1,0 +1,1631 @@
+@model lotus_blue.Models.ViewModel.EmployeeRatingCompositeViewModel
+@using lotus_blue.Services
+@inject GetCurrentTimeInIstanbul Currenttime
+@{
+    ViewData["Title"] = "تقييم الموظفين";
+
+}
+@{
+    DateTime now = Currenttime.GetIstanbulTimeWithOffset();
+
+    // Check if the current time is before 11 AM
+    if (now.Hour < 11)
+    {
+        // If before 11 AM, consider it as the previous day
+        now = now.AddDays(-1);
+    }
+
+    // Set the start time to 11 AM of the determined date
+    DateTime startDateTime = new DateTime(now.Year, now.Month, now.Day, 11, 0, 0);
+    // Calculate end time which is exactly 1 day after start time
+    DateTime endDateTime = startDateTime.AddDays(1);
+
+@functions {
+    private string GetRandomColor()
+    {
+        Random rand = new Random();
+        int r = rand.Next(256);
+        int g = rand.Next(256);
+        int b = rand.Next(256);
+        return $"rgb({r}, {g}, {b})";
+    }
+}
+
+}
+
+<style>
+    @@media (min-width: 992px) {
+        .col-lg-3 {
+            flex: 0 0 auto;
+            width: 24%;
+        }
+    }
+
+    .hover-box:hover {
+        background-color: #f0f0f0
+    }
+
+    .width-120px {
+        width: 120px !important;
+    }
+
+    .shadow-border:hover {
+        background-color: #F0F0F0; /* Background color on hover for the entire row */
+    }
+
+
+    .shadow-border {
+        background-color: #ffffff;
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2);
+        border-radius: 8px !important;
+        padding: 6px;
+        font-size: 18px;
+    }
+
+
+  
+
+    .custom-shadow-inpage:hover {
+        box-shadow: 0px 0px 6px #1d273b;
+    }
+
+
+    .width-99 {
+        width: 99% !important;
+    }
+
+    .col-lg {
+        border-radius: 8px !important;
+        padding: 6px;
+        font-size: 18px;
+        box-shadow: none !important;
+    }
+</style>
+
+
+<div id="total" class="main-hover">
+    <div class="row align-items-center background-white custom-shadow-inpage py-0">
+        <div class="col-md-auto text-md-end mb-3 mb-md-0">
+            <div id="navigateButton" class="fw-bold text-white btn background-gold" onclick="navigateToPage()">
+                يحصل الأن
+            </div>
+        </div>
+
+        @if (User.IsInRole("Admin"))
+        {
+            <div class="col-lg col-6 col-md">
+                <div class="text-muted text-nowrap mb-2">
+                    إجمالي المبلغ الذي تم انفاقه
+                </div>
+                <div class="d-flex text-green align-items-center">
+                    <div class="fw-bold">
+                        TRY
+                    </div>
+                    <div class="fw-bold ms-2">
+                        @Model.TotalOrdersPriceInTL
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg col-6 col-md">
+                <div class="text-muted text-nowrap mb-2">
+                    إجمالي المبلغ الذي تم انفاقه
+                </div>
+                <div class="d-flex text-green align-items-center">
+                    <div class="fw-bold">
+                        USD
+                    </div>
+                    <div class="fw-bold ms-2">
+                        @Model.TotalOrdersPriceInDollar
+                    </div>
+                </div>
+            </div>
+        }
+
+
+        <div class="col-lg col-6 col-md ordersDiv">
+            <div class="text-muted mb-2">
+                عدد الطلبات
+            </div>
+            <div class="fw-bold text-green">
+                @Model.TotalNumberOfOrders
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md processedDiv">
+            <div class="text-muted mb-2">
+                تم المعالجة
+            </div>
+            <div class="fw-bold text-green">
+                @Model.FixedOrdersCount
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md offersDiv">
+            <div class="text-muted mb-2">
+                العروض
+            </div>
+            <div class="fw-bold text-green">
+                @Model.OrderFromOffersCount
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md discountdiv">
+            <div class="text-muted mb-2">
+                التخفضيفات
+            </div>
+            <div class="fw-bold text-green">
+                @Model.OrderFromOfferDiscountsCount
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md employeebonusdiv">
+            <div class="text-muted mb-2">
+                عمولة المبيعات
+            </div>
+            <div class="fw-bold text-green">
+                @Model.NumberOfBouneses
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md productcountdiv">
+            <div class="text-muted mb-2">
+                عدد القطع
+            </div>
+            <div class="fw-bold text-green">
+                @Model.TotalProductsCount
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md commentsdiv">
+            <div class="text-muted mb-2">
+                التعليقات
+            </div>
+            <div class="fw-bold text-green">
+                @Model.OrderFromCommentsCount
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md femalediv">
+            <div class="text-muted mb-2 text-green">
+                أنثى
+            </div>
+            <div class="fw-bold text-green">
+                @Model.OrderFromFemalesCount
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md malediv">
+            <div class="text-muted mb-2 text-green">
+                ذكر
+            </div>
+            <div class="fw-bold text-green">
+                @Model.OrderFromMalesCount
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md potentialordersdiv">
+            <div class="text-muted mb-2">
+                البيانات المدخلة
+            </div>
+            <div class="fw-bold text-green">
+                @Model.PotentialOrdersCount
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md noadordersdiv">
+            <div class="text-muted mb-2">
+                طلبات بدون إعلان
+            </div>
+            <div id="noAdOrdersTotal" class="fw-bold text-green">
+                @(ViewBag.NoAdOrdersCount ?? 0)
+            </div>
+        </div>
+
+        <div class="col-lg col-6 col-md noademployeesdiv">
+            <div class="text-muted mb-2">
+                موظفين بدون إعلان
+            </div>
+            <div id="noAdEmployeesTotal" class="fw-bold text-green">
+                @(ViewBag.NoAdEmployeesCount ?? 0)
+            </div>
+        </div>
+
+        <div class="col-12 col-md-auto text-md-start pe-3">
+            <div class="fw-bold">
+                <span class="text-green b-r-8 px-2" style="background-color:f0fffc;">Management</span>
+            </div>
+            <div class="fw-bold">
+                شركة LUXIRA HOLDING التركية
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+<div class="width-99 my-2 me-0 mx-auto ">
+
+    <div class="row me-0 text-end mx-auto d-flex justify-content-between">
+
+
+          
+        <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap custom-shadow-inpage">
+
+            <div>
+                <input id="custom-datepicker" class="form-control custom-datepicker" placeholder=" فلتر حسب التاريخ " readonly>
+                <script src="/js/datepicker.min.js"></script>
+            </div>
+
+        </div>
+
+
+
+        <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="EmployeeId" name="Employee" class="form-control drop-down-design">
+            </select>
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="GenderId" name="Gender" class="form-control drop-down-design">
+            </select>
+        </div>
+
+
+
+        <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="ProductId" name="Product" class="form-control drop-down-design">
+            </select>
+
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="ManufacturingCompanyId" name="ManufacturingCompany" class="form-control drop-down-design">
+            </select>
+        </div>
+
+           
+        <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="OrderSourceId" name="OrderSource" class="form-control drop-down-design">
+            </select>
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="CountryId" name="Country" class="form-control drop-down-design">
+            </select>
+        </div>
+
+        <div class="col-lg w-100 my-auto mb-0 me-lg-3 col-sm-12 p-relative text-nowrap">
+            <select id="WorkShift" name="workshift" class="form-control drop-down-design">
+            </select>
+        </div>
+
+
+    </div>
+
+</div>
+
+
+
+
+
+
+<style id="meta-rating-actions-style">
+    .employee-meta-actions-rating {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    margin: 10px 8px 0;
+    direction: rtl;
+    }
+
+    .meta-action-rating-item {
+    min-height: 34px;
+    border: 1px solid rgba(24, 160, 136, 0.20);
+    border-radius: 10px;
+    background: #ffffff;
+    color: #111827;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 5px 7px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.10);
+    white-space: nowrap;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    }
+
+    .meta-action-rating-item:hover {
+    background: rgba(24, 160, 136, 0.08);
+    box-shadow: 0 2px 8px rgba(24, 160, 136, 0.18);
+    transform: translateY(-1px);
+    }
+
+    .meta-action-rating-item .meta-action-count {
+    min-width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    background: #1d273b;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1;
+    }
+
+    .investigation-rating-item {
+    border-color: rgba(22, 163, 74, 0.28);
+    background: #effdf4;
+    }
+
+    .investigation-rating-item .investigation-action-count {
+    background: #16a34a;
+    color: #ffffff;
+    }
+
+    .investigation-rating-item:hover {
+    background: #dcfce7;
+    box-shadow: 0 2px 8px rgba(22, 163, 74, 0.22);
+    }
+
+    .no-ad-rating-item {
+    border-color: rgba(24, 160, 136, 0.20);
+    background: #ffffff;
+    }
+
+    .no-ad-rating-item .no-ad-action-count {
+    background: #18a088;
+    color: #ffffff;
+    }
+
+    .no-ad-rating-item:hover {
+    background: rgba(24, 160, 136, 0.08);
+    box-shadow: 0 2px 8px rgba(24, 160, 136, 0.18);
+    }
+
+    .status-group-rating-item {
+    border-color: rgba(245, 158, 11, 0.26);
+    background: #fffaf0;
+    }
+
+    .status-group-rating-item .status-group-action-count {
+    background: #f59e0b;
+    color: #ffffff;
+    }
+
+    .status-group-rating-item:hover {
+    background: #fff3d6;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.20);
+    }
+
+    .delivered-status-rating-item {
+    border-color: rgba(22, 163, 74, 0.28);
+    background: #effdf4;
+    }
+
+    .delivered-status-rating-item .status-group-action-count {
+    background: #16a34a;
+    }
+
+    .delivered-status-rating-item:hover {
+    background: #dcfce7;
+    box-shadow: 0 2px 8px rgba(22, 163, 74, 0.22);
+    }
+
+    .failed-status-rating-item {
+    border-color: rgba(220, 38, 38, 0.24);
+    background: #fff1f2;
+    }
+
+    .failed-status-rating-item .status-group-action-count {
+    background: #dc2626;
+    }
+
+    .failed-status-rating-item:hover {
+    background: #ffe4e6;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.20);
+    }
+
+    .delayed-status-rating-item {
+    border-color: rgba(184, 152, 58, 0.28);
+    background: rgba(233, 205, 84, 0.20);
+    }
+
+    .delayed-status-rating-item .status-group-action-count {
+    background: #b8983a;
+    }
+
+    .delayed-status-rating-item:hover {
+    background: rgba(233, 205, 84, 0.30);
+    box-shadow: 0 2px 8px rgba(184, 152, 58, 0.18);
+    }
+
+    .meta-action-rating-item.meta-action-other {
+    grid-column: auto;
+    }
+
+    .meta-action-details-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.52);
+    z-index: 2147483000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    direction: rtl;
+    }
+
+    .meta-action-details-modal {
+    width: min(760px, 96vw);
+    max-height: min(720px, 88vh);
+    background: #ffffff;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 22px 70px rgba(15, 23, 42, 0.34);
+    display: flex;
+    flex-direction: column;
+    }
+
+    .meta-action-details-header {
+    background: #1d273b;
+    color: #ffffff;
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    font-weight: 900;
+    }
+
+    .meta-action-details-title {
+    font-size: 17px;
+    line-height: 1.6;
+    }
+
+    .meta-action-details-close {
+    border: 0;
+    background: rgba(255,255,255,0.16);
+    color: #ffffff;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    font-size: 22px;
+    font-weight: 900;
+    line-height: 1;
+    cursor: pointer;
+    }
+
+    .meta-action-details-body {
+    padding: 14px;
+    overflow-y: auto;
+    }
+
+    .meta-action-details-loading,
+    .meta-action-details-empty,
+    .meta-action-details-error {
+    text-align: center;
+    padding: 24px 12px;
+    font-weight: 900;
+    color: #334155;
+    }
+
+    .meta-action-details-error {
+    color: #dc2626;
+    }
+
+    .meta-action-details-row {
+    border: 1px solid rgba(15, 23, 42, 0.10);
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 10px 12px;
+    margin-bottom: 9px;
+    box-shadow: 0 1px 5px rgba(15, 23, 42, 0.08);
+    }
+
+    .meta-action-details-row-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-weight: 900;
+    color: #111827;
+    }
+
+    .meta-action-order-link {
+    border: 0;
+    border-radius: 999px;
+    background: #f28e02;
+    color: #ffffff;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 900;
+    cursor: pointer;
+    }
+
+    .meta-action-details-meta {
+    margin-top: 7px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.7;
+    }
+</style>
+
+<h1 class="f-s-16 text-green  "> <i class="fa-regular fa-chevron-left f-s-12"></i>  الموظفين</h1>
+
+<div id="employeedata" class="row my-2">
+    @foreach (var employee in Model.EmployeeRatings)
+    {
+        <div class="col-lg-3   col-12 employee-info b-r-8 mt-2 custom-box-shadow hover-box mx-lg-2" data-employee-name="@employee.Name" data-employee-id="@employee.Id">
+
+            <div class="row ">
+                <div class="col-3  d-flex justify-content-center my-auto  pe-0">
+                    <img class="b-r-8" src="/@employee.Image" width="60" />
+                </div>
+
+                <div class="col-8 text-end px-0">
+                    <div class="d-flex pe-2 justify-content-end pt-4">
+                        <h1 class="text-nowrap f-s-16 ps-3 fw-bolder">   @employee.Name </h1>
+                    </div>
+                    <div class="d-flex flex-nowrap pt-2 justify-content-center">
+
+                        <div class="custom-box-shadow productcountdiv justify-content-center width-120px text-nowrap d-flex flex-nowrap b-r-8 mx-2 py-1">
+                            قطعة    @employee.TotalProductsCount
+                        </div>
+
+                        <div class="custom-box-shadow ordersDiv justify-content-center width-120px text-nowrap d-flex flex-nowrap b-r-8 mx-2 py-1">
+                            طلب     @employee.OrdersCount
+                        </div>
+
+                    </div>
+                    <div class="d-flex flex-nowrap pt-2 justify-content-center">
+
+                        <div class="custom-box-shadow offersDiv  justify-content-center width-120px text-nowrap d-flex flex-nowrap b-r-8 mx-2 py-1">
+                            عرض   @employee.TotalOrdersWithWarehouseItemMoreThanOne
+                        </div>
+
+                        <div class="custom-box-shadow justify-content-center width-120px text-nowrap d-flex flex-nowrap b-r-8 mx-2 py-1">
+                            تقييم %  @employee.Rating
+                        </div>
+
+                    </div>
+                    <div class="d-flex flex-nowrap pt-2 justify-content-center">
+
+                        <div class="custom-box-shadow commentsdiv justify-content-center width-120px text-nowrap d-flex flex-nowrap b-r-8 mx-2 py-1">
+                            تعليقات    @employee.OrderFromComments
+                        </div>
+
+                        <div class="custom-box-shadow processedDiv justify-content-center width-120px text-nowrap d-flex flex-nowrap b-r-8 mx-2 py-1">
+                            تم المعالجة  @employee.FixedOrdersCount
+
+                        </div>
+
+                    </div>
+                    <div class="d-flex flex-nowrap pt-2 justify-content-center">
+
+                        <div class="custom-box-shadow malediv justify-content-center width-120px text-nowrap d-flex flex-nowrap b-r-8 mx-2 py-1">
+                            ذكر    @employee.OrderFromMales
+                        </div>
+
+                        <div class="custom-box-shadow femalediv justify-content-center width-120px text-nowrap d-flex flex-nowrap b-r-8 mx-2 py-1">
+
+                            أنثى    @employee.OrderFromFemales
+
+                        </div>
+
+                    </div>
+
+                    <div class="d-flex flex-nowrap pt-2 justify-content-center">
+
+                        <div class="custom-box-shadow discountdiv justify-content-center width-120px text-nowrap d-flex flex-nowrap b-r-8 mx-2 py-1">
+                            تخفيضات    @employee.OrderFromOffers
+                        </div>
+
+                        <div class="custom-box-shadow employeebonusdiv justify-content-center width-120px text-nowrap d-flex flex-nowrap b-r-8 mx-2 py-1">
+
+                            العمولات   @employee.NumberOfBonuses
+
+                        </div>
+
+                    </div>
+
+                    <div class="d-flex flex-nowrap pt-2 justify-content-center">
+                        <div class="custom-box-shadow potentialordersdiv justify-content-center width-120px text-nowrap d-flex flex-nowrap b-r-8 mx-2 py-1">
+                            طلبات محتملة @employee.PotentialOrdersCount
+                        </div>
+                        <div class="width-120px mx-2"></div>
+                    </div>
+
+                    <div class="employee-meta-actions-rating" data-meta-employee-id="@employee.Id" data-meta-employee-name="@employee.Name">
+                        <button type="button" class="meta-action-rating-item" data-meta-action="معالجة طلب">
+                            <span>معالجة طلب</span>
+                            <span class="meta-action-count">0</span>
+                        </button>
+                        <button type="button" class="meta-action-rating-item" data-meta-action="متابعة التوصيل">
+                            <span>متابعة التوصيل</span>
+                            <span class="meta-action-count">0</span>
+                        </button>
+                        <button type="button" class="meta-action-rating-item" data-meta-action="حل مشكلة">
+                            <span>حل مشكلة</span>
+                            <span class="meta-action-count">0</span>
+                        </button>
+                        <button type="button" class="meta-action-rating-item" data-meta-action="التأكد من الاستلام">
+                            <span>التأكد من الاستلام</span>
+                            <span class="meta-action-count">0</span>
+                        </button>
+                        <button type="button" class="meta-action-rating-item" data-meta-action="الطلبات الغير مكتمله">
+                            <span>الطلبات الغير مكتمله</span>
+                            <span class="meta-action-count">0</span>
+                        </button>
+                        <button type="button" class="meta-action-rating-item" data-meta-action="أخرى">
+                            <span>أخرى</span>
+                            <span class="meta-action-count">0</span>
+                        </button>
+
+                        <button type="button" class="meta-action-rating-item investigation-rating-item" data-investigation-action="قيد التحقق">
+                            <span>قيد التحقق</span>
+                            <span class="meta-action-count investigation-action-count">0</span>
+                        </button>
+
+                        <button type="button" class="meta-action-rating-item no-ad-rating-item" data-no-ad-action="بدون إعلان">
+                            <span>بدون إعلان</span>
+                            <span class="meta-action-count no-ad-action-count">0</span>
+                        </button>
+
+                        <button type="button" class="meta-action-rating-item status-group-rating-item delivered-status-rating-item" data-status-group-action="delivered">
+                            <span>تم التسليم</span>
+                            <span class="meta-action-count status-group-action-count delivered-status-count">0</span>
+                        </button>
+
+                        <button type="button" class="meta-action-rating-item status-group-rating-item failed-status-rating-item" data-status-group-action="failed">
+                            <span>فشل تسليم</span>
+                            <span class="meta-action-count status-group-action-count failed-status-count">0</span>
+                        </button>
+
+                        <button type="button" class="meta-action-rating-item status-group-rating-item delayed-status-rating-item" data-status-group-action="delayed">
+                            <span>طلبات مؤجلة</span>
+                            <span class="meta-action-count status-group-action-count delayed-status-count">0</span>
+                        </button>
+                    </div>
+
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <div class="d-flex flex-nowrap pt-2 justify-content-center">
+
+                            <div class="text-btn-green-v2 text-green rtl fw-bold text-green justify-content-center width-120px text-nowrap d-flex flex-nowrap b-r-8 mx-2 py-1">
+                                <div>TRY </div>
+                                <div>
+                                    @employee.TotalPriceTRY
+
+                                </div>
+                            </div>
+
+
+                            <div class="text-green rtl text-green   fw-bold justify-content-center width-120px text-nowrap d-flex flex-nowrap b-r-8 mx-2 py-1">
+
+
+                                <div>USD </div>
+                                <div>
+                                    @employee.TotalPriceUSD
+
+                                </div>
+                            </div>
+
+
+                        </div>
+                    }
+                    <div class="d-flex flex-nowrap pt-2 justify-content-center">
+
+                        <div class="text-green justify-content-center width-120px text-nowrap d-flex flex-nowrap b-r-8 mx-2 py-1">
+                            عرض التفاصيل
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    }
+</div>
+
+
+
+<input type="hidden" id="startDate" />
+<input type="hidden" id="endDate" />
+
+<div id="metaActionDetailsBackdrop" class="meta-action-details-backdrop">
+    <div class="meta-action-details-modal">
+        <div class="meta-action-details-header">
+            <div id="metaActionDetailsTitle" class="meta-action-details-title">تفاصيل ضغط زر ميتا</div>
+            <button type="button" id="metaActionDetailsClose" class="meta-action-details-close">×</button>
+        </div>
+        <div id="metaActionDetailsBody" class="meta-action-details-body">
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+
+    $(document).ready(function () {
+
+         
+    initializeLitepicker('.custom-datepicker', updateEmployeeData);
+
+
+    // Event listener for dropdown changes
+    $('#EmployeeId, #CountryId, #OrderSourceId, #GenderId,#ManufacturingCompanyId,#WorkShift,#ProductId').on('change', function () {
+    updateEmployeeData();
+    });
+
+
+    const metaActionReasons = [
+    'معالجة طلب',
+    'متابعة التوصيل',
+    'حل مشكلة',
+    'التأكد من الاستلام',
+    'الطلبات الغير مكتمله',
+    'أخرى'
+    ];
+
+    function resetMetaActionRatingCounts() {
+    $('.employee-meta-actions-rating .meta-action-count').text('0');
+    }
+
+    function getMetaActionDateFilters() {
+    return {
+    startDate: document.getElementById('startDate') ? document.getElementById('startDate').value : '',
+    endDate: document.getElementById('endDate') ? document.getElementById('endDate').value : ''
+    };
+    }
+
+    function getNoAdRatingFilters() {
+    const dates = getMetaActionDateFilters();
+
+    return {
+    startDate: dates.startDate,
+    endDate: dates.endDate,
+    employeeId: $('#EmployeeId').val() || '',
+    countryId: $('#CountryId').val() || '',
+    orderSourceId: $('#OrderSourceId').val() || '',
+    genderId: $('#GenderId').val() || '',
+    storeId: $('#ManufacturingCompanyId').val() || '',
+    workShift: $('#WorkShift').val() || '',
+    mainwarehouseId: $('#ProductId').val() || ''
+    };
+    }
+
+    function findEmployeeMetaPanel(row) {
+    const employeeId = row.employeeId ? String(row.employeeId) : '';
+    const userId = row.userId ? String(row.userId) : '';
+    const employeeName = row.employeeName ? String(row.employeeName).trim() : '';
+
+    let $panel = $();
+
+    $('.employee-meta-actions-rating').each(function () {
+    const $current = $(this);
+    const currentId = String($current.data('meta-employee-id') || '');
+    const currentName = String($current.data('meta-employee-name') || '').trim();
+
+    if ((employeeId && currentId === employeeId)
+    || (userId && currentId === userId)
+    || (employeeName && currentName === employeeName)) {
+    $panel = $current;
+    return false;
+    }
+    });
+
+    return $panel;
+    }
+
+    function loadMetaActionCountsForEmployees() {
+    resetMetaActionRatingCounts();
+
+    if ($('.employee-meta-actions-rating').length === 0) {
+    return;
+    }
+
+    const dates = getMetaActionDateFilters();
+
+    $.ajax({
+    url: '/OrderMetaActions/RatingSummary',
+    type: 'GET',
+    data: {
+    startDate: dates.startDate,
+    endDate: dates.endDate
+    },
+    success: function (response) {
+    if (!response || response.success !== true || !response.items) {
+    return;
+    }
+
+    response.items.forEach(function (row) {
+    const $panel = findEmployeeMetaPanel(row);
+    if (!$panel || $panel.length === 0) {
+    return;
+    }
+
+    const reason = row.reason || '';
+    const count = row.count || 0;
+
+    const $item = $panel.find('.meta-action-rating-item').filter(function () {
+    return String($(this).data('meta-action') || '') === reason;
+    });
+
+    $item.find('.meta-action-count').text(count);
+    });
+    }
+    });
+    }
+
+    function openMetaActionDetailsModal(employeeId, employeeName, actionName) {
+    const $backdrop = $('#metaActionDetailsBackdrop');
+    const $title = $('#metaActionDetailsTitle');
+    const $body = $('#metaActionDetailsBody');
+    const dates = getMetaActionDateFilters();
+
+    $title.text('تفاصيل: ' + actionName + ' - ' + employeeName);
+    $body.html('<div class="meta-action-details-loading">جاري تحميل التفاصيل...</div>');
+    $backdrop.css('display', 'flex');
+
+    $.ajax({
+    url: '/OrderMetaActions/RatingDetails',
+    type: 'GET',
+    data: {
+    employeeId: employeeId,
+    employeeName: employeeName,
+    reason: actionName,
+    startDate: dates.startDate,
+    endDate: dates.endDate
+    },
+    success: function (response) {
+    if (!response || response.success !== true) {
+    $body.html('<div class="meta-action-details-error">تعذر تحميل التفاصيل.</div>');
+    return;
+    }
+
+    if (!response.items || response.items.length === 0) {
+    $body.html('<div class="meta-action-details-empty">لا توجد طلبات لهذا الإجراء في الفترة المختارة.</div>');
+    return;
+    }
+
+    let html = '';
+
+    response.items.forEach(function (item) {
+    const otherText = item.otherText ? (' - ' + item.otherText) : '';
+    html += '<div class="meta-action-details-row">' +
+    '<div class="meta-action-details-row-main">' +
+    '<div>طلب رقم: <span class="text-green fw-bold">' + item.orderId + '</span></div>' +
+    '<button type="button" class="meta-action-order-link" data-order-id="' + item.orderId + '">فتح الطلب</button>' +
+    '</div>' +
+    '<div class="meta-action-details-meta">' +
+    '<div>الموظف: ' + (item.employeeName || '-') + '</div>' +
+    '<div>الإجراء: ' + (item.reason || '-') + otherText + '</div>' +
+    '<div>الزر: ' + (item.contactType === 'WhatsApp' ? 'واتساب' : 'ميتا') + '</div>' +
+    '<div>الوقت: ' + (item.clickedAt || '-') + '</div>' +
+    '</div>' +
+    '</div>';
+    });
+
+    $body.html(html);
+    },
+    error: function () {
+    $body.html('<div class="meta-action-details-error">حصل خطأ أثناء تحميل التفاصيل.</div>');
+    }
+    });
+    }
+
+    function resetInvestigationRatingCounts() {
+    $('.employee-meta-actions-rating .investigation-action-count').text('0');
+    }
+
+    function loadInvestigationCountsForEmployees() {
+    resetInvestigationRatingCounts();
+
+    if ($('.employee-meta-actions-rating').length === 0) {
+    return;
+    }
+
+    const dates = getMetaActionDateFilters();
+
+    $.ajax({
+    url: '/Home/InvestigationRatingSummary',
+    type: 'GET',
+    data: {
+    startDate: dates.startDate,
+    endDate: dates.endDate
+    },
+    success: function (response) {
+    if (!response || response.success !== true || !response.items) {
+    return;
+    }
+
+    response.items.forEach(function (row) {
+    const $panel = findEmployeeMetaPanel(row);
+    if (!$panel || $panel.length === 0) {
+    return;
+    }
+
+    $panel.find('.investigation-action-count').text(row.count || 0);
+    });
+    }
+    });
+    }
+
+    function openInvestigationDetailsModal(employeeId, employeeName) {
+    const $backdrop = $('#metaActionDetailsBackdrop');
+    const $title = $('#metaActionDetailsTitle');
+    const $body = $('#metaActionDetailsBody');
+    const dates = getMetaActionDateFilters();
+
+    $title.text('قيد التحقق - ' + employeeName);
+    $body.html('<div class="meta-action-details-loading">جاري تحميل طلبات قيد التحقق...</div>');
+    $backdrop.css('display', 'flex');
+
+    $.ajax({
+    url: '/Home/InvestigationRatingDetails',
+    type: 'GET',
+    data: {
+    employeeId: employeeId,
+    employeeName: employeeName,
+    startDate: dates.startDate,
+    endDate: dates.endDate
+    },
+    success: function (response) {
+    if (!response || response.success !== true) {
+    $body.html('<div class="meta-action-details-error">تعذر تحميل تفاصيل قيد التحقق.</div>');
+    return;
+    }
+
+    if (!response.items || response.items.length === 0) {
+    $body.html('<div class="meta-action-details-empty">لا توجد طلبات فتحها هذا الموظف من قيد التحقق في الفترة المختارة.</div>');
+    return;
+    }
+
+    let html = '';
+
+    response.items.forEach(function (item) {
+    html += '<div class="meta-action-details-row">' +
+    '<div class="meta-action-details-row-main">' +
+    '<div>طلب رقم: <span class="text-green fw-bold">' + item.orderId + '</span></div>' +
+    '<button type="button" class="meta-action-order-link" data-order-id="' + item.orderId + '">فتح الطلب</button>' +
+    '</div>' +
+    '<div class="meta-action-details-meta">' +
+    '<div>الموظف: ' + (item.employeeName || '-') + '</div>' +
+    '<div>العميل: ' + (item.customerName || '-') + '</div>' +
+    '<div>رقم الهاتف: ' + (item.telephoneNumber || '-') + '</div>' +
+    '<div>حالة الطلب: ' + (item.orderStatus || '-') + '</div>' +
+    '<div>وقت التحقق: ' + (item.approvedAt || '-') + '</div>' +
+    '</div>' +
+    '</div>';
+    });
+
+    $body.html(html);
+    },
+    error: function () {
+    $body.html('<div class="meta-action-details-error">حصل خطأ أثناء تحميل تفاصيل قيد التحقق.</div>');
+    }
+    });
+    }
+
+
+    function resetNoAdRatingCounts() {
+    $('.employee-meta-actions-rating .no-ad-action-count').text('0');
+    }
+
+    function loadNoAdCountsForEmployees() {
+    resetNoAdRatingCounts();
+
+    if ($('.employee-meta-actions-rating').length === 0) {
+    return;
+    }
+
+    $.ajax({
+    url: '/Rating/NoAdRatingSummary',
+    type: 'GET',
+    data: getNoAdRatingFilters(),
+    success: function (response) {
+    if (!response || response.success !== true || !response.items) {
+    return;
+    }
+
+    $('#noAdOrdersTotal').text(response.totalOrders || 0);
+    $('#noAdEmployeesTotal').text(response.totalEmployees || 0);
+
+    response.items.forEach(function (row) {
+    const $panel = findEmployeeMetaPanel(row);
+    if (!$panel || $panel.length === 0) {
+    return;
+    }
+
+    $panel.find('.no-ad-action-count').text(row.count || 0);
+    });
+    }
+    });
+    }
+
+    function openNoAdDetailsModal(employeeId, employeeName) {
+    const $backdrop = $('#metaActionDetailsBackdrop');
+    const $title = $('#metaActionDetailsTitle');
+    const $body = $('#metaActionDetailsBody');
+
+    $title.text('طلبات بدون إعلان - ' + employeeName);
+    $body.html('<div class="meta-action-details-loading">جاري تحميل طلبات بدون إعلان...</div>');
+    $backdrop.css('display', 'flex');
+
+    const requestData = getNoAdRatingFilters();
+    requestData.employeeId = employeeId;
+    requestData.employeeName = employeeName;
+
+    $.ajax({
+    url: '/Rating/NoAdRatingDetails',
+    type: 'GET',
+    data: requestData,
+    success: function (response) {
+    if (!response || response.success !== true) {
+    $body.html('<div class="meta-action-details-error">تعذر تحميل تفاصيل طلبات بدون إعلان.</div>');
+    return;
+    }
+
+    if (!response.items || response.items.length === 0) {
+    $body.html('<div class="meta-action-details-empty">لا توجد طلبات بدون إعلان لهذا الموظف في الفترة المختارة.</div>');
+    return;
+    }
+
+    let html = '';
+
+    response.items.forEach(function (item) {
+    html += '<div class="meta-action-details-row">' +
+    '<div class="meta-action-details-row-main">' +
+    '<div>طلب رقم: <span class="text-green fw-bold">' + item.orderId + '</span></div>' +
+    '<button type="button" class="meta-action-order-link" data-order-id="' + item.orderId + '">فتح الطلب</button>' +
+    '</div>' +
+    '<div class="meta-action-details-meta">' +
+    '<div>الموظف: ' + (item.employeeName || '-') + '</div>' +
+    '<div>العميل: ' + (item.customerName || '-') + '</div>' +
+    '<div>رقم الهاتف: ' + (item.telephoneNumber || '-') + '</div>' +
+    '<div>المتجر: ' + (item.storeName || '-') + '</div>' +
+    '<div>حالة الطلب: ' + (item.orderStatus || '-') + '</div>' +
+    '<div>المصدر: ' + (item.orderSource || '-') + '</div>' +
+    '<div>الإجمالي: ' + (item.totalPrice || 0) + '</div>' +
+    '<div>وقت الإنشاء: ' + (item.createdAt || '-') + '</div>' +
+    '</div>' +
+    '</div>';
+    });
+
+    $body.html(html);
+    },
+    error: function () {
+    $body.html('<div class="meta-action-details-error">حصل خطأ أثناء تحميل تفاصيل طلبات بدون إعلان.</div>');
+    }
+    });
+    }
+
+
+    function resetEmployeeStatusGroupCounts() {
+    $('.employee-meta-actions-rating .delivered-status-count').text('0');
+    $('.employee-meta-actions-rating .failed-status-count').text('0');
+    $('.employee-meta-actions-rating .delayed-status-count').text('0');
+    }
+
+    function loadEmployeeStatusGroupCountsForEmployees() {
+    resetEmployeeStatusGroupCounts();
+
+    if ($('.employee-meta-actions-rating').length === 0) {
+    return;
+    }
+
+    $.ajax({
+    url: '/Rating/EmployeeOrderStatusGroupSummary',
+    type: 'GET',
+    data: getNoAdRatingFilters(),
+    success: function (response) {
+    if (!response || response.success !== true || !response.items) {
+    return;
+    }
+
+    response.items.forEach(function (row) {
+    const $panel = findEmployeeMetaPanel(row);
+    if (!$panel || $panel.length === 0) {
+    return;
+    }
+
+    if (row.statusGroup) {
+    const group = String(row.statusGroup || '').toLowerCase();
+    const count = row.count || 0;
+
+    if (group === 'delivered') {
+    $panel.find('.delivered-status-count').text(count);
+    } else if (group === 'failed') {
+    $panel.find('.failed-status-count').text(count);
+    } else if (group === 'delayed') {
+    $panel.find('.delayed-status-count').text(count);
+    }
+
+    return;
+    }
+
+    $panel.find('.delivered-status-count').text(row.deliveredCount || 0);
+    $panel.find('.failed-status-count').text(row.failedCount || 0);
+    $panel.find('.delayed-status-count').text(row.delayedCount || 0);
+    });
+    }
+    });
+    }
+
+    function openEmployeeStatusGroupOrders(employeeId, employeeName, statusGroup) {
+    const filters = getNoAdRatingFilters();
+    const params = new URLSearchParams();
+
+    params.set('startDate', filters.startDate || '');
+    params.set('endDate', filters.endDate || '');
+    params.set('employeeId', employeeId || '');
+    params.set('employeeName', employeeName || '');
+    params.set('countryId', filters.countryId || '');
+    params.set('ordersourceId', filters.orderSourceId || '');
+    params.set('genderId', filters.genderId || '');
+    params.set('storeId', filters.storeId || '');
+    params.set('workshift', filters.workShift || '');
+    params.set('mainwarehouseId', filters.mainwarehouseId || '');
+    params.set('orderStatusGroup', statusGroup || '');
+
+    window.open('/Rating/EmployeOrdersDetails?' + params.toString(), '_blank');
+    }
+
+    $(document).on('click', '.meta-action-rating-item:not(.investigation-rating-item):not(.no-ad-rating-item):not(.status-group-rating-item)', function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const $panel = $(this).closest('.employee-meta-actions-rating');
+    const employeeId = String($panel.data('meta-employee-id') || '');
+    const employeeName = String($panel.data('meta-employee-name') || '');
+    const actionName = String($(this).data('meta-action') || '');
+
+    openMetaActionDetailsModal(employeeId, employeeName, actionName);
+    });
+
+    $(document).on('click', '.investigation-rating-item', function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const $panel = $(this).closest('.employee-meta-actions-rating');
+    const employeeId = String($panel.data('meta-employee-id') || '');
+    const employeeName = String($panel.data('meta-employee-name') || '');
+
+    openInvestigationDetailsModal(employeeId, employeeName);
+    });
+
+    $(document).on('click', '.no-ad-rating-item', function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const $panel = $(this).closest('.employee-meta-actions-rating');
+    const employeeId = String($panel.data('meta-employee-id') || '');
+    const employeeName = String($panel.data('meta-employee-name') || '');
+
+    openNoAdDetailsModal(employeeId, employeeName);
+    });
+
+    $(document).on('click', '.status-group-rating-item', function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const $panel = $(this).closest('.employee-meta-actions-rating');
+    const employeeId = String($panel.data('meta-employee-id') || '');
+    const employeeName = String($panel.data('meta-employee-name') || '');
+    const statusGroup = String($(this).data('status-group-action') || '');
+
+    openEmployeeStatusGroupOrders(employeeId, employeeName, statusGroup);
+    });
+
+    $(document).on('click', '#metaActionDetailsClose', function () {
+    $('#metaActionDetailsBackdrop').hide();
+    });
+
+    $(document).on('click', '#metaActionDetailsBackdrop', function (event) {
+    if (event.target === this) {
+    $(this).hide();
+    }
+    });
+
+    $(document).on('click', '.meta-action-order-link', function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const orderId = $(this).data('order-id');
+    if (!orderId) {
+    return;
+    }
+
+    window.open('/Order/Details?id=' + encodeURIComponent(orderId), '_blank');
+    });
+
+    loadMetaActionCountsForEmployees();
+    loadInvestigationCountsForEmployees();
+    loadNoAdCountsForEmployees();
+    loadEmployeeStatusGroupCountsForEmployees();
+
+
+    // Function to handle the AJAX request
+    function navigateToPage(isFixed, isOffer , isDiscount , isEmployeebonus ,isComments, isMale, isFemale,employeeId,employeeName ,countryId,countryName,storeId,storeName) {
+
+    startDate = document.getElementById('startDate').value;
+    endDate = document.getElementById('endDate').value;
+
+    employeeId = $('#EmployeeId').val() || employeeId ||""  ;
+    const ordersourceId = $('#OrderSourceId').val();
+    const genderId = $('#GenderId').val();
+    storeId = $('#ManufacturingCompanyId').val() || storeId  ||"" ;
+    const workshift = $('#WorkShift').val();
+
+    // Construct the query string
+    let queryString = `?startDate=${startDate}&endDate=${endDate}&employeeId=${employeeId}&ordersourceId=${ordersourceId}&genderId=${genderId}&storeId=${storeId}&workshift=${workshift}`;
+
+    // Add the isFixed parameter if it's true
+    if (isFixed) {
+    queryString += '&isFixed=true';
+    }
+    if (employeeName) {
+    queryString += `&employeeName=${employeeName}`;
+    }
+    if(storeName){
+    queryString += `&storeName=${storeName}`;
+    }
+    if(countryName){
+    queryString += `&countryName=${countryName}`;
+    }
+    // Add the isOffers parameter if it's true
+    if (isOffer) {
+    queryString += '&IsOffer=true';
+    }
+    if (isDiscount) {
+    queryString += '&isDiscount=true';
+    }
+    if (isEmployeebonus) {
+    queryString += '&isEmployeebonus=true';
+    }
+    if (isComments) {
+    queryString += '&isComments=true';
+    }
+    if (isMale) {
+    queryString += `&isMale=true`;
+    }
+    if (isFemale) {
+    queryString += `&isFemale=true`;
+    }
+    if (countryId) {
+    queryString += `&countryId=${countryId}`;
+    }
+
+                  
+
+    // Redirect to the desired page with the query string
+    window.open('/Rating/EmployeOrdersDetails' + queryString, '_blank');
+    }
+
+         
+    // coutnry
+    $(document).on('click', '.orderdata', function(event) {
+    // Prevent the click event from propagating to its children
+    event.stopPropagation();
+
+    // Retrieve the countryId and countryName from the data attributes
+    var countryId = $(this).data('country-id');
+    var countryName = $(this).data('country-name');
+
+    // Call navigateToPage function with the countryId and countryName parameters
+    navigateToPage(false, false, false, false, false, false, false, null, null, countryId, countryName);
+    });
+
+
+    $(document).on('click', '.discountdivorder', function(event) {
+    event.stopPropagation();
+
+    // Retrieve the countryId and countryName from the parent orderdata element
+    var countryId = $(this).closest('.orderdata').data('country-id');
+    var countryName = $(this).closest('.orderdata').data('country-name');
+
+    // Call navigateToPage function with the countryId, countryName, and isDiscount parameter
+    navigateToPage(false, false, true, false, false, false, false, null, null, countryId, countryName);
+    });
+
+    $(document).on('click', '.employeebonusdivorder', function(event) {
+    event.stopPropagation();
+
+    // Retrieve the countryId and countryName from the parent orderdata element
+    var countryId = $(this).closest('.orderdata').data('country-id');
+    var countryName = $(this).closest('.orderdata').data('country-name');
+
+    // Call navigateToPage function with the countryId, countryName, and isEmployeebonus parameter
+    navigateToPage(false, false, false, true, false, false, false, null, null, countryId, countryName);
+    });
+
+    $(document).on('click', '.employeeCommentsdivorder', function(event) {
+    event.stopPropagation();
+
+    // Retrieve the countryId and countryName from the parent orderdata element
+    var countryId = $(this).closest('.orderdata').data('country-id');
+    var countryName = $(this).closest('.orderdata').data('country-name');
+
+    // Call navigateToPage function with the countryId, countryName, and isEmployeebonus parameter
+    navigateToPage(false, false, false, false, true, false, false, null, null, countryId, countryName);
+    });
+
+    //store
+    $(document).on('click', '.store-data', function(event) {
+    event.stopPropagation();
+
+    // Retrieve the storeId from the data attribute
+    var storeId = $(this).data('store-id');
+    var storeName = $(this).data('store-name');
+
+    // Call navigateToPage function with the storeId parameter
+    navigateToPage(false, false, false, false, false, false, false, null, null,null,null, storeId,storeName);
+    });
+
+    $(document).on('click', '.discountdivstore', function(event) {
+    event.stopPropagation();
+
+    // Retrieve the storeId and storeName from the parent store-data element
+    var storeId = $(this).closest('.store-data').data('store-id');
+    var storeName = $(this).closest('.store-data').data('store-name');
+
+    // Call navigateToPage function with the storeId, storeName, and isDiscount parameter
+    navigateToPage(false, false, true, false, false, false, false, null, null, null, null, storeId, storeName);
+    });
+
+    $(document).on('click', '.employeebonusdivstore', function(event) {
+    event.stopPropagation();
+
+    // Retrieve the storeId and storeName from the parent store-data element
+    var storeId = $(this).closest('.store-data').data('store-id');
+    var storeName = $(this).closest('.store-data').data('store-name');
+
+    // Call navigateToPage function with the storeId, storeName, and isEmployeebonus parameter
+    navigateToPage(false, false, false, true, false, false, false, null, null, null, null, storeId, storeName);
+    });
+
+    $(document).on('click', '.employeeCommentsdivstore', function(event) {
+    event.stopPropagation();
+
+    // Retrieve the storeId and storeName from the parent store-data element
+    var storeId = $(this).closest('.store-data').data('store-id');
+    var storeName = $(this).closest('.store-data').data('store-name');
+
+    // Call navigateToPage function with the storeId, storeName, and isEmployeebonus parameter
+    navigateToPage(false, false, false, false, true, false, false, null, null, null, null, storeId, storeName);
+    });
+
+
+    // employee
+
+    $(document).on('click', '.employee-info', function(event) {
+    // Prevent the click event from propagating to its parent elements
+    event.stopPropagation();
+
+    // Retrieve the employeeId from the data attribute
+    var employeeId = $(this).data('employee-id');
+    var employeeName = $(this).data('employee-name');
+
+    // Call navigateToPage function with the employeeId parameter
+    navigateToPage(false, false, false, false, false, false, false, employeeId,employeeName);
+    });
+
+    $(document).on('click', '.ordersDiv', function(event) {
+    // Prevent the click event from propagating to its parent elements
+    event.stopPropagation();
+
+    // Retrieve the employeeId from the employee-info element
+    var employeeId = $(this).closest('.employee-info').data('employee-id');
+    console.log('Employee ID:', employeeId);
+    var employeeName = $(this).closest('.employee-info').data('employee-name');
+    // Call navigateToPage function with the employeeId parameter
+    navigateToPage(false, false, false, false, false, false, false, employeeId,employeeName);
+    });
+
+ 
+    $(document).on('click', '.processedDiv', function(event) {
+    // Prevent the click event from propagating to the parent element
+    event.stopPropagation();
+
+    // Retrieve the employeeId from the employee-info element
+    var employeeId = $(this).closest('.employee-info').data('employee-id');
+    console.log('Employee ID:', employeeId);
+    var employeeName = $(this).closest('.employee-info').data('employee-name');
+
+    // Call navigateToPage function with the employeeId and isFixed parameter
+    navigateToPage(true, false, false, false, false, false, false, employeeId,employeeName);
+    });
+
+
+    $(document).on('click', '.offersDiv', function(event) {
+    // Prevent the click event from propagating to the parent element
+    event.stopPropagation();
+
+    // Retrieve the employeeId from the employee-info element
+    var employeeId = $(this).closest('.employee-info').data('employee-id');
+    console.log('Employee ID:', employeeId);
+    var employeeName = $(this).closest('.employee-info').data('employee-name');
+
+    // Call navigateToPage function with the employeeId and isOffer parameter
+    navigateToPage(false, true, false, false, false, false, false, employeeId,employeeName);
+    })
+
+    $(document).on('click', '.discountdiv', function(event) {
+    event.stopPropagation();
+
+    // Retrieve the employeeId from the employee-info element
+    var employeeId = $(this).closest('.employee-info').data('employee-id');
+    console.log('Employee ID:', employeeId);
+    var employeeName = $(this).closest('.employee-info').data('employee-name');
+
+    // Call navigateToPage function with the employeeId and isFixed parameter
+    navigateToPage(false, false, true, false, false, false, false, employeeId,employeeName);
+    });
+
+
+    $(document).on('click', '.employeebonusdiv', function(event) {
+    event.stopPropagation();
+
+    // Retrieve the employeeId from the employee-info element
+    var employeeId = $(this).closest('.employee-info').data('employee-id');
+    console.log('Employee ID:', employeeId);
+    var employeeName = $(this).closest('.employee-info').data('employee-name');
+
+    // Call navigateToPage function with the employeeId and isFixed parameter
+    navigateToPage(false, false, false, true, false, false, false, employeeId,employeeName);
+    });
+
+    $(document).on('click', '.productcountdiv', function(event) {
+    event.stopPropagation();
+
+    // Retrieve the employeeId from the employee-info element
+    var employeeId = $(this).closest('.employee-info').data('employee-id');
+    console.log('Employee ID:', employeeId);
+    var employeeName = $(this).closest('.employee-info').data('employee-name');
+
+    // Call navigateToPage function with the employeeId and isFixed parameter
+    navigateToPage(false, false, false, false, false, false, false, employeeId,employeeName);
+    });
+
+
+    $(document).on('click', '.commentsdiv', function(event) {
+    event.stopPropagation();
+
+    // Retrieve the employeeId from the employee-info element
+    var employeeId = $(this).closest('.employee-info').data('employee-id');
+    console.log('Employee ID:', employeeId);
+    var employeeName = $(this).closest('.employee-info').data('employee-name');
+
+    // Call navigateToPage function with the employeeId and isFixed parameter
+    navigateToPage(false, false, false, false, true, false, false, employeeId,employeeName);
+    });
+
+    $(document).on('click', '.malediv', function(event) {
+    event.stopPropagation();
+
+    // Retrieve the employeeId from the employee-info element
+    var employeeId = $(this).closest('.employee-info').data('employee-id');
+    console.log('Employee ID:', employeeId);
+    var employeeName = $(this).closest('.employee-info').data('employee-name');
+
+    // Call navigateToPage function with the employeeId and isFixed parameter
+    navigateToPage(false, false, false, false, false, true, false, employeeId,employeeName);
+    });
+
+    $(document).on('click', '.femalediv', function(event) {
+    event.stopPropagation();
+
+    // Retrieve the employeeId from the employee-info element
+    var employeeId = $(this).closest('.employee-info').data('employee-id');
+    var employeeName = $(this).closest('.employee-info').data('employee-name');
+
+    console.log('Employee ID:', employeeId);
+
+    // Call navigateToPage function with the employeeId and isFixed parameter
+    navigateToPage(false, false, false, false, false, false, true, employeeId,employeeName);
+    });
+
+    // Function to handle the AJAX request
+    function updateEmployeeData() {
+
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+
+    console.log("Sending AJAX request with dates:", startDate, endDate);
+
+    const selectedDateRange = $('#selectedDateRange').text();
+    const employeeId = $('#EmployeeId').val(); // Get selected employee Id
+    const selectedCountry = $('#CountryId').val(); // Get selected countryId
+    const currentSource = $('#OrderSourceId').val(); // Get selected order source
+    const selectedGender = $('#GenderId').val(); // Get selected genderId
+    const selectedStore = $('#ManufacturingCompanyId').val(); // Get selected genderId
+    const workshift=$('#WorkShift').val(); // Get selected genderId
+    const warehouseId = $('#ProductId').val(); // Get selected employee Id
+
+                       
+    var countryId = $('#CountryId').val();
+
+
+    $.ajax({
+    url: '/Rating/Employelist',
+    type: 'GET',
+    data: {
+    employeeId: employeeId,
+    countryId: selectedCountry,
+    orderSourceId: currentSource,
+    genderId: selectedGender,
+    storeId: selectedStore,
+    startDay: startDate,
+    endDay: endDate,
+    workshift:workshift,
+    mainwarehouseId: warehouseId  // Corrected syntax
+    },
+    success: function (result) {
+    // Update the table and rating section with the result
+    $('#employeeTableBody').html($(result).find('#employeeTableBody').html());
+    $('#Rating').html($(result).find('#Rating').html());
+    $('#total').html($(result).find('#total').html());
+    $('#employeedata').html($(result).find('#employeedata').html());
+    $('#countrydata').html($(result).find('#countrydata').html());
+    $('#storedata').html($(result).find('#storedata').html());
+
+    setTimeout(loadMetaActionCountsForEmployees, 50);
+    setTimeout(loadInvestigationCountsForEmployees, 80);
+    setTimeout(loadNoAdCountsForEmployees, 110);
+    setTimeout(loadEmployeeStatusGroupCountsForEmployees, 140);
+
+    }
+    });
+    }
+
+
+
+    $('div').on('click', '.filter-orders', function () {
+    var selectedDateRangeText = $('#selectedDateRange').text();
+    var orderStatusGroup = $(this).data('orderstatusgroup'); // Retrieve the orderStatusGroup from the clicked div
+
+    // Retrieve selected countryId and order source values from dropdowns
+    var selectedCountry = $('#CountryId').val(); // Make sure this is correctly set up
+    var orderSource = $('#OrderSourceId').val();
+
+    var url = `/Rating/EmployeOrdersDetails?selectedDateRange=${encodeURIComponent(selectedDateRangeText)}&selectedCountry=${encodeURIComponent(selectedCountry)}&orderStatusGroup=${encodeURIComponent(orderStatusGroup)}&ordersource=${encodeURIComponent(orderSource)}`;
+    window.location.href = url;
+    });
+
+
+    $('#employeeTableBody').on('click', '.employee-order-row', function () {
+    var employeeId = $(this).data('employee-id');
+    var selectedDateRangeText = $('#selectedDateRange').text();
+    var selectedGender = $('#GenderId').val(); // Corrected to get value from the genderId dropdown
+
+    // Retrieve selected countryId and order source values from dropdowns
+    var selectedCountry = $('#CountryId').val(); // Make sure this is correctly set up
+    var orderSource = $('#OrderSourceId').val(); // Ensure the ID matches the dropdown element
+
+    // Construct the URL with all parameters
+    var url = `/Rating/EmployeOrdersDetails?employeeId=${encodeURIComponent(employeeId)}&selectedDateRange=${encodeURIComponent(selectedDateRangeText)}&selectedCountry=${encodeURIComponent(selectedCountry)}&ordersource=${encodeURIComponent(orderSource)}&genderId=${encodeURIComponent(selectedGender)}`; // Include genderId parameter
+
+    // Navigate to the URL
+    window.location.href = url;
+    });
+
+
+
+    });
+
+
+                 
+ 
+
+
+</script>

@@ -1,0 +1,3601 @@
+﻿@model lotus_blue.Models.ViewModel.PaginationViewModel<lotus_blue.Models.ViewModel.EmployeeTransactionViewModel>
+@using lotus_blue.Models
+@using Microsoft.AspNetCore.Mvc.Rendering
+@{
+    ViewData["Title"] = "مكافآت وخصومات الموظفين";
+
+    var activeEmployees = ViewBag.ActiveEmployees as List<SelectListItem> ?? new List<SelectListItem>();
+    var formerEmployeesList = ViewBag.FormerEmployees as List<SelectListItem> ?? new List<SelectListItem>();
+    var selectedEmployeeId = ViewBag.FilterEmployeeId?.ToString() ?? string.Empty;
+    var formerEmployees = ViewBag.FormerEmployeesFilter is bool formerValue && formerValue;
+    var filterFromDate = ViewBag.FilterFromDate?.ToString() ?? string.Empty;
+    var filterToDate = ViewBag.FilterToDate?.ToString() ?? string.Empty;
+
+    var selectedActiveEmployee = !formerEmployees
+        ? activeEmployees.FirstOrDefault(e => e.Value == selectedEmployeeId)
+        : null;
+
+    var selectedFormerEmployee = formerEmployees
+        ? formerEmployeesList.FirstOrDefault(e => e.Value == selectedEmployeeId)
+        : null;
+
+    var selectedEmployeeText = selectedActiveEmployee == null ? "كل الموظفين" : selectedActiveEmployee.Text;
+    var selectedEmployeeImage = selectedActiveEmployee?.Group?.Name ?? string.Empty;
+    var selectedFormerEmployeeText = selectedFormerEmployee == null
+        ? (formerEmployees && string.IsNullOrWhiteSpace(selectedEmployeeId) ? "كل الموظفين السابقين" : "اختار موظف سابق")
+        : selectedFormerEmployee.Text;
+    var selectedFormerEmployeeImage = selectedFormerEmployee?.Group?.Name ?? string.Empty;
+    var dateRangeText = string.Empty;
+
+    if (!string.IsNullOrWhiteSpace(filterFromDate) && !string.IsNullOrWhiteSpace(filterToDate))
+    {
+        dateRangeText = $"{filterFromDate} - {filterToDate}";
+    }
+    else if (!string.IsNullOrWhiteSpace(filterFromDate))
+    {
+        dateRangeText = filterFromDate;
+    }
+    else if (!string.IsNullOrWhiteSpace(filterToDate))
+    {
+        dateRangeText = filterToDate;
+    }
+
+    string FormatMoney(decimal? value)
+    {
+        return value.HasValue && value.Value > 0 ? value.Value.ToString("N0") : "-";
+    }
+}
+
+<div class="employee-transactions-page" dir="rtl">
+
+    <script id="employee-transactions-clear-filter-on-refresh-script">
+            (function () {
+                try {
+                    var navigationEntry = performance && performance.getEntriesByType
+                        ? performance.getEntriesByType('navigation')[0]
+                        : null;
+
+                    var isReload = navigationEntry
+                        ? navigationEntry.type === 'reload'
+                        : (performance && performance.navigation && performance.navigation.type === 1);
+
+                    if (isReload && window.location.search) {
+                        window.location.replace(window.location.pathname);
+                    }
+                } catch {
+                    if (window.location.search) {
+                        window.location.replace(window.location.pathname);
+                    }
+                }
+            })();
+    </script>
+
+    <style>
+            .employee-transactions-page {
+                width: 100%;
+                max-width: 100%;
+                padding: 14px 14px 24px;
+                box-sizing: border-box;
+            }
+
+            .employee-transactions-heading {
+                background: #F5F5F5;
+                color: #f28e02;
+                border-radius: 16px;
+                padding: 14px 18px;
+                margin-bottom: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                flex-wrap: wrap;
+                border: 1px solid #edf2f1;
+                box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+            }
+
+            .employee-transactions-title {
+                margin: 0;
+                color: #f28e02;
+                font-size: 22px;
+                font-weight: 900;
+            }
+
+            .employee-transactions-create-link {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 38px;
+                padding: 7px 18px;
+                border-radius: 999px;
+                background: #18a088;
+                color: #ffffff !important;
+                text-decoration: none !important;
+                font-size: 14px;
+                font-weight: 900;
+                box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+                white-space: nowrap;
+            }
+
+                .employee-transactions-create-link:hover {
+                    background: #148873;
+                    color: #ffffff !important;
+                }
+
+            .employee-transactions-header-actions {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+
+            .employee-transactions-header-btn {
+                border: 0;
+                min-height: 36px;
+                border-radius: 999px;
+                padding: 7px 18px;
+                color: #ffffff !important;
+                font-size: 14px;
+                font-weight: 900;
+                cursor: pointer;
+                box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+                white-space: nowrap;
+            }
+
+                .employee-transactions-header-btn.history {
+                    background: #18a088;
+                }
+
+                .employee-transactions-header-btn.trash {
+                    background: #64748b;
+                }
+
+                .employee-transactions-header-btn:hover {
+                    filter: brightness(.96);
+                }
+
+
+            .employee-transactions-filter-card,
+            .employee-transactions-card {
+                background: #ffffff;
+                border: 1px solid #edf2f1;
+                box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+                width: 100%;
+                border-radius: 18px;
+            }
+
+            .employee-transactions-filter-card {
+                padding: 16px;
+                margin-bottom: 16px;
+            }
+
+            .employee-transactions-filter-title {
+                background: #F5F5F5;
+                color: #f28e02;
+                border-radius: 14px;
+                padding: 12px 16px;
+                font-size: 18px;
+                font-weight: 900;
+                margin-bottom: 16px;
+                border-bottom: 1px solid #94a3b8;
+            }
+
+            .form-label {
+                font-weight: 800;
+                color: #334155;
+                margin-bottom: 8px;
+            }
+
+            .employee-transaction-filter-input {
+                min-height: 44px;
+                height: 44px;
+                border-radius: 8px !important;
+                border: 0 !important;
+                background-color: #ffffff !important;
+                box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2) !important;
+                color: #111827 !important;
+                font-size: 15px;
+                font-weight: 800;
+                padding-right: 14px;
+                padding-left: 14px;
+                outline: none !important;
+            }
+
+                .employee-transaction-filter-input:focus {
+                    border: 1px solid #18a088 !important;
+                    box-shadow: 0 0 0 0.15rem rgba(24, 160, 136, 0.15), 0px 0px 4px rgba(0, 0, 0, 0.2) !important;
+                }
+
+            .employee-transaction-date-range-input {
+                cursor: pointer !important;
+                text-align: center !important;
+                direction: ltr !important;
+                unicode-bidi: plaintext !important;
+            }
+
+            .employee-former-filter-switch {
+                min-height: 44px;
+                border-radius: 8px;
+                background: #ffffff;
+                box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                padding: 0 14px;
+                cursor: pointer;
+                user-select: none;
+                color: #111827;
+                font-size: 15px;
+                font-weight: 900;
+            }
+
+                .employee-former-filter-switch input {
+                    width: 18px;
+                    height: 18px;
+                    accent-color: #18a088;
+                }
+
+            .employee-custom-dropdown {
+                position: relative;
+                width: 100%;
+            }
+
+            .selected-employee {
+                min-height: 44px;
+                height: 44px;
+                border-radius: 8px !important;
+                background: #ffffff;
+                color: #111827;
+                box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+                padding: 0 14px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                font-size: 15px;
+                font-weight: 900;
+                user-select: none;
+            }
+
+            .selected-employee-text {
+                flex: 1;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                text-align: right;
+            }
+
+            .selected-employee-image,
+            .selected-employee-placeholder,
+            .employee-option-image,
+            .employee-option-placeholder {
+                width: 30px;
+                height: 30px;
+                min-width: 30px;
+                border-radius: 50%;
+                object-fit: cover;
+                border: 1px solid #edf2f1;
+                background: #f8fafc;
+            }
+
+            .selected-employee-placeholder,
+            .employee-option-placeholder {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                color: #18a088;
+                font-size: 15px;
+            }
+
+            .selected-employee-icon {
+                color: #18a088;
+                font-size: 15px;
+                transition: transform 0.18s ease;
+            }
+
+            .employee-custom-dropdown.open .selected-employee-icon {
+                transform: rotate(180deg);
+            }
+
+            .employee-options-dropdown {
+                display: none;
+                position: absolute;
+                top: calc(100% + 6px);
+                right: 0;
+                left: 0;
+                z-index: 9999;
+                background: #ffffff;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16);
+                max-height: 290px;
+                overflow-y: auto;
+                overflow-x: hidden;
+                padding: 0;
+            }
+
+            .employee-custom-dropdown.open .employee-options-dropdown {
+                display: block;
+            }
+
+            .employee-option {
+                min-height: 46px;
+                padding: 9px 13px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                color: #111827;
+                font-weight: 800;
+                background: #ffffff;
+                border-bottom: 1px solid #e5e7eb;
+                cursor: pointer;
+                transition: background 0.15s ease;
+            }
+
+                .employee-option:hover,
+                .employee-option.active {
+                    background: #f8fafc;
+                }
+
+            .employee-option-name {
+                flex: 1;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                text-align: right;
+            }
+
+            .employee-options-dropdown::-webkit-scrollbar {
+                width: 7px;
+            }
+
+            .employee-options-dropdown::-webkit-scrollbar-track {
+                background: #edf2f1;
+                border-radius: 999px;
+            }
+
+            .employee-options-dropdown::-webkit-scrollbar-thumb {
+                background: #18a088;
+                border-radius: 999px;
+            }
+
+            .filter-btn,
+            .reset-btn {
+                border: 0;
+                border-radius: 999px;
+                min-height: 44px;
+                padding: 7px 20px;
+                color: #ffffff;
+                font-weight: 900;
+                box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+                white-space: nowrap;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                text-decoration: none !important;
+            }
+
+            .filter-btn {
+                background: #18a088;
+            }
+
+            .reset-btn {
+                background: #64748b;
+            }
+
+            .employee-transactions-card {
+                overflow: hidden;
+            }
+
+            .employee-transactions-card-header {
+                background: #F5F5F5;
+                color: #f28e02;
+                padding: 15px 18px;
+                font-size: 20px;
+                font-weight: 900;
+                display: flex;
+                justify-content: space-between;
+                gap: 10px;
+                align-items: center;
+                flex-wrap: wrap;
+                border-bottom: 1px solid #94a3b8;
+            }
+
+            .employee-transactions-count {
+                background: rgba(24, 160, 136, 0.12);
+                border: 1px solid rgba(24, 160, 136, 0.20);
+                color: #18a088;
+                padding: 6px 14px;
+                border-radius: 999px;
+                font-size: 14px;
+                font-weight: 900;
+            }
+
+            .employee-transactions-toolbar {
+                padding: 12px 16px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                flex-wrap: wrap;
+                background: #ffffff;
+            }
+
+            .employee-transactions-page-size {
+                display: inline-flex;
+                align-items: center;
+                justify-content: flex-start;
+                gap: 7px;
+                color: #334155;
+                font-weight: 800;
+            }
+
+                .employee-transactions-page-size select {
+                    width: 82px;
+                    min-height: 38px;
+                    border: 0;
+                    border-radius: 8px;
+                    background: #ffffff !important;
+                    color: #111827 !important;
+                    box-shadow: 0 0 4px rgba(0, 0, 0, .2);
+                    text-align: center;
+                    font-weight: 900;
+                    -webkit-text-fill-color: #111827 !important;
+                }
+
+                    .employee-transactions-page-size select option {
+                        background: #ffffff !important;
+                        color: #111827 !important;
+                    }
+
+            .employee-transactions-total-card {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 38px;
+                padding: 7px 15px;
+                border-radius: 10px;
+                background: #ffffff;
+                box-shadow: 0 0 6px rgba(0, 0, 0, .18);
+                color: #18a088;
+                font-size: 15px;
+                font-weight: 900;
+                direction: ltr;
+            }
+
+            .table-responsive {
+                width: 100%;
+                max-width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .employee-transactions-table {
+                margin: 0;
+                text-align: center;
+                vertical-align: middle;
+                width: 100%;
+                min-width: 1120px;
+                table-layout: auto;
+                font-size: 12px;
+                border-collapse: separate;
+                border-spacing: 0;
+            }
+
+                .employee-transactions-table thead {
+                    background: #f8fafc;
+                    color: #334155;
+                }
+
+                .employee-transactions-table th,
+                .employee-transactions-table td {
+                    vertical-align: middle;
+                    white-space: nowrap;
+                    padding: 7px 8px;
+                    line-height: 1.25;
+                    border-left: 1px solid rgba(148, 163, 184, 0.24);
+                    border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+                }
+
+                    .employee-transactions-table th:last-child,
+                    .employee-transactions-table td:last-child {
+                        border-left: 0;
+                    }
+
+                .employee-transactions-table tbody tr:hover {
+                    background: rgba(248, 250, 252, 0.85);
+                }
+
+            .employee-transaction-name-cell {
+                min-width: 230px;
+                width: 230px;
+                text-align: right !important;
+            }
+
+            .employee-transaction-inline {
+                display: grid;
+                grid-template-columns: 38px minmax(145px, 1fr) auto;
+                align-items: center;
+                justify-content: start;
+                gap: 8px;
+                width: 100%;
+                white-space: nowrap;
+                direction: rtl;
+                padding-right: 10px;
+                padding-left: 10px;
+                text-align: right;
+            }
+
+            .employee-transaction-image {
+                width: 34px;
+                height: 34px;
+                min-width: 34px;
+                border-radius: 50%;
+                object-fit: cover;
+                border: 2px solid rgba(24, 160, 136, 0.22);
+                background: #f8fafc;
+            }
+
+            .employee-transaction-name {
+                color: #18a088;
+                font-weight: 900;
+                display: block;
+                width: 100%;
+                min-width: 145px;
+                text-align: right;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .employee-transaction-inactive-badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 20px;
+                padding: 2px 7px;
+                border-radius: 999px;
+                background: rgba(100, 116, 139, 0.12);
+                color: #64748b;
+                font-size: 10px;
+                font-weight: 900;
+            }
+
+            .shift-time-cell {
+                min-width: 92px;
+                color: #334155;
+                font-weight: 800;
+            }
+
+            .reason-cell {
+                min-width: 220px;
+                max-width: 330px;
+                white-space: normal !important;
+                text-align: right;
+                line-height: 1.8;
+                color: #334155;
+                font-weight: 700;
+            }
+
+            .deduction-amount-cell {
+                min-width: 95px;
+                color: #dc2626;
+                font-size: 15px;
+                font-weight: 900;
+                direction: ltr;
+            }
+
+            .advance-amount-cell,
+            .bonus-amount-cell {
+                min-width: 95px;
+                color: #16a34a;
+                font-size: 15px;
+                font-weight: 900;
+                direction: ltr;
+            }
+
+            .date-cell {
+                min-width: 120px;
+                color: #334155;
+                font-weight: 800;
+            }
+
+            .employee-transaction-actions-cell {
+                min-width: 210px;
+            }
+
+            .employee-transaction-actions {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                flex-wrap: nowrap;
+            }
+
+            .transaction-history-btn,
+            .transaction-edit-btn,
+            .transaction-delete-btn {
+                border: 0;
+                border-radius: 999px;
+                min-width: 56px;
+                min-height: 30px;
+                padding: 5px 11px;
+                color: #ffffff !important;
+                font-size: 12px;
+                font-weight: 900;
+                cursor: pointer;
+                box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+                text-decoration: none !important;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .transaction-history-btn {
+                background: #f28e02;
+            }
+
+            .transaction-edit-btn {
+                background: #18a088;
+            }
+
+            .transaction-delete-btn {
+                background: #dc2626;
+            }
+
+            #pagination-link .pagination {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                flex-wrap: wrap !important;
+                gap: 8px !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            #pagination-link .page-link {
+                min-width: 39px !important;
+                height: 36px !important;
+                padding: 0 10px !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                border-radius: 8px !important;
+                border: 1px solid #e5e7eb !important;
+                background: #ffffff !important;
+                color: #64748b !important;
+                font-size: 14px !important;
+                font-weight: 800 !important;
+                line-height: 1 !important;
+                box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08) !important;
+                cursor: pointer !important;
+                user-select: none !important;
+            }
+
+            #pagination-link .page-item.active .page-link {
+                background: #18a088 !important;
+                border-color: #18a088 !important;
+                color: #ffffff !important;
+                box-shadow: 0 3px 9px rgba(24, 160, 136, 0.22) !important;
+            }
+
+            #pagination-link .page-item.disabled .page-link {
+                opacity: .55 !important;
+                cursor: default !important;
+                pointer-events: none !important;
+                background: #ffffff !important;
+                color: #94a3b8 !important;
+            }
+
+            .transaction-details-backdrop,
+            .transactions-history-backdrop,
+            .transactions-trash-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.45);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                z-index: 100000;
+                padding: 16px;
+            }
+
+                .transaction-details-backdrop.is-visible,
+                .transactions-history-backdrop.is-visible,
+                .transactions-trash-backdrop.is-visible {
+                    display: flex;
+                }
+
+            .transaction-details-popup {
+                width: min(520px, 96vw);
+                background: #ffffff;
+                border-radius: 18px;
+                overflow: hidden;
+                box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+                direction: rtl;
+            }
+
+            .transaction-details-header {
+                background: #F5F5F5;
+                color: #f28e02;
+                padding: 14px 18px;
+                font-size: 20px;
+                font-weight: 900;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                border-bottom: 1px solid #94a3b8;
+            }
+
+            .transaction-details-close {
+                border: 0;
+                background: transparent;
+                color: #334155;
+                font-size: 26px;
+                line-height: 1;
+                cursor: pointer;
+            }
+
+            .transaction-details-body {
+                padding: 16px 18px;
+            }
+
+            .transaction-details-row {
+                display: flex;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 9px 0;
+                border-bottom: 1px solid #e5e7eb;
+                color: #334155;
+                font-size: 14px;
+                font-weight: 800;
+            }
+
+                .transaction-details-row:last-child {
+                    border-bottom: 0;
+                }
+
+            .transaction-details-label {
+                color: #18a088;
+                white-space: nowrap;
+            }
+
+            .transaction-details-value {
+                text-align: left;
+                direction: rtl;
+            }
+
+
+
+            .transactions-list-popup {
+                width: min(860px, 96vw);
+                max-height: 84vh;
+                background: #ffffff;
+                border-radius: 18px;
+                overflow: hidden;
+                box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+                direction: rtl;
+            }
+
+            .transactions-list-header {
+                background: #F5F5F5;
+                color: #f28e02;
+                padding: 14px 18px;
+                font-size: 20px;
+                font-weight: 900;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                border-bottom: 1px solid #94a3b8;
+            }
+
+            .transactions-list-close {
+                border: 0;
+                background: transparent;
+                color: #334155;
+                font-size: 26px;
+                line-height: 1;
+                cursor: pointer;
+            }
+
+            .transactions-list-body {
+                padding: 16px 18px;
+                max-height: 62vh;
+                overflow-y: auto;
+            }
+
+            .transactions-list-empty {
+                padding: 28px 10px;
+                text-align: center;
+                color: #64748b;
+                font-size: 15px;
+                font-weight: 900;
+            }
+
+            .transaction-list-item {
+                border: 1px solid #e5e7eb;
+                border-radius: 14px;
+                padding: 12px 14px;
+                margin-bottom: 10px;
+                background: #ffffff;
+                box-shadow: 0 5px 14px rgba(15, 23, 42, 0.05);
+            }
+
+            .transaction-list-item-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                flex-wrap: wrap;
+                color: #18a088;
+                font-size: 14px;
+                font-weight: 900;
+                margin-bottom: 8px;
+            }
+
+            .transaction-list-item-meta {
+                color: #64748b;
+                font-size: 12px;
+                font-weight: 800;
+            }
+
+            .transaction-list-change {
+                padding: 7px 0;
+                border-top: 1px solid #f1f5f9;
+                color: #334155;
+                font-size: 13px;
+                font-weight: 800;
+                line-height: 1.7;
+            }
+
+            .transaction-list-old {
+                color: #dc2626;
+                font-weight: 900;
+            }
+
+            .transaction-list-new {
+                color: #16a34a;
+                font-weight: 900;
+            }
+
+            .transactions-trash-actions {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0 18px 16px;
+            }
+
+            .restore-all-transactions-btn,
+            .restore-one-transaction-btn {
+                border: 0;
+                border-radius: 999px;
+                min-height: 34px;
+                padding: 6px 15px;
+                background: #18a088;
+                color: #ffffff;
+                font-size: 13px;
+                font-weight: 900;
+                cursor: pointer;
+                box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+            }
+
+            .restore-one-transaction-btn {
+                min-height: 30px;
+                padding: 5px 13px;
+                font-size: 12px;
+            }
+
+            .employee-transactions-page.is-loading .employee-transactions-card {
+                opacity: .55;
+                pointer-events: none;
+                transition: opacity .15s ease;
+            }
+
+            .transaction-delete-confirm-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.45);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                z-index: 100005;
+                padding: 16px;
+            }
+
+                .transaction-delete-confirm-backdrop.is-visible {
+                    display: flex;
+                }
+
+            .transaction-delete-confirm-popup {
+                width: min(420px, 94vw);
+                background: #ffffff;
+                border-radius: 18px;
+                box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+                direction: rtl;
+                text-align: center;
+                padding: 22px 20px 18px;
+                border: 1px solid rgba(148, 163, 184, 0.22);
+            }
+
+            .transaction-delete-confirm-title {
+                color: #dc2626;
+                font-size: 19px;
+                font-weight: 900;
+                margin-bottom: 8px;
+            }
+
+            .transaction-delete-confirm-message {
+                color: #475569;
+                font-size: 14px;
+                font-weight: 800;
+                line-height: 1.8;
+                margin-bottom: 16px;
+            }
+
+            .transaction-delete-confirm-actions {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+
+                .transaction-delete-confirm-actions button {
+                    min-width: 110px;
+                    min-height: 38px;
+                    border: 0;
+                    border-radius: 999px;
+                    color: #ffffff;
+                    font-size: 14px;
+                    font-weight: 900;
+                    cursor: pointer;
+                    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+                }
+
+            .transaction-delete-cancel-btn {
+                background: #64748b;
+            }
+
+            .transaction-delete-confirm-btn {
+                background: #dc2626;
+            }
+
+            .transaction-action-toast {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) scale(.96);
+                min-width: 240px;
+                max-width: min(92vw, 390px);
+                padding: 13px 18px;
+                border-radius: 16px;
+                background: #18a088;
+                color: #ffffff;
+                font-size: 15px;
+                font-weight: 900;
+                text-align: center;
+                box-shadow: 0 18px 45px rgba(15, 23, 42, .28);
+                z-index: 100010;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity .18s ease, transform .18s ease;
+                direction: rtl;
+            }
+
+                .transaction-action-toast.is-visible {
+                    opacity: 1;
+                    transform: translate(-50%, -50%) scale(1);
+                }
+
+
+
+            .transaction-edit-backdrop,
+            .transaction-edit-success-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.45);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                z-index: 100000;
+                padding: 16px;
+            }
+
+                .transaction-edit-backdrop.is-visible,
+                .transaction-edit-success-backdrop.is-visible {
+                    display: flex;
+                }
+
+            .transaction-edit-popup {
+                width: min(640px, 96vw);
+                max-height: 92vh;
+                overflow-y: auto;
+                background: #ffffff;
+                border-radius: 18px;
+                box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+                direction: rtl;
+            }
+
+            .transaction-edit-popup-header {
+                background: #F5F5F5;
+                color: #f28e02;
+                padding: 14px 18px;
+                font-size: 21px;
+                font-weight: 900 !important;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                border-bottom: 1px solid #94a3b8;
+            }
+
+            .transaction-edit-header-main {
+                width: 100%;
+                display: inline-flex;
+                align-items: center;
+                justify-content: flex-start;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+
+            .transaction-edit-popup-close {
+                border: 0;
+                background: transparent;
+                color: #334155;
+                font-size: 26px;
+                line-height: 1;
+                cursor: pointer;
+                margin-left: auto;
+            }
+
+            .transaction-edit-history-toggle-btn {
+                border: 0;
+                border-radius: 999px;
+                min-height: 30px;
+                padding: 5px 14px;
+                background: rgba(24, 160, 136, 0.12);
+                color: #18a088;
+                font-size: 13px;
+                font-weight: 900 !important;
+                cursor: pointer;
+                box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+            }
+
+                .transaction-edit-history-toggle-btn.is-active {
+                    background: #18a088;
+                    color: #ffffff;
+                }
+
+            .transaction-edit-popup-body {
+                padding: 18px;
+            }
+
+            .transaction-edit-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 14px;
+            }
+
+            .transaction-edit-field-full {
+                grid-column: 1 / -1;
+            }
+
+            .transaction-edit-label {
+                display: block;
+                color: #334155;
+                font-size: 14px;
+                font-weight: 800 !important;
+                margin-bottom: 6px;
+            }
+
+            .transaction-edit-input {
+                width: 100%;
+                min-height: 42px;
+                border-radius: 8px !important;
+                border: 0 !important;
+                background-color: #ffffff !important;
+                box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2) !important;
+                color: #111827 !important;
+                font-size: 15px;
+                font-weight: 700 !important;
+                padding: 8px 12px;
+                outline: none !important;
+                text-align: right;
+            }
+
+            .transaction-edit-date-input {
+                direction: ltr !important;
+                text-align: center !important;
+            }
+
+            .transaction-edit-textarea {
+                min-height: 82px;
+                resize: vertical;
+                line-height: 1.7;
+            }
+
+            .transaction-edit-shift-info {
+                margin-top: 14px;
+                border-radius: 12px;
+                background: #e9f7f4;
+                padding: 13px 12px;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 12px;
+                text-align: center;
+            }
+
+            .transaction-edit-shift-readonly {
+                min-height: 38px;
+                border-radius: 8px;
+                background: #ffffff;
+                color: #111827;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 15px;
+                font-weight: 900;
+                box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.16);
+            }
+
+            .transaction-edit-shift-note {
+                grid-column: 1 / -1;
+                color: #64748b;
+                font-size: 12px;
+                font-weight: 700;
+            }
+
+            .transaction-edit-section-line {
+                height: 1px;
+                background: #e5e7eb;
+                margin: 14px 0;
+            }
+
+            .transaction-edit-history-block {
+                display: none;
+            }
+
+                .transaction-edit-history-block.is-visible {
+                    display: block;
+                }
+
+            .transaction-edit-history-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                color: #334155;
+                font-size: 14px;
+                font-weight: 900;
+                margin-bottom: 8px;
+            }
+
+            .transaction-edit-history-count {
+                min-width: 28px;
+                min-height: 24px;
+                border-radius: 999px;
+                background: #18a088;
+                color: #ffffff;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0 8px;
+            }
+
+            .transaction-edit-history-list {
+                background: #f8fafc;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                padding: 10px;
+                color: #334155;
+                font-size: 13px;
+                font-weight: 800;
+                line-height: 1.8;
+            }
+
+            .transaction-edit-error {
+                display: none;
+                color: #dc2626;
+                font-size: 13px;
+                font-weight: 900;
+                margin-top: 10px;
+                text-align: center;
+            }
+
+            .transaction-edit-popup-footer {
+                display: flex;
+                justify-content: center;
+                gap: 10px;
+                flex-wrap: wrap;
+                padding: 0 18px 18px;
+            }
+
+            .transaction-edit-save-btn,
+            .transaction-edit-cancel-btn {
+                border: 0;
+                border-radius: 999px;
+                min-width: 110px;
+                min-height: 42px;
+                padding: 7px 20px;
+                color: #ffffff;
+                font-size: 14px;
+                font-weight: 900;
+                cursor: pointer;
+                box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+            }
+
+            .transaction-edit-save-btn {
+                background: #f28e02;
+            }
+
+            .transaction-edit-cancel-btn {
+                background: #dc2626;
+            }
+
+            .transaction-edit-success-card {
+                width: min(390px, 94vw);
+                background: #ffffff;
+                border-radius: 18px;
+                box-shadow: 0 22px 55px rgba(15, 23, 42, .28);
+                padding: 26px 20px 20px;
+                text-align: center;
+                direction: rtl;
+            }
+
+            .transaction-edit-success-icon {
+                width: 58px;
+                height: 58px;
+                border-radius: 999px;
+                background: #18a088;
+                color: #ffffff;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 34px;
+                font-weight: 900;
+                margin-bottom: 13px;
+            }
+
+            .transaction-edit-success-title {
+                color: #111827;
+                font-size: 18px;
+                font-weight: 900;
+                margin-bottom: 16px;
+            }
+
+            .transaction-edit-success-ok {
+                min-width: 115px;
+                height: 38px;
+                border-radius: 999px;
+                border: 0;
+                background: #18a088;
+                color: #ffffff;
+                font-size: 14px;
+                font-weight: 900;
+                cursor: pointer;
+            }
+
+            @@media (max-width: 768px) {
+                .transaction-edit-grid,
+                .transaction-edit-shift-info {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            @@media (max-width: 768px) {
+                .employee-transactions-heading,
+                .employee-transactions-card-header,
+                .employee-transactions-toolbar {
+                    justify-content: center;
+                    text-align: center;
+                }
+            }
+
+
+            /* FIX13: روابط إدارة الموظفين داخل الهيدر الافتراضي نفسه */
+            .luxira-employee-default-header-nav-template {
+                display: none !important;
+            }
+
+            .luxira-employee-default-header-nav {
+                position: absolute;
+                inset: 0;
+                z-index: 60;
+                pointer-events: none;
+                direction: ltr;
+                font-family: inherit;
+            }
+
+                .luxira-employee-default-header-nav.is-fixed-fallback {
+                    position: fixed;
+                    top: 0;
+                    left: 58px;
+                    right: 58px;
+                    height: 42px;
+                    z-index: 2147482500;
+                }
+
+            .luxira-employee-default-header-nav-group {
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                display: inline-flex;
+                align-items: center;
+                gap: 20px;
+                flex-wrap: nowrap;
+                pointer-events: auto;
+                direction: rtl;
+                white-space: nowrap;
+                max-width: 40%;
+                overflow: hidden;
+            }
+
+            .luxira-employee-default-header-nav-left {
+                left: 68px;
+                justify-content: flex-start;
+                text-align: left;
+            }
+
+            .luxira-employee-default-header-nav-right {
+                right: 68px;
+                justify-content: flex-end;
+                text-align: right;
+            }
+
+            .luxira-employee-default-header-link {
+                display: inline !important;
+                background: transparent !important;
+                border: 0 !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                color: #334155 !important;
+                font-size: 13px;
+                font-weight: 900;
+                line-height: 1.4;
+                text-decoration: none !important;
+                cursor: pointer;
+            }
+
+            .luxira-employee-default-header-nav-right .luxira-employee-default-header-link {
+                color: #f28e02 !important;
+            }
+
+            .luxira-employee-default-header-link:hover,
+            .luxira-employee-default-header-link.is-current {
+                color: #18a088 !important;
+                text-decoration: underline !important;
+                text-underline-offset: 5px;
+            }
+
+            @@media (max-width: 1200px) {
+                .luxira-employee-default-header-nav-group {
+                    gap: 12px;
+                    max-width: 37%;
+                }
+
+                .luxira-employee-default-header-link {
+                    font-size: 12px;
+                }
+            }
+
+            @@media (max-width: 900px) {
+                .luxira-employee-default-header-nav {
+                    display: none !important;
+                }
+            }
+    </style>
+
+    <div id="luxiraEmployeeDefaultHeaderNavTemplate" class="luxira-employee-default-header-nav-template" aria-hidden="true">
+        <div class="luxira-employee-default-header-nav" aria-label="روابط إدارة الموظفين والعمولات">
+            <div class="luxira-employee-default-header-nav-group luxira-employee-default-header-nav-left">
+                @if (User.IsInRole("Admin"))
+                {
+                    <a href="/EmployeeAttendance/AttendanceLog" target="_top" class="luxira-employee-default-header-link" style="color:#18a088 !important; -webkit-text-fill-color:#18a088 !important; text-decoration:none !important;">سجل الدوام</a>
+                }
+                @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("ExecutiveDirector"))
+                {
+                    <a href="/EmployeeTransactions/create" target="_top" class="luxira-employee-default-header-link" style="color:#18a088 !important; -webkit-text-fill-color:#18a088 !important; text-decoration:none !important;">إنشاء مكافآت وخصومات</a>
+                    <a href="/Employee" target="_top" class="luxira-employee-default-header-link" style="color:#18a088 !important; -webkit-text-fill-color:#18a088 !important; text-decoration:none !important;">إدارة موظفين</a>
+                }
+                @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+                {
+                    <a href="/Employee/create" target="_top" class="luxira-employee-default-header-link" style="color:#18a088 !important; -webkit-text-fill-color:#18a088 !important; text-decoration:none !important;">إضافة موظف</a>
+                }
+            </div>
+
+            <div class="luxira-employee-default-header-nav-group luxira-employee-default-header-nav-right">
+                @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+                {
+                    <a href="/EmployeeBonus" target="_top" class="luxira-employee-default-header-link" style="color:#18a088 !important; -webkit-text-fill-color:#18a088 !important; text-decoration:none !important;">العمولات</a>
+                }
+                @if (User.IsInRole("Admin"))
+                {
+                    <a href="/EmployeeBonus/Create" target="_top" class="luxira-employee-default-header-link" style="color:#18a088 !important; -webkit-text-fill-color:#18a088 !important; text-decoration:none !important;">إضافة عمولة</a>
+                }
+                @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+                {
+                    <a href="/EmployeeBonus/Archive" target="_top" class="luxira-employee-default-header-link" style="color:#18a088 !important; -webkit-text-fill-color:#18a088 !important; text-decoration:none !important;">أرشيف عمولات</a>
+                }
+            </div>
+        </div>
+    </div>
+
+    <script>
+            (function () {
+                function normalizeArabicHeaderText(value) {
+                    return (value || '')
+                        .replace(/[إأآ]/g, 'ا')
+                        .replace(/ة/g, 'ه')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                }
+
+                function isVisibleElement(element) {
+                    if (!element) return false;
+                    const rect = element.getBoundingClientRect();
+                    const style = window.getComputedStyle(element);
+                    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+                }
+
+                function findEmployeeManagementHeaderTitle() {
+                    const target = 'اداره الموظفين';
+                    const candidates = Array.from(document.querySelectorAll('header *, .header *, .main-header *, .topbar *, .navbar *, .page-header *, .app-header *, body > *'));
+
+                    return candidates.find(function (element) {
+                        if (!element || element.closest('.employee-transactions-page') || element.closest('#luxiraEmployeeDefaultHeaderNavTemplate')) {
+                            return false;
+                        }
+
+                        if (!isVisibleElement(element)) {
+                            return false;
+                        }
+
+                        const rect = element.getBoundingClientRect();
+                        if (rect.top < -5 || rect.top > 90) {
+                            return false;
+                        }
+
+                        const text = normalizeArabicHeaderText(element.textContent);
+                        return text === target || text.includes(target);
+                    }) || null;
+                }
+
+                function findHeaderContainer(titleElement) {
+                    let current = titleElement;
+                    for (let i = 0; i < 8 && current; i++) {
+                        const rect = current.getBoundingClientRect();
+                        const className = (current.className || '').toString().toLowerCase();
+
+                        if (
+                            current.tagName === 'HEADER' ||
+                            className.includes('header') ||
+                            className.includes('navbar') ||
+                            className.includes('topbar') ||
+                            className.includes('app-bar') ||
+                            (rect.top <= 80 && rect.width >= window.innerWidth * 0.55 && rect.height <= 80)
+                        ) {
+                            return current;
+                        }
+
+                        current = current.parentElement;
+                    }
+
+                    return titleElement ? titleElement.parentElement : null;
+                }
+
+                function markCurrentLink(nav) {
+                    const path = (window.location.pathname || '').toLowerCase().replace(/\/$/, '');
+                    nav.querySelectorAll('a[href]').forEach(function (link) {
+                        const linkPath = (link.getAttribute('href') || '').toLowerCase().replace(/\/$/, '');
+                        if (linkPath && path === linkPath) {
+                            link.classList.add('is-current');
+                        }
+                    });
+                }
+
+                function injectEmployeeHeaderLinks() {
+                    const template = document.getElementById('luxiraEmployeeDefaultHeaderNavTemplate');
+                    if (!template) return;
+
+                    document.querySelectorAll('.luxira-employee-default-header-nav:not(#luxiraEmployeeDefaultHeaderNavTemplate .luxira-employee-default-header-nav)').forEach(function (oldNav) {
+                        oldNav.remove();
+                    });
+
+                    const sourceNav = template.querySelector('.luxira-employee-default-header-nav');
+                    if (!sourceNav) return;
+
+                    const nav = sourceNav.cloneNode(true);
+                    markCurrentLink(nav);
+
+                    const titleElement = findEmployeeManagementHeaderTitle();
+                    const headerContainer = findHeaderContainer(titleElement);
+
+                    if (headerContainer) {
+                        const containerStyle = window.getComputedStyle(headerContainer);
+                        if (containerStyle.position === 'static') {
+                            headerContainer.style.position = 'relative';
+                        }
+                        headerContainer.appendChild(nav);
+                        return;
+                    }
+
+                    nav.classList.add('is-fixed-fallback');
+                    document.body.appendChild(nav);
+                }
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', injectEmployeeHeaderLinks);
+                } else {
+                    injectEmployeeHeaderLinks();
+                }
+
+                window.addEventListener('load', function () {
+                    setTimeout(injectEmployeeHeaderLinks, 150);
+                    setTimeout(injectEmployeeHeaderLinks, 600);
+                });
+            })();
+    </script>
+
+
+    <div class="employee-transactions-heading">
+        <h2 class="employee-transactions-title">مكافآت وخصومات الموظفين</h2>
+        @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("ExecutiveDirector"))
+        {
+            <div class="employee-transactions-header-actions">
+                <button type="button" id="openTransactionsEditHistory" class="employee-transactions-header-btn history">سجل التعديلات</button>
+                <button type="button" id="printTransactionsStatement" class="employee-transactions-header-btn history"><i class="fa-solid fa-file-pdf"></i> سحب كشف</button>
+                <button type="button" id="deleteSelectedTransactions" class="employee-transactions-header-btn delete-selected">حذف المحدد <span id="selectedTransactionsCount">(0)</span></button>
+                <button type="button" id="deleteAllCurrentTransactions" class="employee-transactions-header-btn delete-all"><i class="fa-solid fa-trash-can"></i> حذف الجميع</button>
+                <button type="button" id="openTransactionsTrash" class="employee-transactions-header-btn trash">سلة المهملات</button>
+            </div>
+        }
+    </div>
+
+    <div class="employee-transactions-filter-card">
+        <div class="employee-transactions-filter-title">فلترة الحركات</div>
+
+        <form id="employeeTransactionsFilterForm" method="get" asp-action="Index">
+            <input type="hidden" name="page" id="pageInput" value="@Model.CurrentPage" />
+            <input type="hidden" name="employeeId" id="employeeIdInput" value="@selectedEmployeeId" />
+            <input type="hidden" name="formerEmployees" id="formerEmployeesInput" value="@(formerEmployees ? "true" : "false")" />
+            <input type="hidden" name="fromDate" id="startDate" value="@filterFromDate" />
+            <input type="hidden" name="toDate" id="endDate" value="@filterToDate" />
+
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-6 col-xl-3">
+                    <label class="form-label">فلترة حسب الموظف</label>
+                    <div class="employee-custom-dropdown" id="activeEmployeeCustomDropdown" data-employee-filter-kind="active">
+                        <div class="selected-employee" role="button" tabindex="0">
+                            @if (!string.IsNullOrWhiteSpace(selectedEmployeeImage))
+                            {
+                                <img src="@selectedEmployeeImage"
+                                     class="selected-employee-image"
+                                     alt="@selectedEmployeeText"
+                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
+                                <span class="selected-employee-placeholder" style="display:none;"><i class="fa-light fa-user"></i></span>
+                            }
+                            else
+                            {
+                                <img src="" class="selected-employee-image" alt="" style="display:none;" />
+                                <span class="selected-employee-placeholder"><i class="fa-light fa-user"></i></span>
+                            }
+                            <span class="selected-employee-text">@selectedEmployeeText</span>
+                            <i class="fa-solid fa-chevron-down selected-employee-icon"></i>
+                        </div>
+
+                        <div class="employee-options-dropdown">
+                            <div class="employee-option @(!formerEmployees && string.IsNullOrWhiteSpace(selectedEmployeeId) ? "active" : "")"
+                                 data-value=""
+                                 data-text="كل الموظفين"
+                                 data-image=""
+                                 data-former="false">
+                                <span class="employee-option-placeholder"><i class="fa-light fa-users"></i></span>
+                                <span class="employee-option-name">كل الموظفين</span>
+                            </div>
+
+                            @foreach (var employee in activeEmployees)
+                            {
+                                var employeeImage = employee.Group?.Name ?? "";
+                                var activeClass = !formerEmployees && employee.Value == selectedEmployeeId ? "active" : "";
+                                <div class="employee-option @activeClass"
+                                     data-value="@employee.Value"
+                                     data-text="@employee.Text"
+                                     data-image="@employeeImage"
+                                     data-former="false">
+                                    @if (!string.IsNullOrWhiteSpace(employeeImage))
+                                    {
+                                        <img src="@employeeImage"
+                                             class="employee-option-image"
+                                             alt="@employee.Text"
+                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
+                                        <span class="employee-option-placeholder" style="display:none;"><i class="fa-light fa-user"></i></span>
+                                    }
+                                    else
+                                    {
+                                        <span class="employee-option-placeholder"><i class="fa-light fa-user"></i></span>
+                                    }
+                                    <span class="employee-option-name">@employee.Text</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-6 col-xl-3">
+                    <label class="form-label">فلترة موظف سابق</label>
+                    <div class="employee-custom-dropdown" id="formerEmployeeCustomDropdown" data-employee-filter-kind="former">
+                        <div class="selected-employee" role="button" tabindex="0">
+                            @if (!string.IsNullOrWhiteSpace(selectedFormerEmployeeImage))
+                            {
+                                <img src="@selectedFormerEmployeeImage"
+                                     class="selected-employee-image"
+                                     alt="@selectedFormerEmployeeText"
+                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
+                                <span class="selected-employee-placeholder" style="display:none;"><i class="fa-light fa-user"></i></span>
+                            }
+                            else
+                            {
+                                <img src="" class="selected-employee-image" alt="" style="display:none;" />
+                                <span class="selected-employee-placeholder"><i class="fa-light fa-user"></i></span>
+                            }
+                            <span class="selected-employee-text">@selectedFormerEmployeeText</span>
+                            <i class="fa-solid fa-chevron-down selected-employee-icon"></i>
+                        </div>
+
+                        <div class="employee-options-dropdown">
+                            <div class="employee-option @(formerEmployees && string.IsNullOrWhiteSpace(selectedEmployeeId) ? "active" : "")"
+                                 data-value=""
+                                 data-text="كل الموظفين السابقين"
+                                 data-image=""
+                                 data-former="true">
+                                <span class="employee-option-placeholder"><i class="fa-light fa-users"></i></span>
+                                <span class="employee-option-name">كل الموظفين السابقين</span>
+                            </div>
+
+                            @foreach (var employee in formerEmployeesList)
+                            {
+                                var employeeImage = employee.Group?.Name ?? "";
+                                var activeClass = formerEmployees && employee.Value == selectedEmployeeId ? "active" : "";
+                                <div class="employee-option @activeClass"
+                                     data-value="@employee.Value"
+                                     data-text="@employee.Text"
+                                     data-image="@employeeImage"
+                                     data-former="true">
+                                    @if (!string.IsNullOrWhiteSpace(employeeImage))
+                                    {
+                                        <img src="@employeeImage"
+                                             class="employee-option-image"
+                                             alt="@employee.Text"
+                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
+                                        <span class="employee-option-placeholder" style="display:none;"><i class="fa-light fa-user"></i></span>
+                                    }
+                                    else
+                                    {
+                                        <span class="employee-option-placeholder"><i class="fa-light fa-user"></i></span>
+                                    }
+                                    <span class="employee-option-name">@employee.Text</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-6 col-xl-3">
+                    <label class="form-label">التاريخ</label>
+                    <input id="custom-datepicker"
+                           class="form-control employee-transaction-filter-input custom-datepicker employee-transaction-date-range-input"
+                           placeholder="التاريخ"
+                           value="@dateRangeText" />
+                </div>
+
+                <div class="col-12 col-md-6 col-xl-3 d-flex gap-2 flex-wrap">
+                    <a href="/EmployeeTransactions" class="reset-btn">إلغاء الفلتر</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="employee-transactions-card">
+        <div class="employee-transactions-card-header">
+            <span>سجل المكافآت والخصومات</span>
+            <span class="employee-transactions-count">@Model.TotalItems حركة</span>
+        </div>
+
+        <div class="employee-transactions-toolbar">
+            <div class="employee-transactions-page-size">
+                <label for="pageSize">أظهر:</label>
+                <select id="pageSize" name="pageSize">
+                    @foreach (var size in new[] { 10, 25, 50, 100, 200, 300, 500, 1000 })
+                    {
+                        if (Model.PageSize == size)
+                        {
+                            <option value="@size" selected>@size</option>
+                        }
+                        else
+                        {
+                            <option value="@size">@size</option>
+                        }
+                    }
+                </select>
+                <label for="pageSize">مدخلات</label>
+            </div>
+
+            <div class="employee-transactions-total-card" data-total-discount="@(Model.Items.FirstOrDefault()?.TotalDiscountPriceTRY ?? "0")">
+                @(Model.Items.FirstOrDefault()?.TotalDiscountPriceTRY ?? "0") TRY
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table id="table" class="table employee-transactions-table">
+                <thead>
+                    <tr>
+                        <th class="transaction-select-header-cell">
+                            <input type="checkbox"
+                                   id="selectAllTransactions"
+                                   class="transaction-select-all-circle"
+                                   title="تحديد الكل" />
+                        </th>
+                        <th>الاسم</th>
+                        <th>بداية دوامه</th>
+                        <th>نهاية دوامه</th>
+                        <th>سبب الخصم</th>
+                        <th>خصم</th>
+                        <th>سلفة</th>
+                        <th>مكافأة</th>
+                        <th>تاريخ اليوم</th>
+                        <th>إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Items == null || !Model.Items.Any())
+                    {
+                        <tr>
+                            <td colspan="10" class="text-center text-muted fw-bold py-4">لا توجد حركات مطابقة للفلتر</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model.Items)
+                        {
+                            <tr data-transaction-row="@item.Id">
+                                <td class="transaction-select-cell">
+                                    <input type="checkbox"
+                                           class="transaction-select-circle"
+                                           data-transaction-id="@item.Id"
+                                           title="تحديد الحركة" />
+                                </td>
+                                <td class="employee-transaction-name-cell">
+                                    <div class="employee-transaction-inline">
+                                        <img src="@item.EmployeeImagePath"
+                                             class="employee-transaction-image"
+                                             alt="@item.EmployeeName"
+                                             onerror="this.src='/static/circle-user-solid.svg';" />
+                                        <span class="employee-transaction-name">@item.EmployeeName</span>
+                                        @if (!item.EmployeeIsActive)
+                                        {
+                                            <span class="employee-transaction-inactive-badge">سابق</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="shift-time-cell">@item.ShiftStartTimeText</td>
+                                <td class="shift-time-cell">@item.ShiftEndTimeText</td>
+                                <td class="reason-cell">@(string.IsNullOrWhiteSpace(item.Reason) ? "-" : item.Reason)</td>
+                                <td class="deduction-amount-cell">@FormatMoney(item.DeductionAmount)</td>
+                                <td class="advance-amount-cell">@FormatMoney(item.AdvanceAmount)</td>
+                                <td class="bonus-amount-cell">@FormatMoney(item.BonusAmount)</td>
+                                <td class="date-cell">@(string.IsNullOrWhiteSpace(item.TransactionDateOnly) ? item.TransactionDate : item.TransactionDateOnly)</td>
+                                <td class="employee-transaction-actions-cell">
+                                    <div class="employee-transaction-actions">
+                                        <a href="@Url.Action("PrintEmployeeTransactionStatement", "Pdf", new { id = item.Id })"
+                                           target="_blank"
+                                           class="transaction-history-btn transaction-print-pdf-btn">
+                                            سجل حركة
+                                        </a>
+                                        <button type="button"
+                                                class="transaction-edit-btn transaction-edit-popup-btn"
+                                                data-transaction-id="@item.Id">
+                                            تعديل
+                                        </button>
+                                        <button type="button"
+                                                class="transaction-delete-btn transaction-delete-popup-btn"
+                                                data-transaction-id="@item.Id"
+                                                data-delete-action="@Url.Action("Delete", "EmployeeTransactions", new { id = item.Id })">
+                                            حذف
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="pagination-link" class="mt-3 container-fluid">
+        <div class="d-flex justify-content-center align-items-center flex-wrap">
+            <nav aria-label="Page navigation" class="mx-auto">
+                <ul class="pagination p-0">
+                    @{
+                        int currentPage = Model.CurrentPage;
+                        int totalPages = Model.TotalPages;
+                        int previousPage = currentPage > 1 ? currentPage - 1 : 1;
+                        int nextPage = currentPage < totalPages ? currentPage + 1 : totalPages;
+                        var pagesToShow = new SortedSet<int>();
+
+                        if (totalPages <= 7)
+                        {
+                            for (int i = 1; i <= totalPages; i++) pagesToShow.Add(i);
+                        }
+                        else
+                        {
+                            int windowStart = currentPage <= 2 ? 1 : currentPage >= totalPages - 1 ? totalPages - 2 : currentPage - 1;
+                            int windowEnd = currentPage <= 2 ? 3 : currentPage >= totalPages - 1 ? totalPages : currentPage + 1;
+
+                            for (int i = Math.Max(1, windowStart); i <= Math.Min(totalPages, windowEnd); i++) pagesToShow.Add(i);
+                            for (int i = Math.Max(1, totalPages - 2); i <= totalPages; i++) pagesToShow.Add(i);
+                        }
+
+                        int lastRenderedPage = 0;
+                    }
+
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <a class="page-link pointer" data-page="1" title="أول صفحة"><i class="fa-solid fa-chevron-double-right text-green"></i></a>
+                    </li>
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" data-page="@previousPage" title="الصفحة السابقة"><i class="fa-solid fa-chevron-right text-green"></i></a>
+                    </li>
+
+                    @foreach (var pageNumber in pagesToShow)
+                    {
+                        if (lastRenderedPage > 0 && pageNumber - lastRenderedPage > 1)
+                        {
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        }
+
+                        <li class="numbers page-item @(currentPage == pageNumber ? "active" : "")">
+                            <a class="page-link" data-page="@pageNumber">@pageNumber</a>
+                        </li>
+
+                        lastRenderedPage = pageNumber;
+                    }
+
+                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <a class="page-link" data-page="@nextPage" title="الصفحة التالية"><i class="fa-solid fa-chevron-left text-green"></i></a>
+                    </li>
+                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <a class="page-link" data-page="@totalPages" title="آخر صفحة"><i class="fa-solid fa-chevron-double-left text-green"></i></a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <div id="transactionDetailsBackdrop" class="transaction-details-backdrop">
+        <div class="transaction-details-popup">
+            <div class="transaction-details-header">
+                <span>سجل حركة الموظف</span>
+                <button type="button" class="transaction-details-close" id="transactionDetailsClose">×</button>
+            </div>
+            <div class="transaction-details-body">
+                <div class="transaction-details-row"><span class="transaction-details-label">الموظف</span><span class="transaction-details-value" id="detailsEmployee">-</span></div>
+                <div class="transaction-details-row"><span class="transaction-details-label">نوع العملية</span><span class="transaction-details-value" id="detailsType">-</span></div>
+                <div class="transaction-details-row"><span class="transaction-details-label">المبلغ</span><span class="transaction-details-value" id="detailsAmount">-</span></div>
+                <div class="transaction-details-row"><span class="transaction-details-label">السبب</span><span class="transaction-details-value" id="detailsReason">-</span></div>
+                <div class="transaction-details-row"><span class="transaction-details-label">بداية الدوام</span><span class="transaction-details-value" id="detailsStart">-</span></div>
+                <div class="transaction-details-row"><span class="transaction-details-label">نهاية الدوام</span><span class="transaction-details-value" id="detailsEnd">-</span></div>
+                <div class="transaction-details-row"><span class="transaction-details-label">تاريخ العملية</span><span class="transaction-details-value" id="detailsDate">-</span></div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <div id="transactionsHistoryBackdrop" class="transactions-history-backdrop">
+        <div class="transactions-list-popup">
+            <div class="transactions-list-header">
+                <span>سجل تعديلات الحركات</span>
+                <button type="button" class="transactions-list-close" id="transactionsHistoryClose">×</button>
+            </div>
+            <div id="transactionsHistoryList" class="transactions-list-body">
+                <div class="transactions-list-empty">جاري تحميل سجل التعديلات...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="transactionsTrashBackdrop" class="transactions-trash-backdrop">
+        <div class="transactions-list-popup">
+            <div class="transactions-list-header">
+                <span>سلة مهملات الحركات</span>
+                <button type="button" class="transactions-list-close" id="transactionsTrashClose">×</button>
+            </div>
+            <div id="transactionsTrashList" class="transactions-list-body">
+                <div class="transactions-list-empty">جاري تحميل سلة المهملات...</div>
+            </div>
+            <div class="transactions-trash-actions">
+                <button type="button" id="restoreAllTransactions" class="restore-all-transactions-btn">استرداد الكل</button>
+                <button type="button" id="deleteAllDeletedPermanently" class="delete-all-deleted-transactions-btn"><i class="fa-solid fa-trash-can"></i> حذف كل المحذوف</button>
+            </div>
+        </div>
+    </div>
+
+    <form id="employeeTransactionPopupAntiForgery" style="display:none;">@Html.AntiForgeryToken()</form>
+
+    <div id="transactionDeleteConfirmBackdrop" class="transaction-delete-confirm-backdrop">
+        <div class="transaction-delete-confirm-popup">
+            <div class="transaction-delete-confirm-title">هل أنت متأكد من الحذف؟</div>
+            <div class="transaction-delete-confirm-message">سيتم نقل الحركة إلى سلة المهملات، ويمكن استردادها لاحقًا.</div>
+            <div class="transaction-delete-confirm-actions">
+                <button type="button" id="transactionDeleteCancel" class="transaction-delete-cancel-btn">إلغاء</button>
+                <button type="button" id="transactionDeleteConfirm" class="transaction-delete-confirm-btn">تأكيد</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="transactionBulkConfirmBackdrop" class="transaction-delete-confirm-backdrop">
+        <div class="transaction-delete-confirm-popup">
+            <div class="transaction-delete-confirm-title" id="transactionBulkConfirmTitle">هل أنت متأكد؟</div>
+            <div class="transaction-delete-confirm-message" id="transactionBulkConfirmMessage">سيتم تنفيذ العملية على كل الحركات.</div>
+            <div class="transaction-delete-confirm-actions">
+                <button type="button" id="transactionBulkConfirmCancel" class="transaction-delete-cancel-btn">إلغاء</button>
+                <button type="button" id="transactionBulkConfirmOk" class="transaction-delete-confirm-btn">تأكيد</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="transactionActionToast" class="transaction-action-toast"></div>
+
+    <div id="employeeCenterPopupBackdrop" class="employee-center-popup-backdrop" aria-hidden="true">
+        <div class="employee-center-popup-card" role="dialog" aria-modal="true">
+            <div id="employeeCenterPopupIcon" class="employee-center-popup-icon">✓</div>
+            <div id="employeeCenterPopupTitle" class="employee-center-popup-title">تم التحديث</div>
+            <div id="employeeCenterPopupMessage" class="employee-center-popup-message"></div>
+            <div class="employee-center-popup-actions">
+                <button type="button" id="employeeCenterPopupCancel" class="employee-center-popup-btn employee-center-popup-cancel">إلغاء</button>
+                <button type="button" id="employeeCenterPopupOk" class="employee-center-popup-btn employee-center-popup-ok">حسنًا</button>
+            </div>
+        </div>
+    </div>
+
+    <script id="employee-transactions-center-white-popup-script">
+            (function () {
+                const backdrop = document.getElementById('employeeCenterPopupBackdrop');
+                const icon = document.getElementById('employeeCenterPopupIcon');
+                const title = document.getElementById('employeeCenterPopupTitle');
+                const message = document.getElementById('employeeCenterPopupMessage');
+                const okButton = document.getElementById('employeeCenterPopupOk');
+                const cancelButton = document.getElementById('employeeCenterPopupCancel');
+                let pendingResolver = null;
+                let autoCloseTimer = null;
+
+                function closePopup(result) {
+                    if (autoCloseTimer) {
+                        clearTimeout(autoCloseTimer);
+                        autoCloseTimer = null;
+                    }
+
+                    if (backdrop) backdrop.classList.remove('is-visible');
+
+                    const resolver = pendingResolver;
+                    pendingResolver = null;
+
+                    if (resolver) {
+                        resolver(result === true);
+                    }
+                }
+
+                function openPopup(options) {
+                    options = options || {};
+                    const mode = options.mode || 'message';
+                    const isError = options.isError === true;
+                    const isQuestion = mode === 'confirm';
+
+                    if (title) {
+                        title.textContent = options.title || (isQuestion ? 'هل أنت متأكد؟' : (isError ? 'تنبيه' : 'تم التحديث'));
+                    }
+
+                    if (message) {
+                        message.textContent = options.message || '';
+                    }
+
+                    if (icon) {
+                        icon.classList.remove('error', 'question');
+                        if (isQuestion) icon.classList.add('question');
+                        if (isError) icon.classList.add('error');
+                        icon.textContent = isQuestion ? '?' : (isError ? '!' : '✓');
+                    }
+
+                    if (cancelButton) {
+                        cancelButton.style.display = isQuestion ? 'inline-flex' : 'none';
+                    }
+
+                    if (okButton) {
+                        okButton.classList.toggle('employee-center-popup-confirm', isQuestion);
+                        okButton.classList.toggle('employee-center-popup-ok', !isQuestion);
+                        okButton.textContent = isQuestion ? 'تأكيد' : 'حسنًا';
+                    }
+
+                    if (backdrop) backdrop.classList.add('is-visible');
+
+                    if (!isQuestion && !isError) {
+                        if (autoCloseTimer) clearTimeout(autoCloseTimer);
+                        autoCloseTimer = window.setTimeout(function () {
+                            closePopup(true);
+                        }, 3000);
+                    }
+
+                    return new Promise(function (resolve) {
+                        pendingResolver = resolve;
+                    });
+                }
+
+                window.employeeTransactionsShowCenterPopup = openPopup;
+
+                window.employeeTransactionsShowMessage = function (message, isError, title) {
+                    return openPopup({
+                        mode: 'message',
+                        title: title || (isError ? 'تنبيه' : 'تم التحديث'),
+                        message: message || '',
+                        isError: isError === true
+                    });
+                };
+
+                window.employeeTransactionsAsk = function (title, message) {
+                    return openPopup({
+                        mode: 'confirm',
+                        title: title || 'هل أنت متأكد؟',
+                        message: message || '',
+                        isError: true
+                    });
+                };
+
+                if (okButton) {
+                    okButton.addEventListener('click', function () { closePopup(true); });
+                }
+
+                if (cancelButton) {
+                    cancelButton.addEventListener('click', function () { closePopup(false); });
+                }
+
+                if (backdrop) {
+                    backdrop.addEventListener('click', function (event) {
+                        if (event.target === backdrop) {
+                            closePopup(false);
+                        }
+                    });
+                }
+            })();
+    </script>
+
+
+
+    <div id="transactionEditBackdrop" class="transaction-edit-backdrop">
+        <div class="transaction-edit-popup">
+            <div class="transaction-edit-popup-header">
+                <div class="transaction-edit-header-main">
+                    <button type="button" class="transaction-edit-popup-close" id="transactionEditClose">×</button>
+                    <button type="button" class="transaction-edit-history-toggle-btn" id="transactionEditHistoryToggle">سجل التعديلات</button>
+                    <span>تعديل حركة الموظف</span>
+                </div>
+            </div>
+
+            <div class="transaction-edit-popup-body">
+                <input type="hidden" id="transactionEditId" />
+
+                <div class="transaction-edit-grid">
+                    <div class="transaction-edit-field transaction-edit-field-full">
+                        <label class="transaction-edit-label">الموظف</label>
+                        <input type="text" id="transactionEditEmployeeName" class="transaction-edit-input" readonly />
+                    </div>
+
+                    <div class="transaction-edit-field">
+                        <label class="transaction-edit-label">الخصم</label>
+                        <input type="number" step="0.01" min="0" id="transactionEditDeductionAmount" class="transaction-edit-input" />
+                    </div>
+
+                    <div class="transaction-edit-field">
+                        <label class="transaction-edit-label">السلف</label>
+                        <input type="number" step="0.01" min="0" id="transactionEditAdvanceAmount" class="transaction-edit-input" />
+                    </div>
+
+                    <div class="transaction-edit-field">
+                        <label class="transaction-edit-label">المكافأة</label>
+                        <input type="number" step="0.01" min="0" id="transactionEditBonusAmount" class="transaction-edit-input" />
+                    </div>
+
+                    <div class="transaction-edit-field">
+                        <label class="transaction-edit-label">تاريخ الحركة</label>
+                        <input type="date" id="transactionEditDate" class="transaction-edit-input transaction-edit-date-input" />
+                    </div>
+
+                    <div class="transaction-edit-field transaction-edit-field-full">
+                        <label class="transaction-edit-label">السبب</label>
+                        <textarea id="transactionEditReason" class="transaction-edit-input transaction-edit-textarea"></textarea>
+                    </div>
+                </div>
+
+                <div class="transaction-edit-shift-info">
+                    <div class="transaction-edit-shift-display">
+                        <label class="transaction-edit-label mb-0">بداية الدوام</label>
+                        <div id="transactionEditShiftStart" class="transaction-edit-shift-readonly">-</div>
+                    </div>
+                    <div class="transaction-edit-shift-display">
+                        <label class="transaction-edit-label mb-0">نهاية الدوام</label>
+                        <div id="transactionEditShiftEnd" class="transaction-edit-shift-readonly">-</div>
+                    </div>
+                    <span class="transaction-edit-shift-note">بداية ونهاية الدوام للعرض فقط، ولا يتم تعديل شيفت الموظف من هنا.</span>
+                </div>
+
+                <div id="transactionEditHistoryBlock" class="transaction-edit-history-block">
+                    <div class="transaction-edit-section-line"></div>
+                    <div class="transaction-edit-history-header">
+                        <span>سجل هذه الحركة</span>
+                        <span id="transactionEditHistoryCount" class="transaction-edit-history-count">0</span>
+                    </div>
+                    <div id="transactionEditHistoryList" class="transaction-edit-history-list">
+                        <div class="transaction-edit-history-empty">سيظهر هنا ملخص بيانات الحركة قبل التعديل.</div>
+                    </div>
+                </div>
+
+                <div id="transactionEditError" class="transaction-edit-error"></div>
+            </div>
+
+            <div class="transaction-edit-popup-footer">
+                <button type="button" id="transactionEditCancel" class="transaction-edit-cancel-btn">إلغاء</button>
+                <button type="button" id="transactionEditSave" class="transaction-edit-save-btn">موافقة</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="transactionEditSuccessBackdrop" class="transaction-edit-success-backdrop">
+        <div class="transaction-edit-success-card">
+            <div class="transaction-edit-success-icon">✓</div>
+            <div class="transaction-edit-success-title">تم التحديث</div>
+            <button type="button" id="transactionEditSuccessOk" class="transaction-edit-success-ok">حسنًا</button>
+        </div>
+    </div>
+
+    <script src="/js/datepicker.min.js"></script>
+
+    <script type="text/javascript">
+        (function () {
+        const pageRoot = document.querySelector('.employee-transactions-page');
+        const filterForm = document.getElementById('employeeTransactionsFilterForm');
+        const pageInput = document.getElementById('pageInput');
+        const pageSizeSelect = document.getElementById('pageSize');
+        const employeeIdInput = document.getElementById('employeeIdInput');
+        const formerEmployeesInput = document.getElementById('formerEmployeesInput');
+        const formerEmployeesCheckbox = document.getElementById('formerEmployeesCheckbox');
+        const dateInput = document.getElementById('custom-datepicker');
+        const startInput = document.getElementById('startDate');
+        const endInput = document.getElementById('endDate');
+        let submitTimer = null;
+        let isLoading = false;
+
+        function parseDateRangeInput() {
+        if (!dateInput || !startInput || !endInput) return;
+
+        const value = (dateInput.value || '').trim();
+        if (!value) {
+        startInput.value = '';
+        endInput.value = '';
+        return;
+        }
+
+        const parts = value.split(' - ');
+        if (parts.length >= 2) {
+        startInput.value = parts[0].trim();
+        endInput.value = parts[1].trim();
+        } else if (parts.length === 1 && parts[0]) {
+        startInput.value = parts[0].trim();
+        endInput.value = parts[0].trim();
+        }
+        }
+
+        function buildUrl(page) {
+        parseDateRangeInput();
+
+        const url = new URL('/EmployeeTransactions', window.location.origin);
+        const pageSize = pageSizeSelect ? pageSizeSelect.value : '@Model.PageSize';
+        const employeeId = employeeIdInput ? employeeIdInput.value : '';
+        const formerEmployees = formerEmployeesInput ? formerEmployeesInput.value : 'false';
+        const fromDate = startInput ? startInput.value : '';
+        const toDate = endInput ? endInput.value : '';
+
+        url.searchParams.set('page', page || 1);
+        url.searchParams.set('pageSize', pageSize || 10);
+
+        if (employeeId) url.searchParams.set('employeeId', employeeId);
+        if (formerEmployees === 'true') url.searchParams.set('formerEmployees', 'true');
+        if (fromDate) url.searchParams.set('fromDate', fromDate);
+        if (toDate) url.searchParams.set('toDate', toDate);
+
+        return url.toString();
+        }
+
+        function loadPage(page, pushState) {
+        if (isLoading) return;
+        isLoading = true;
+        if (pageRoot) pageRoot.classList.add('is-loading');
+
+        const url = buildUrl(page || 1);
+
+        fetch(url, {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        cache: 'no-store',
+        credentials: 'same-origin'
+        })
+        .then(response => response.text())
+        .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        const newTbody = doc.querySelector('#table tbody');
+        const currentTbody = document.querySelector('#table tbody');
+        if (newTbody && currentTbody) currentTbody.innerHTML = newTbody.innerHTML;
+
+        const newPagination = doc.querySelector('#pagination-link');
+        const currentPagination = document.querySelector('#pagination-link');
+        if (newPagination && currentPagination) currentPagination.innerHTML = newPagination.innerHTML;
+
+        const newCount = doc.querySelector('.employee-transactions-count');
+        const currentCount = document.querySelector('.employee-transactions-count');
+        if (newCount && currentCount) currentCount.innerHTML = newCount.innerHTML;
+
+        const newTotal = doc.querySelector('.employee-transactions-total-card');
+        const currentTotal = document.querySelector('.employee-transactions-total-card');
+        if (newTotal && currentTotal) currentTotal.innerHTML = newTotal.innerHTML;
+
+        if (pushState !== false) {
+        window.history.pushState({}, '', url);
+        }
+        })
+        .catch(() => {
+        window.location.href = url;
+        })
+        .finally(() => {
+        isLoading = false;
+        if (pageRoot) pageRoot.classList.remove('is-loading');
+        if (window.employeeTransactionsUpdateSelectionState) {
+        window.employeeTransactionsUpdateSelectionState();
+        }
+        });
+        }
+
+        window.employeeTransactionsGetCurrentPage = function () {
+        const activePage = document.querySelector('#pagination-link .page-item.active .page-link');
+        const value = activePage ? parseInt(activePage.getAttribute('data-page') || activePage.textContent || '1', 10) : 1;
+        return isNaN(value) || value <= 0 ? 1 : value;
+        };
+
+        window.employeeTransactionsRefreshTable = function (page, pushState) {
+        const targetPage = page || window.employeeTransactionsGetCurrentPage();
+        loadPage(targetPage, pushState === true);
+        };
+
+        function submitFilterDelayed() {
+        if (submitTimer) clearTimeout(submitTimer);
+        submitTimer = setTimeout(function () { loadPage(1, true); }, 80);
+        }
+
+        if (filterForm) {
+        filterForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        loadPage(1, true);
+        });
+        }
+
+        if (pageSizeSelect) {
+        pageSizeSelect.addEventListener('change', function () {
+        if (pageInput) pageInput.value = '1';
+        submitFilterDelayed();
+        });
+        }
+
+        if (formerEmployeesCheckbox) {
+        formerEmployeesCheckbox.addEventListener('change', function () {
+        if (formerEmployeesInput) formerEmployeesInput.value = formerEmployeesCheckbox.checked ? 'true' : 'false';
+        if (employeeIdInput) employeeIdInput.value = '';
+        window.location.href = buildUrl(1);
+        });
+        }
+
+        document.addEventListener('click', function (event) {
+        const pageLink = event.target.closest('#pagination-link .page-link[data-page]');
+        if (pageLink) {
+        event.preventDefault();
+        const page = pageLink.getAttribute('data-page') || '1';
+        loadPage(page, true);
+        return;
+        }
+
+        const historyBtn = event.target.closest('.transaction-history-btn:not(a)');
+        if (historyBtn) {
+        event.preventDefault();
+        document.getElementById('detailsEmployee').textContent = historyBtn.getAttribute('data-history-employee') || '-';
+        document.getElementById('detailsType').textContent = historyBtn.getAttribute('data-history-type') || '-';
+        document.getElementById('detailsAmount').textContent = (historyBtn.getAttribute('data-history-amount') || '-') + ' TRY';
+        document.getElementById('detailsReason').textContent = historyBtn.getAttribute('data-history-reason') || '-';
+        document.getElementById('detailsStart').textContent = historyBtn.getAttribute('data-history-start') || '-';
+        document.getElementById('detailsEnd').textContent = historyBtn.getAttribute('data-history-end') || '-';
+        document.getElementById('detailsDate').textContent = historyBtn.getAttribute('data-history-date') || '-';
+        document.getElementById('transactionDetailsBackdrop').classList.add('is-visible');
+        return;
+        }
+
+        if (event.target && (event.target.id === 'transactionDetailsClose' || event.target.id === 'transactionDetailsBackdrop')) {
+        document.getElementById('transactionDetailsBackdrop').classList.remove('is-visible');
+        }
+        });
+
+        function initializeDateFilter() {
+        if (!dateInput) return;
+
+        if (typeof initializeLitepicker === 'function') {
+        initializeLitepicker('.custom-datepicker', function () {
+        parseDateRangeInput();
+        submitFilterDelayed();
+        });
+        return;
+        }
+
+        dateInput.addEventListener('change', function () {
+        parseDateRangeInput();
+        submitFilterDelayed();
+        });
+        }
+
+        initializeDateFilter();
+        })();
+    </script>
+
+    <script>
+        (function () {
+        const hiddenInput = document.getElementById('employeeIdInput');
+        const formerInput = document.getElementById('formerEmployeesInput');
+
+        function closeAllDropdowns() {
+        document.querySelectorAll('.employee-custom-dropdown.open').forEach(function (dropdown) {
+        dropdown.classList.remove('open');
+        });
+        }
+
+        function buildEmployeeFilterUrl(value, isFormer) {
+        const pageSize = document.getElementById('pageSize') ? document.getElementById('pageSize').value : '10';
+        const startInput = document.getElementById('startDate');
+        const endInput = document.getElementById('endDate');
+        const dateInput = document.getElementById('custom-datepicker');
+
+        if (dateInput && startInput && endInput) {
+        const text = (dateInput.value || '').trim();
+        if (!text) {
+        startInput.value = '';
+        endInput.value = '';
+        } else {
+        const parts = text.split(' - ');
+        startInput.value = (parts[0] || '').trim();
+        endInput.value = (parts[1] || parts[0] || '').trim();
+        }
+        }
+
+        const url = new URL('/EmployeeTransactions', window.location.origin);
+        url.searchParams.set('page', '1');
+        url.searchParams.set('pageSize', pageSize || '10');
+
+        if (value) url.searchParams.set('employeeId', value);
+        if (isFormer) url.searchParams.set('formerEmployees', 'true');
+        if (startInput && startInput.value) url.searchParams.set('fromDate', startInput.value);
+        if (endInput && endInput.value) url.searchParams.set('toDate', endInput.value);
+
+        return url.toString();
+        }
+
+        function updateDropdownVisual(dropdown, value, text, image) {
+        const selectedText = dropdown.querySelector('.selected-employee-text');
+        const selectedImage = dropdown.querySelector('.selected-employee-image');
+        const selectedPlaceholder = dropdown.querySelector('.selected-employee-placeholder');
+        const options = Array.from(dropdown.querySelectorAll('.employee-option'));
+
+        if (selectedText) selectedText.textContent = text || 'كل الموظفين';
+
+        if (image && selectedImage) {
+        selectedImage.src = image;
+        selectedImage.style.display = 'inline-block';
+        if (selectedPlaceholder) selectedPlaceholder.style.display = 'none';
+        } else {
+        if (selectedImage) {
+        selectedImage.removeAttribute('src');
+        selectedImage.style.display = 'none';
+        }
+        if (selectedPlaceholder) selectedPlaceholder.style.display = 'inline-flex';
+        }
+
+        options.forEach(function (option) {
+        option.classList.toggle('active', (option.getAttribute('data-value') || '') === (value || ''));
+        });
+        }
+
+        document.querySelectorAll('.employee-custom-dropdown').forEach(function (dropdown) {
+        const button = dropdown.querySelector('.selected-employee');
+        const options = Array.from(dropdown.querySelectorAll('.employee-option'));
+        if (!button) return;
+
+        button.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        const wasOpen = dropdown.classList.contains('open');
+        closeAllDropdowns();
+        if (!wasOpen) dropdown.classList.add('open');
+        });
+
+        button.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        const wasOpen = dropdown.classList.contains('open');
+        closeAllDropdowns();
+        if (!wasOpen) dropdown.classList.add('open');
+        }
+        });
+
+        options.forEach(function (option) {
+        option.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const value = option.getAttribute('data-value') || '';
+        const text = option.getAttribute('data-text') || '';
+        const image = option.getAttribute('data-image') || '';
+        const isFormer = option.getAttribute('data-former') === 'true';
+
+        if (hiddenInput) hiddenInput.value = value;
+        if (formerInput) formerInput.value = isFormer ? 'true' : 'false';
+
+        updateDropdownVisual(dropdown, value, text, image);
+        closeAllDropdowns();
+
+        window.location.href = buildEmployeeFilterUrl(value, isFormer);
+        });
+        });
+        });
+
+        document.addEventListener('click', function (event) {
+        if (!event.target.closest('.employee-custom-dropdown')) {
+        closeAllDropdowns();
+        }
+        });
+        })();
+    </script>
+
+
+
+
+    <script id="employee-transactions-history-trash-script">
+        (function () {
+        const historyButton = document.getElementById('openTransactionsEditHistory');
+        const printStatementButton = document.getElementById('printTransactionsStatement');
+        const trashButton = document.getElementById('openTransactionsTrash');
+        const historyBackdrop = document.getElementById('transactionsHistoryBackdrop');
+        const trashBackdrop = document.getElementById('transactionsTrashBackdrop');
+        const historyList = document.getElementById('transactionsHistoryList');
+        const trashList = document.getElementById('transactionsTrashList');
+        const historyClose = document.getElementById('transactionsHistoryClose');
+        const trashClose = document.getElementById('transactionsTrashClose');
+        const restoreAllButton = document.getElementById('restoreAllTransactions');
+        const deleteSelectedButton = document.getElementById('deleteSelectedTransactions');
+        const selectedTransactionsCount = document.getElementById('selectedTransactionsCount');
+        const deleteAllCurrentButton = document.getElementById('deleteAllCurrentTransactions');
+        const deleteAllDeletedButton = document.getElementById('deleteAllDeletedPermanently');
+        const bulkConfirmBackdrop = document.getElementById('transactionBulkConfirmBackdrop');
+        const bulkConfirmTitle = document.getElementById('transactionBulkConfirmTitle');
+        const bulkConfirmMessage = document.getElementById('transactionBulkConfirmMessage');
+        const bulkConfirmCancel = document.getElementById('transactionBulkConfirmCancel');
+        const bulkConfirmOk = document.getElementById('transactionBulkConfirmOk');
+        const actionToast = document.getElementById('transactionActionToast');
+        let pendingBulkAction = null;
+        let isBulkActionRunning = false;
+
+        function getToken() {
+        const input = document.querySelector('#employeeTransactionPopupAntiForgery input[name="__RequestVerificationToken"]');
+        return input ? input.value : '';
+        }
+
+        function escapeHtml(value) {
+        return (value || '').toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+        }
+
+        function openBackdrop(backdrop) {
+        if (backdrop) backdrop.classList.add('is-visible');
+        }
+
+        function closeBackdrop(backdrop) {
+        if (backdrop) backdrop.classList.remove('is-visible');
+        }
+
+        function showActionToast(message, isError) {
+        const cleanMessage = message || (isError ? 'حدث خطأ' : 'تم التحديث');
+        if (window.employeeTransactionsShowMessage) {
+        window.employeeTransactionsShowMessage(cleanMessage, isError === true, isError ? 'تنبيه' : cleanMessage);
+        return;
+        }
+        console.warn(cleanMessage);
+        }
+
+        function buildCurrentFilterFormData() {
+        const formData = new FormData();
+        const employeeIdInput = document.getElementById('employeeIdInput');
+        const formerEmployeesInput = document.getElementById('formerEmployeesInput');
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+
+        formData.append('__RequestVerificationToken', getToken());
+
+        if (employeeIdInput && employeeIdInput.value) formData.append('employeeId', employeeIdInput.value);
+        if (formerEmployeesInput && formerEmployeesInput.value === 'true') formData.append('formerEmployees', 'true');
+        if (startDateInput && startDateInput.value) formData.append('fromDate', startDateInput.value);
+        if (endDateInput && endDateInput.value) formData.append('toDate', endDateInput.value);
+
+        return formData;
+        }
+
+        function getSelectedTransactionIds() {
+        return Array.from(document.querySelectorAll('.transaction-select-circle:checked'))
+        .map(function (input) { return input.getAttribute('data-transaction-id') || ''; })
+        .filter(function (value) { return value !== ''; });
+        }
+
+        function updateSelectionState() {
+        const checkboxes = Array.from(document.querySelectorAll('.transaction-select-circle'));
+        const checkedBoxes = checkboxes.filter(function (input) { return input.checked; });
+        const selectAll = document.getElementById('selectAllTransactions');
+
+        checkboxes.forEach(function (input) {
+        const row = input.closest('tr');
+        if (row) row.classList.toggle('is-selected', input.checked);
+        });
+
+        if (selectAll) {
+        selectAll.checked = checkboxes.length > 0 && checkedBoxes.length === checkboxes.length;
+        selectAll.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < checkboxes.length;
+        }
+
+        if (selectedTransactionsCount) selectedTransactionsCount.textContent = '(' + checkedBoxes.length + ')';
+
+        if (deleteSelectedButton) {
+        deleteSelectedButton.classList.toggle('is-active', checkedBoxes.length > 0);
+        deleteSelectedButton.disabled = checkedBoxes.length <= 0;
+        }
+        }
+
+        window.employeeTransactionsUpdateSelectionState = updateSelectionState;
+
+        function buildTransactionsStatementUrl(selectedIds) {
+        const params = new URLSearchParams();
+        params.set('ids', (selectedIds || []).join(','));
+
+        const query = params.toString();
+        return '/Pdf/PrintEmployeeTransactionsStatement?' + query;
+        }
+
+        function openBulkConfirm(title, message, action) {
+        pendingBulkAction = action;
+        if (bulkConfirmTitle) bulkConfirmTitle.textContent = title || 'هل أنت متأكد؟';
+        if (bulkConfirmMessage) bulkConfirmMessage.textContent = message || 'سيتم تنفيذ العملية على كل الحركات.';
+        if (bulkConfirmBackdrop) bulkConfirmBackdrop.classList.add('is-visible');
+        }
+
+        function closeBulkConfirm() {
+        if (isBulkActionRunning) return;
+        pendingBulkAction = null;
+        if (bulkConfirmBackdrop) bulkConfirmBackdrop.classList.remove('is-visible');
+        }
+
+        async function runBulkConfirmAction() {
+        if (!pendingBulkAction || isBulkActionRunning) return;
+
+        isBulkActionRunning = true;
+        if (bulkConfirmOk) {
+        bulkConfirmOk.disabled = true;
+        bulkConfirmOk.textContent = 'جاري التنفيذ...';
+        }
+
+        try {
+        await pendingBulkAction();
+        if (bulkConfirmBackdrop) bulkConfirmBackdrop.classList.remove('is-visible');
+        pendingBulkAction = null;
+        } finally {
+        isBulkActionRunning = false;
+        if (bulkConfirmOk) {
+        bulkConfirmOk.disabled = false;
+        bulkConfirmOk.textContent = 'تأكيد';
+        }
+        }
+        }
+
+        function renderHistory(items) {
+        if (!historyList) return;
+
+        if (!items || !items.length) {
+        historyList.innerHTML = '<div class="transactions-list-empty">لا توجد تعديلات مسجلة حتى الآن</div>';
+        return;
+        }
+
+        historyList.innerHTML = items.map(function (item) {
+        const changes = (item.changes || []).map(function (change) {
+        return '<div class="transaction-list-change">' +
+        '<strong>' + escapeHtml(change.fieldName) + '</strong>: ' +
+        '<span class="transaction-list-old">' + escapeHtml(change.oldValue) + '</span>' +
+        ' ← ' +
+        '<span class="transaction-list-new">' + escapeHtml(change.newValue) + '</span>' +
+        '</div>';
+        }).join('');
+
+        return '<div class="transaction-list-item">' +
+        '<div class="transaction-list-item-head">' +
+        '<span>' + escapeHtml(item.employeeName) + '</span>' +
+        '<span class="transaction-list-item-meta">بواسطة: ' + escapeHtml(item.changedBy) + ' - ' + escapeHtml(item.changedAt) + '</span>' +
+        '</div>' + changes + '</div>';
+        }).join('');
+        }
+
+        function renderTrash(items) {
+        if (!trashList) return;
+
+        if (!items || !items.length) {
+        trashList.innerHTML = '<div class="transactions-list-empty">سلة المهملات فارغة</div>';
+        if (restoreAllButton) restoreAllButton.style.display = 'none';
+        return;
+        }
+
+        if (restoreAllButton) restoreAllButton.style.display = 'inline-flex';
+
+        trashList.innerHTML = items.map(function (item) {
+        return '<div class="transaction-list-item">' +
+        '<div class="transaction-list-item-head">' +
+        '<span>' + escapeHtml(item.employeeName) + ' - ' + escapeHtml(item.transactionType) + ' - ' + escapeHtml(item.amount) + '</span>' +
+        '<button type="button" class="restore-one-transaction-btn" data-transaction-id="' + escapeHtml(item.id) + '">استرداد</button>' +
+        '</div>' +
+        '<div class="transaction-list-change"><strong>السبب:</strong> ' + escapeHtml(item.reason) + '</div>' +
+        '<div class="transaction-list-change"><strong>تاريخ الحركة:</strong> ' + escapeHtml(item.transactionDate) + '</div>' +
+        '<div class="transaction-list-change"><strong>تم الحذف:</strong> ' + escapeHtml(item.deletedAt) + ' بواسطة ' + escapeHtml(item.deletedBy) + '</div>' +
+        '</div>';
+        }).join('');
+        }
+
+        async function loadHistory() {
+        if (historyList) historyList.innerHTML = '<div class="transactions-list-empty">جاري تحميل سجل التعديلات...</div>';
+        openBackdrop(historyBackdrop);
+
+        try {
+        const response = await fetch('/EmployeeTransactions/GetTransactionsEditHistory', {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        cache: 'no-store',
+        credentials: 'same-origin'
+        });
+        const result = await response.json();
+        renderHistory(result && result.items ? result.items : []);
+        } catch {
+        if (historyList) historyList.innerHTML = '<div class="transactions-list-empty">تعذر تحميل سجل التعديلات</div>';
+        }
+        }
+
+        async function loadTrash() {
+        if (trashList) trashList.innerHTML = '<div class="transactions-list-empty">جاري تحميل سلة المهملات...</div>';
+        openBackdrop(trashBackdrop);
+
+        try {
+        const response = await fetch('/EmployeeTransactions/GetDeletedTransactions', {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        cache: 'no-store',
+        credentials: 'same-origin'
+        });
+        const result = await response.json();
+        renderTrash(result && result.items ? result.items : []);
+        } catch {
+        if (trashList) trashList.innerHTML = '<div class="transactions-list-empty">تعذر تحميل سلة المهملات</div>';
+        }
+        }
+
+        async function restoreOne(id) {
+        if (!id) return;
+
+        const formData = new FormData();
+        formData.append('id', id);
+        formData.append('__RequestVerificationToken', getToken());
+
+        const response = await fetch('/EmployeeTransactions/RestoreDeleted', {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin'
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result || !result.success) {
+        showActionToast(result && result.message ? result.message : 'تعذر استرداد الحركة', true);
+        return;
+        }
+
+        showActionToast(result.message || 'تم الاسترداد');
+        await loadTrash();
+        if (window.employeeTransactionsRefreshTable) window.employeeTransactionsRefreshTable(null, false);
+        }
+
+        async function restoreAll() {
+        const formData = new FormData();
+        formData.append('__RequestVerificationToken', getToken());
+
+        const response = await fetch('/EmployeeTransactions/RestoreAllDeleted', {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin'
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result || !result.success) {
+        showActionToast(result && result.message ? result.message : 'تعذر استرداد كل الحركات', true);
+        return;
+        }
+
+        showActionToast(result.message || 'تم استرداد الكل');
+        await loadTrash();
+        if (window.employeeTransactionsRefreshTable) window.employeeTransactionsRefreshTable(null, false);
+        }
+
+        async function deleteSelectedTransactionsRequest() {
+        const ids = getSelectedTransactionIds();
+
+        if (!ids.length) {
+        showActionToast('اختار حركة واحدة على الأقل', true);
+        return;
+        }
+
+        const formData = new FormData();
+        formData.append('__RequestVerificationToken', getToken());
+        formData.append('ids', ids.join(','));
+
+        const response = await fetch('/EmployeeTransactions/DeleteSelected', {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin',
+        headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
+        }
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result || !result.success) {
+        showActionToast(result && result.message ? result.message : 'تعذر حذف المحدد', true);
+        return;
+        }
+
+        showActionToast(result.message || 'تم حذف المحدد');
+        if (window.employeeTransactionsRefreshTable) window.employeeTransactionsRefreshTable(null, false);
+        }
+
+        async function deleteAllCurrentTransactions() {
+        const response = await fetch('/EmployeeTransactions/DeleteAllActive', {
+        method: 'POST',
+        body: buildCurrentFilterFormData(),
+        credentials: 'same-origin',
+        headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
+        }
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result || !result.success) {
+        showActionToast(result && result.message ? result.message : 'تعذر حذف الجميع', true);
+        return;
+        }
+
+        showActionToast(result.message || 'تم حذف الجميع');
+        if (window.employeeTransactionsRefreshTable) window.employeeTransactionsRefreshTable(1, false);
+        }
+
+        async function deleteAllDeletedPermanently() {
+        const formData = new FormData();
+        formData.append('__RequestVerificationToken', getToken());
+
+        const response = await fetch('/EmployeeTransactions/DeleteAllDeletedPermanently', {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin',
+        headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
+        }
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result || !result.success) {
+        showActionToast(result && result.message ? result.message : 'تعذر حذف كل المحذوف', true);
+        return;
+        }
+
+        showActionToast(result.message || 'تم حذف كل المحذوف');
+        await loadTrash();
+        if (window.employeeTransactionsRefreshTable) window.employeeTransactionsRefreshTable(null, false);
+        }
+
+        if (historyButton) historyButton.addEventListener('click', loadHistory);
+        if (printStatementButton) {
+        printStatementButton.addEventListener('click', function () {
+        const selectedIds = getSelectedTransactionIds();
+        if (!selectedIds.length) {
+        showActionToast('لازم تحدد حركة واحدة على الأقل', true);
+        return;
+        }
+
+        window.open(buildTransactionsStatementUrl(selectedIds), '_blank');
+        });
+        }
+        if (trashButton) trashButton.addEventListener('click', loadTrash);
+
+        document.addEventListener('change', function (event) {
+        const rowCheckbox = event.target.closest('.transaction-select-circle');
+        if (rowCheckbox) {
+        updateSelectionState();
+        return;
+        }
+
+        const selectAll = event.target.closest('#selectAllTransactions');
+        if (selectAll) {
+        document.querySelectorAll('.transaction-select-circle').forEach(function (input) {
+        input.checked = selectAll.checked;
+        });
+        updateSelectionState();
+        }
+        });
+
+        if (deleteSelectedButton) {
+        deleteSelectedButton.addEventListener('click', function () {
+        const ids = getSelectedTransactionIds();
+        if (!ids.length) {
+        showActionToast('اختار حركة واحدة على الأقل', true);
+        return;
+        }
+        openBulkConfirm('هل أنت متأكد من حذف المحدد؟', 'سيتم نقل ' + ids.length + ' حركة محددة إلى سلة المهملات.', deleteSelectedTransactionsRequest);
+        });
+        }
+
+        if (deleteAllCurrentButton) {
+        deleteAllCurrentButton.addEventListener('click', function () {
+        openBulkConfirm('هل أنت متأكد من حذف الجميع؟', 'سيتم نقل كل الحركات المطابقة للفلتر الحالي إلى سلة المهملات.', deleteAllCurrentTransactions);
+        });
+        }
+
+        if (deleteAllDeletedButton) {
+        deleteAllDeletedButton.addEventListener('click', function () {
+        openBulkConfirm('هل أنت متأكد من حذف كل المحذوف؟', 'سيتم حذف كل الحركات الموجودة في سلة المهملات نهائيًا ولا يمكن استردادها.', deleteAllDeletedPermanently);
+        });
+        }
+
+        if (bulkConfirmCancel) bulkConfirmCancel.addEventListener('click', closeBulkConfirm);
+        if (bulkConfirmOk) bulkConfirmOk.addEventListener('click', runBulkConfirmAction);
+        if (bulkConfirmBackdrop) {
+        bulkConfirmBackdrop.addEventListener('click', function (event) {
+        if (event.target === bulkConfirmBackdrop) closeBulkConfirm();
+        });
+        }
+
+        if (historyClose) historyClose.addEventListener('click', function () { closeBackdrop(historyBackdrop); });
+        if (trashClose) trashClose.addEventListener('click', function () { closeBackdrop(trashBackdrop); });
+        if (historyBackdrop) historyBackdrop.addEventListener('click', function (event) { if (event.target === historyBackdrop) closeBackdrop(historyBackdrop); });
+        if (trashBackdrop) trashBackdrop.addEventListener('click', function (event) { if (event.target === trashBackdrop) closeBackdrop(trashBackdrop); });
+        if (restoreAllButton) restoreAllButton.addEventListener('click', restoreAll);
+
+        updateSelectionState();
+
+        document.addEventListener('click', function (event) {
+        const restoreButton = event.target.closest('.restore-one-transaction-btn');
+        if (!restoreButton) return;
+        event.preventDefault();
+        restoreOne(restoreButton.getAttribute('data-transaction-id'));
+        });
+        })();
+    </script>
+
+    <script id="employee-transaction-delete-popup-script">
+        (function () {
+        const backdrop = document.getElementById('transactionDeleteConfirmBackdrop');
+        const cancelBtn = document.getElementById('transactionDeleteCancel');
+        const confirmBtn = document.getElementById('transactionDeleteConfirm');
+        const toast = document.getElementById('transactionActionToast');
+        let pendingDeleteId = '';
+        let pendingDeleteUrl = '';
+        let isDeleting = false;
+
+        function getToken() {
+        const input = document.querySelector('#employeeTransactionPopupAntiForgery input[name="__RequestVerificationToken"]');
+        return input ? input.value : '';
+        }
+
+        function showToast(message, isError) {
+        const cleanMessage = message || (isError ? 'حدث خطأ' : 'تم الحذف');
+        if (window.employeeTransactionsShowMessage) {
+        window.employeeTransactionsShowMessage(cleanMessage, isError === true, isError ? 'تنبيه' : cleanMessage);
+        return;
+        }
+        console.warn(cleanMessage);
+        }
+
+        function openDeletePopup(id, url) {
+        pendingDeleteId = id || '';
+        pendingDeleteUrl = url || '';
+        if (backdrop) backdrop.classList.add('is-visible');
+        }
+
+        function closeDeletePopup() {
+        if (isDeleting) return;
+        pendingDeleteId = '';
+        pendingDeleteUrl = '';
+        if (backdrop) backdrop.classList.remove('is-visible');
+        }
+
+        async function confirmDelete() {
+        if (!pendingDeleteId || isDeleting) return;
+        isDeleting = true;
+        if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'جاري الحذف...';
+        }
+
+        try {
+        const formData = new FormData();
+        formData.append('__RequestVerificationToken', getToken());
+
+        const response = await fetch(pendingDeleteUrl || ('/EmployeeTransactions/Delete/' + encodeURIComponent(pendingDeleteId)), {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin',
+        headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
+        }
+        });
+
+        const text = await response.text();
+        let result = null;
+        try { result = text ? JSON.parse(text) : null; } catch { result = null; }
+
+        if (!response.ok || !result || result.success === false) {
+        showToast(result && result.message ? result.message : 'تعذر حذف الحركة', true);
+        return;
+        }
+
+        if (backdrop) backdrop.classList.remove('is-visible');
+        pendingDeleteId = '';
+        pendingDeleteUrl = '';
+        showToast(result.message || 'تم الحذف');
+        if (window.employeeTransactionsRefreshTable) window.employeeTransactionsRefreshTable(null, false);
+        } catch {
+        showToast('حدث خطأ أثناء الحذف', true);
+        } finally {
+        isDeleting = false;
+        if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'تأكيد';
+        }
+        }
+        }
+
+        document.addEventListener('click', function (event) {
+        const deleteButton = event.target.closest('.transaction-delete-popup-btn');
+        if (!deleteButton) return;
+        event.preventDefault();
+        openDeletePopup(deleteButton.getAttribute('data-transaction-id'), deleteButton.getAttribute('data-delete-action'));
+        });
+
+        if (cancelBtn) cancelBtn.addEventListener('click', closeDeletePopup);
+        if (confirmBtn) confirmBtn.addEventListener('click', confirmDelete);
+        if (backdrop) {
+        backdrop.addEventListener('click', function (event) {
+        if (event.target === backdrop) closeDeletePopup();
+        });
+        }
+        })();
+    </script>
+
+    <script id="employee-transaction-popup-edit-script">
+        (function () {
+        const editBackdrop = document.getElementById('transactionEditBackdrop');
+        const editClose = document.getElementById('transactionEditClose');
+        const cancelBtn = document.getElementById('transactionEditCancel');
+        const saveBtn = document.getElementById('transactionEditSave');
+        const successBackdrop = document.getElementById('transactionEditSuccessBackdrop');
+        const successOk = document.getElementById('transactionEditSuccessOk');
+        const historyToggle = document.getElementById('transactionEditHistoryToggle');
+        const historyBlock = document.getElementById('transactionEditHistoryBlock');
+        const historyList = document.getElementById('transactionEditHistoryList');
+        const historyCount = document.getElementById('transactionEditHistoryCount');
+        const errorBox = document.getElementById('transactionEditError');
+
+        const idInput = document.getElementById('transactionEditId');
+        const employeeNameInput = document.getElementById('transactionEditEmployeeName');
+        const deductionInput = document.getElementById('transactionEditDeductionAmount');
+        const advanceInput = document.getElementById('transactionEditAdvanceAmount');
+        const bonusInput = document.getElementById('transactionEditBonusAmount');
+        const dateInput = document.getElementById('transactionEditDate');
+        const reasonInput = document.getElementById('transactionEditReason');
+        const shiftStartDisplay = document.getElementById('transactionEditShiftStart');
+        const shiftEndDisplay = document.getElementById('transactionEditShiftEnd');
+
+        let shouldReloadAfterSuccess = false;
+        let lastAmountEditedType = '';
+
+        function parsePopupAmount(value) {
+        const text = (value || '').toString().replace(',', '.').trim();
+        const number = parseFloat(text);
+        return isNaN(number) || number < 0 ? 0 : number;
+        }
+
+        function markLastAmountEdited(type) {
+        lastAmountEditedType = type || '';
+        }
+
+        function getPopupAmountsForSave() {
+        let deductionAmount = parsePopupAmount(deductionInput ? deductionInput.value : '0');
+        let advanceAmount = parsePopupAmount(advanceInput ? advanceInput.value : '0');
+        let bonusAmount = parsePopupAmount(bonusInput ? bonusInput.value : '0');
+
+        // مهم: لا نمسح القيم من الشاشة أثناء الكتابة.
+        // لو المستخدم كتب في خانة جديدة، نرسل الخانة الأخيرة فقط للسيرفر حتى تتغير نوع الحركة بدون ما تصفر الخانات قدامه.
+        if (lastAmountEditedType === 'deduction') {
+        advanceAmount = 0;
+        bonusAmount = 0;
+        } else if (lastAmountEditedType === 'advance') {
+        deductionAmount = 0;
+        bonusAmount = 0;
+        } else if (lastAmountEditedType === 'bonus') {
+        deductionAmount = 0;
+        advanceAmount = 0;
+        }
+
+        return { deductionAmount, advanceAmount, bonusAmount };
+        }
+
+        function getToken() {
+        const input = document.querySelector('#employeeTransactionPopupAntiForgery input[name="__RequestVerificationToken"]');
+        return input ? input.value : '';
+        }
+
+        function showEditError(message) {
+        if (errorBox) {
+        errorBox.textContent = '';
+        errorBox.style.display = 'none';
+        }
+
+        if (message && window.employeeTransactionsShowMessage) {
+        window.employeeTransactionsShowMessage(message, true, 'تنبيه');
+        }
+        }
+
+        function closeEditPopup() {
+        if (editBackdrop) editBackdrop.classList.remove('is-visible');
+        showEditError('');
+        }
+
+        function openEditPopup() {
+        if (editBackdrop) editBackdrop.classList.add('is-visible');
+        }
+
+        function setLoading(isLoading) {
+        if (!saveBtn) return;
+        saveBtn.disabled = isLoading;
+        saveBtn.innerText = isLoading ? 'جاري الحفظ...' : 'موافقة';
+        }
+
+        [
+        { input: deductionInput, type: 'deduction' },
+        { input: advanceInput, type: 'advance' },
+        { input: bonusInput, type: 'bonus' }
+        ].forEach(function (item) {
+        if (!item.input) return;
+        item.input.addEventListener('input', function () {
+        markLastAmountEdited(item.type);
+        });
+        });
+
+        function fillEditPopup(data) {
+        idInput.value = data.id || '';
+        employeeNameInput.value = data.employeeName || '';
+        deductionInput.value = data.deductionAmount || '0.00';
+        advanceInput.value = data.advanceAmount || '0.00';
+        bonusInput.value = data.bonusAmount || '0.00';
+        dateInput.value = data.transactionDateOnly || '';
+        reasonInput.value = data.reason || '';
+        shiftStartDisplay.textContent = data.shiftStartTimeText || '-';
+        shiftEndDisplay.textContent = data.shiftEndTimeText || '-';
+        lastAmountEditedType = '';
+
+        if (historyList) {
+        historyList.innerHTML =
+        '<div>نوع العملية: ' + (data.transactionTypeText || '-') + '</div>' +
+        '<div>المبلغ الحالي: ' + (data.amountText || '-') + '</div>' +
+        '<div>تاريخ الحركة الحالي: ' + (data.transactionDate || '-') + '</div>';
+        }
+        if (historyCount) historyCount.textContent = '1';
+        if (historyBlock) historyBlock.classList.remove('is-visible');
+        if (historyToggle) historyToggle.classList.remove('is-active');
+        }
+
+        document.addEventListener('click', async function (event) {
+        const editButton = event.target.closest('.transaction-edit-popup-btn');
+        if (!editButton) return;
+
+        event.preventDefault();
+        const transactionId = editButton.getAttribute('data-transaction-id');
+        if (!transactionId) {
+        showEditError('لم يتم العثور على رقم الحركة');
+        return;
+        }
+
+        try {
+        const response = await fetch('/EmployeeTransactions/GetTransactionForEdit?id=' + encodeURIComponent(transactionId), {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        cache: 'no-store',
+        credentials: 'same-origin'
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result || !result.success) {
+        if (window.employeeTransactionsShowMessage) window.employeeTransactionsShowMessage(result && result.message ? result.message : 'تعذر تحميل بيانات الحركة', true, 'تنبيه');
+        return;
+        }
+
+        fillEditPopup(result.data);
+        openEditPopup();
+        } catch (error) {
+        if (window.employeeTransactionsShowMessage) window.employeeTransactionsShowMessage('حدث خطأ أثناء فتح التعديل', true, 'تنبيه');
+        }
+        });
+
+        if (saveBtn) {
+        saveBtn.addEventListener('click', async function () {
+        showEditError('');
+
+        const popupAmounts = getPopupAmountsForSave();
+        const payload = {
+        id: parseInt(idInput.value || '0', 10),
+        deductionAmount: popupAmounts.deductionAmount,
+        advanceAmount: popupAmounts.advanceAmount,
+        bonusAmount: popupAmounts.bonusAmount,
+        reason: reasonInput.value || '',
+        transactionDate: dateInput.value || ''
+        };
+
+        if (!payload.id) {
+        showEditError('لم يتم العثور على رقم الحركة');
+        return;
+        }
+
+        const positiveAmounts = [payload.deductionAmount, payload.advanceAmount, payload.bonusAmount]
+        .filter(function (value) { return value && value > 0; }).length;
+
+        if (positiveAmounts === 0) {
+        showEditError('يجب إدخال مبلغ في الخصم أو السلفة أو المكافأة');
+        return;
+        }
+
+        if (positiveAmounts > 1) {
+        showEditError('اختار نوع واحد فقط: خصم أو سلفة أو مكافأة');
+        return;
+        }
+
+        if (!payload.transactionDate) {
+        showEditError('يجب اختيار تاريخ الحركة');
+        return;
+        }
+
+        setLoading(true);
+
+        try {
+        const response = await fetch('/EmployeeTransactions/UpdateTransactionFromPopup', {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        'RequestVerificationToken': getToken()
+        },
+        body: JSON.stringify(payload),
+        credentials: 'same-origin'
+        });
+
+        const responseText = await response.text();
+        let result = null;
+        try { result = responseText ? JSON.parse(responseText) : null; } catch { result = null; }
+
+        if (response.ok && result && result.success) {
+        closeEditPopup();
+        shouldReloadAfterSuccess = false;
+        if (window.employeeTransactionsRefreshTable) window.employeeTransactionsRefreshTable(null, false);
+        if (successBackdrop) successBackdrop.classList.add('is-visible');
+        return;
+        }
+
+        showEditError(result && result.message ? result.message : 'تعذر حفظ التعديل');
+        } catch (error) {
+        showEditError('حدث خطأ أثناء حفظ التعديل');
+        } finally {
+        setLoading(false);
+        }
+        });
+        }
+
+        if (editClose) editClose.addEventListener('click', closeEditPopup);
+        if (cancelBtn) cancelBtn.addEventListener('click', closeEditPopup);
+        if (editBackdrop) {
+        editBackdrop.addEventListener('click', function (event) {
+        if (event.target === editBackdrop) closeEditPopup();
+        });
+        }
+
+        if (historyToggle) {
+        historyToggle.addEventListener('click', function () {
+        if (!historyBlock) return;
+        const isVisible = historyBlock.classList.toggle('is-visible');
+        historyToggle.classList.toggle('is-active', isVisible);
+        });
+        }
+
+        if (successOk) {
+        successOk.addEventListener('click', function () {
+        if (successBackdrop) successBackdrop.classList.remove('is-visible');
+        if (shouldReloadAfterSuccess && window.employeeTransactionsRefreshTable) {
+        window.employeeTransactionsRefreshTable(null, false);
+        }
+        });
+        }
+        })();
+    </script>
+
+</div>
+
+
+
+
+<style id="employee-default-header-links-color-18a088-all-states-final">
+    /* FIX15: كل لينكات الهيدر الافتراضي باللون #18a088 دائمًا */
+    .employee-default-header-links,
+    .employee-default-header-links *,
+    .employee-default-header-left-links,
+    .employee-default-header-left-links *,
+    .employee-default-header-right-links,
+    .employee-default-header-right-links *,
+    .employee-default-header-link,
+    .employee-default-header-link:link,
+    .employee-default-header-link:visited,
+    .employee-default-header-link:hover,
+    .employee-default-header-link:active,
+    .employee-default-header-link:focus,
+    .employee-default-header-links a,
+    .employee-default-header-links a:link,
+    .employee-default-header-links a:visited,
+    .employee-default-header-links a:hover,
+    .employee-default-header-links a:active,
+    .employee-default-header-links a:focus,
+    .employee-default-header-left-links a,
+    .employee-default-header-left-links a:link,
+    .employee-default-header-left-links a:visited,
+    .employee-default-header-left-links a:hover,
+    .employee-default-header-left-links a:active,
+    .employee-default-header-left-links a:focus,
+    .employee-default-header-right-links a,
+    .employee-default-header-right-links a:link,
+    .employee-default-header-right-links a:visited,
+    .employee-default-header-right-links a:hover,
+    .employee-default-header-right-links a:active,
+    .employee-default-header-right-links a:focus {
+    color: #18a088 !important;
+    text-decoration: none !important;
+    -webkit-text-fill-color: #18a088 !important;
+    text-decoration-color: #18a088 !important;
+    -webkit-text-decoration-color: #18a088 !important;
+    }
+</style>
+
+
+
+<style id="employee-transactions-filter-labels-hide-final">
+    /* FIX15: إخفاء الليبل فوق الفلاتر والاكتفاء بالنص داخل الحقول */
+    .employee-transactions-filter-card .form-label {
+    display: none !important;
+    }
+
+    .employee-transactions-filter-card .row.g-3 {
+    align-items: center !important;
+    }
+</style>
+
+
+
+<style id="employee-transactions-delete-all-buttons-final">
+    .employee-transactions-header-btn.delete-all {
+    background: #dc2626 !important;
+    }
+
+    .delete-all-deleted-transactions-btn {
+    border: 0;
+    border-radius: 999px;
+    min-height: 34px;
+    padding: 6px 15px;
+    background: #dc2626;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+    margin-inline-start: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    }
+
+    .transactions-trash-actions {
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+    }
+</style>
+
+
+
+<style id="employee-transactions-select-circles-final">
+    .employee-transactions-header-btn.delete-selected {
+    background: #dc2626 !important;
+    opacity: .55;
+    pointer-events: none;
+    }
+
+    .employee-transactions-header-btn.delete-selected.is-active {
+    opacity: 1;
+    pointer-events: auto;
+    }
+
+    .transaction-select-header-cell,
+    .transaction-select-cell {
+    width: 46px;
+    min-width: 46px;
+    text-align: center !important;
+    }
+
+    .transaction-select-circle,
+    .transaction-select-all-circle {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 23px;
+    height: 23px;
+    min-width: 23px;
+    border-radius: 50%;
+    border: 2px solid #94a3b8;
+    background: #ffffff;
+    display: inline-block;
+    cursor: pointer;
+    position: relative;
+    vertical-align: middle;
+    transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+    }
+
+    .transaction-select-circle:hover,
+    .transaction-select-all-circle:hover {
+    border-color: #18a088;
+    box-shadow: 0 0 0 4px rgba(24,160,136,.10);
+    }
+
+    .transaction-select-circle:checked,
+    .transaction-select-all-circle:checked {
+    border-color: #18a088;
+    background: #18a088;
+    }
+
+    .transaction-select-circle:checked::after,
+    .transaction-select-all-circle:checked::after {
+    content: "";
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #ffffff;
+    top: 6px;
+    left: 6px;
+    }
+
+    .employee-transactions-table tbody tr.is-selected {
+    background: rgba(24, 160, 136, 0.08) !important;
+    }
+</style>
+
+
+
+<style id="employee-transactions-fix18-final-overrides">
+    /* FIX18: إزالة زر تطبيق الفلتر */
+    .employee-transactions-filter-card .filter-btn {
+    display: none !important;
+    }
+
+    /* FIX18: دوائر السيلكت تبقى دائرية 100% بدون أي بيضاوية */
+    .transaction-select-header-cell,
+    .transaction-select-cell {
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    text-align: center !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    }
+
+    .transaction-select-circle,
+    .transaction-select-all-circle {
+    box-sizing: border-box !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    width: 17px !important;
+    height: 17px !important;
+    min-width: 17px !important;
+    max-width: 17px !important;
+    min-height: 17px !important;
+    max-height: 17px !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+    border-radius: 50% !important;
+    border: 2px solid #7c8794 !important;
+    background: #ffffff !important;
+    outline: none !important;
+    cursor: pointer !important;
+    position: relative !important;
+    line-height: 17px !important;
+    transform: none !important;
+    }
+
+    .transaction-select-circle:checked,
+    .transaction-select-all-circle:checked {
+    border-color: #18a088 !important;
+    background: #18a088 !important;
+    }
+
+    .transaction-select-circle:checked::after,
+    .transaction-select-all-circle:checked::after {
+    content: "" !important;
+    position: absolute !important;
+    width: 5px !important;
+    height: 5px !important;
+    border-radius: 50% !important;
+    background: #ffffff !important;
+    top: 4px !important;
+    left: 4px !important;
+    }
+</style>
+
+
+
+<style id="employee-transactions-center-white-popup-style">
+    /* FIX20: كل الإشعارات والأسئلة تظهر كبوب أب أبيض في نص الشاشة */
+    .employee-center-popup-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2147483100;
+    padding: 16px;
+    direction: rtl;
+    }
+
+    .employee-center-popup-backdrop.is-visible {
+    display: flex;
+    }
+
+    .employee-center-popup-card {
+    width: min(420px, 94vw);
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 22px 55px rgba(15, 23, 42, 0.28);
+    padding: 24px 20px 18px;
+    text-align: center;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    animation: employeeCenterPopupIn .16s ease-out;
+    }
+
+    @@keyframes employeeCenterPopupIn {
+    from {
+    opacity: 0;
+    transform: translateY(8px) scale(.97);
+    }
+
+    to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    }
+    }
+
+    .employee-center-popup-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 999px;
+    background: #18a088;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 31px;
+    font-weight: 900;
+    margin-bottom: 12px;
+    }
+
+    .employee-center-popup-icon.error,
+    .employee-center-popup-icon.question {
+    background: #dc2626;
+    }
+
+    .employee-center-popup-title {
+    color: #111827;
+    font-size: 19px;
+    font-weight: 900;
+    margin-bottom: 8px;
+    line-height: 1.6;
+    }
+
+    .employee-center-popup-message {
+    color: #475569;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.8;
+    margin-bottom: 16px;
+    white-space: pre-wrap;
+    }
+
+    .employee-center-popup-actions {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    }
+
+    .employee-center-popup-btn {
+    border: 0;
+    border-radius: 999px;
+    min-width: 110px;
+    min-height: 38px;
+    padding: 8px 18px;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+    }
+
+    .employee-center-popup-ok {
+    background: #18a088;
+    }
+
+    .employee-center-popup-confirm {
+    background: #dc2626;
+    }
+
+    .employee-center-popup-cancel {
+    background: #64748b;
+    }
+
+    /* إيقاف شكل التوست القديم نهائيًا */
+    .transaction-action-toast {
+    display: none !important;
+    }
+</style>
+

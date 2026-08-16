@@ -1,0 +1,515 @@
+@model lotus_blue.Models.ViewModel.HomeBonusPanelViewModel
+@using lotus_blue.Services.Bonus
+@inject lotus_blue.Services.CurrencyExchangeService Fx
+
+@functions {
+    string Fmt(decimal v) => v.ToString("N2", System.Globalization.CultureInfo.InvariantCulture);
+    string UsdFmt(decimal usd) => "$" + Fmt(usd) + " USD";
+}
+@{
+    string AltFmt(decimal usd) => Fmt(Fx.ConvertFromUSD(usd, Model.AltCurrencyCountry)) + " " + Model.AltCurrencyCode;
+
+    string IdsAttr(System.Collections.Generic.IEnumerable<int> ids)
+        => ids == null ? null : string.Join(",", ids);
+
+    // Unions two ID lists for navigation only. Used on failure/incomplete cards to include
+    // delegated orders without inflating the displayed count.
+    string NavIdsAttr(System.Collections.Generic.IEnumerable<int> primary, System.Collections.Generic.IEnumerable<int> extra)
+    {
+        var union = (primary ?? System.Linq.Enumerable.Empty<int>())
+            .Union(extra ?? System.Linq.Enumerable.Empty<int>())
+            .ToList();
+        return union.Count == 0 ? null : string.Join(",", union);
+    }
+}
+
+<style>
+    .bonus-floating-panel {
+        width: 100%;
+        background: transparent;
+            position: relative;
+            font-size: 13px;
+            margin-bottom: 12px;
+            padding: 0 8px;
+            box-sizing: border-box;
+        }
+
+        .bfp-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 0 4px;
+        }
+
+        .bfp-header-title {
+            font-weight: bold;
+            color: #1a1a1a;
+        }
+
+        .bfp-freeze-tag {
+            background: #ffc107;
+            color: #222;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+
+        .bfp-live-tag {
+            background: #2ab149;
+            color: #fff;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+
+        .bfp-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 7.2px;
+        }
+
+        .bfp-row {
+            display: flex;
+            flex-direction: row;
+            gap: 7.2px;
+            width: 100%;
+        }
+
+        .bfp-card {
+            background: #ffffff;
+            border-radius: 9.6px;
+            flex: 1 1 0;
+            min-width: 0;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            position: relative;
+        }
+
+        .bfp-currency-icon, .bfp-toggle-icon {
+            position: absolute;
+            top: 7.2px;
+            width: 16.2px;
+            height: 16.2px;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .bfp-currency-icon {
+            left: 7.2px;
+        }
+
+        .bfp-toggle-icon {
+            left: calc(7.2px + 7.2px + 16.2px);
+        }
+
+            .bfp-currency-icon img, .bfp-toggle-icon img {
+                width: 100%;
+                height: 100%;
+            }
+
+        .bfp-card.bfp-hidden .bfp-card-amount {
+            font-size: 0;
+        }
+
+            .bfp-card.bfp-hidden .bfp-card-amount::before {
+                content: '* * * * * * * *';
+                font-size: 11.7px;
+                letter-spacing: 1.8px;
+            }
+
+        .bfp-card-top {
+            padding: 5.4px 7.2px 9px;
+        }
+
+        .bfp-card-title {
+            font-size: 9.9px;
+            font-weight: 700;
+            margin-bottom: 7.2px;
+        }
+
+        .bfp-card-subtitle {
+            color: #aaaaaa;
+            font-size: 5.85px;
+            margin-bottom: 2.7px;
+        }
+
+        .bfp-card-amount-row {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 3.6px;
+            direction: ltr;
+        }
+
+        .bfp-card-amount {
+            color: #1a1a1a;
+            font-size: 11.7px;
+            font-weight: 700;
+        }
+
+        .bfp-card-divider {
+            border: none;
+            border-top: 1px solid #b1b1b1;
+            margin: 0;
+        }
+
+        .bfp-card-bottom {
+            padding: 8.1px 7.2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 3.6px;
+            background: #fafafa;
+        }
+
+        .bfp-card-bottom-group {
+            display: flex;
+            align-items: center;
+            gap: 3.6px;
+        }
+
+        .bfp-card-label {
+            color: #888888;
+            font-size: 5.85px;
+        }
+
+        .bfp-card-gain {
+            font-size: 7.65px;
+            font-weight: 700;
+            direction: ltr;
+        }
+
+        .bfp-card-count-only .bfp-card-top {
+            padding: 9px 7.2px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bfp-c-success {
+            border: 1px solid #2ab149;
+        }
+
+            .bfp-c-success .bfp-card-title, .bfp-c-success .bfp-card-gain {
+                color: #2ab149;
+            }
+
+        .bfp-c-failure {
+            border: 1px solid #FF0000;
+        }
+
+            .bfp-c-failure .bfp-card-title, .bfp-c-failure .bfp-card-gain {
+                color: #FF0000;
+            }
+
+        .bfp-c-processed {
+            border: 1px solid #45bbea;
+        }
+
+            .bfp-c-processed .bfp-card-title, .bfp-c-processed .bfp-card-gain {
+                color: #45bbea;
+            }
+
+        .bfp-c-incomplete {
+            border: 1px solid #FF0000;
+        }
+
+            .bfp-c-incomplete .bfp-card-title, .bfp-c-incomplete .bfp-card-gain {
+                color: #FF0000;
+            }
+
+        .bfp-c-collection {
+            border: 1px solid #007bff;
+        }
+
+            .bfp-c-collection .bfp-card-title, .bfp-c-collection .bfp-card-gain {
+                color: #007bff;
+            }
+
+        .bfp-c-delayed {
+            border: 1px solid #ffc107;
+        }
+
+            .bfp-c-delayed .bfp-card-title, .bfp-c-delayed .bfp-card-gain {
+                color: #b8983a;
+            }
+
+        .bfp-c-pro {
+            border: 1px solid #9b59b6;
+        }
+
+            .bfp-c-pro .bfp-card-title, .bfp-c-pro .bfp-card-gain {
+                color: #9b59b6;
+            }
+    </style>
+
+    @Html.AntiForgeryToken()
+    <div class="bonus-floating-panel" id="bonusFloatingPanel">
+        <div class="bfp-header">
+            @if (Model.Frozen)
+            {
+                <span class="bfp-freeze-tag" title="هناك عمولات غير مدفوعة من الفترة السابقة">مجمدة</span>
+            }
+        </div>
+
+        <div class="bfp-stack">
+            <div class="bfp-row">
+
+                @* 1. تم التسليم — bonus + profit *@
+                <div class="bfp-card bfp-c-success @(Model.AmountsRevealed ? "" : "bfp-hidden")"
+                     data-alt="@AltFmt(Model.SuccessAmountUsd)" data-usd="@UsdFmt(Model.SuccessAmountUsd)"
+                     data-order-ids="@IdsAttr(Model.SuccessOrderIds)">
+                    <div class="bfp-currency-icon"><img src="/static/bonus-currency-icon.png" alt="currency"></div>
+                    <div class="bfp-toggle-icon"><img src="@(Model.AmountsRevealed ? "/static/bonus-eye-on.svg" : "/static/bonus-eye-off.svg")" alt="toggle" class="bfp-toggleBtn"></div>
+                    <div class="bfp-card-top">
+                        <div class="bfp-card-title">الطلبات الناجحة</div>
+                        <div class="bfp-card-subtitle">@Model.AltCurrencySubtitle</div>
+                        <div class="bfp-card-amount-row">
+                            <span class="bfp-card-amount">@AltFmt(Model.SuccessAmountUsd)</span>
+                        </div>
+                    </div>
+                    <hr class="bfp-card-divider" />
+                    <div class="bfp-card-bottom">
+                        <div class="bfp-card-bottom-group">
+                            <span class="bfp-card-label">عدد الطلبات</span>
+                            <span class="bfp-card-gain">@Model.SuccessCount</span>
+                        </div>
+                        <div class="bfp-card-bottom-group">
+                            <span class="bfp-card-label">اليوم</span>
+                            <span class="bfp-card-gain">@Model.SuccessTodayCount</span>
+                        </div>
+                        <div class="bfp-card-bottom-group">
+                            <span class="bfp-card-label">إجمالي المبيعات</span>
+                            <span class="bfp-card-gain" data-alt="@AltFmt(Model.SuccessProfitUsd)" data-usd="@UsdFmt(Model.SuccessProfitUsd)">@AltFmt(Model.SuccessProfitUsd)</span>
+                        </div>
+                    </div>
+                </div>
+
+                @* 2. فشل التسليم — net profit + delayed/incomplete counters *@
+                <div class="bfp-card bfp-c-failure @(Model.AmountsRevealed ? "" : "bfp-hidden")"
+                     data-alt="@AltFmt(Model.FailureProfitUsd)" data-usd="@UsdFmt(Model.FailureProfitUsd)"
+                     data-order-ids="@IdsAttr(Model.FailureOrderIds)"
+                     data-nav-order-ids="@NavIdsAttr(Model.FailureOrderIds, Model.DelegatedFailureOrderIds)">
+                    <div class="bfp-currency-icon"><img src="/static/bonus-currency-icon.png" alt="currency"></div>
+                    <div class="bfp-toggle-icon"><img src="@(Model.AmountsRevealed ? "/static/bonus-eye-on.svg" : "/static/bonus-eye-off.svg")" alt="toggle" class="bfp-toggleBtn"></div>
+                    <div class="bfp-card-top">
+                        <div class="bfp-card-title">فشل التسليم</div>
+                        <div class="bfp-card-subtitle">@Model.AltCurrencySubtitle</div>
+                        <div class="bfp-card-amount-row">
+                            <span class="bfp-card-amount">@AltFmt(Model.FailureProfitUsd)</span>
+                        </div>
+                    </div>
+                    <hr class="bfp-card-divider" />
+                    <div class="bfp-card-bottom">
+                        <div class="bfp-card-bottom-group">
+                            <span class="bfp-card-label">عدد الطلبات</span>
+                            <span class="bfp-card-gain">@Model.FailureCount</span>
+                        </div>
+                        <div class="bfp-card-bottom-group">
+                            <span class="bfp-card-label">اليوم</span>
+                            <span class="bfp-card-gain">@Model.FailureTodayCount</span>
+                        </div>
+                    </div>
+                </div>
+
+                @* 3. الطلبات التي عالجتها — bonus + profit *@
+                <div class="bfp-card bfp-c-processed @(Model.AmountsRevealed ? "" : "bfp-hidden")"
+                     data-alt="@AltFmt(Model.ProcessedForOthersAmountUsd)" data-usd="@UsdFmt(Model.ProcessedForOthersAmountUsd)"
+                     data-order-ids="@IdsAttr(Model.ProcessedForOthersOrderIds)">
+                    <div class="bfp-currency-icon"><img src="/static/bonus-currency-icon.png" alt="currency"></div>
+                    <div class="bfp-toggle-icon"><img src="@(Model.AmountsRevealed ? "/static/bonus-eye-on.svg" : "/static/bonus-eye-off.svg")" alt="toggle" class="bfp-toggleBtn"></div>
+                    <div class="bfp-card-top">
+                        <div class="bfp-card-title">الطلبات التي عالجتها</div>
+                        <div class="bfp-card-subtitle">@Model.AltCurrencySubtitle</div>
+                        <div class="bfp-card-amount-row">
+                            <span class="bfp-card-amount">@AltFmt(Model.ProcessedForOthersAmountUsd)</span>
+                        </div>
+                    </div>
+                    <hr class="bfp-card-divider" />
+                    <div class="bfp-card-bottom">
+                        <div class="bfp-card-bottom-group">
+                            <span class="bfp-card-label">عدد الطلبات</span>
+                            <span class="bfp-card-gain">@Model.ProcessedForOthersCount</span>
+                        </div>
+                        <div class="bfp-card-bottom-group">
+                            <span class="bfp-card-label">اليوم</span>
+                            <span class="bfp-card-gain">@Model.ProcessedForOthersTodayCount</span>
+                        </div>
+                        <div class="bfp-card-bottom-group">
+                            <span class="bfp-card-label">إجمالي المبيعات</span>
+                            <span class="bfp-card-gain" data-alt="@AltFmt(Model.ProcessedForOthersProfitUsd)" data-usd="@UsdFmt(Model.ProcessedForOthersProfitUsd)">@AltFmt(Model.ProcessedForOthersProfitUsd)</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="bfp-row">
+
+                @* 4. الطلبات غير المكتملة — net profit + count *@
+                <div class="bfp-card bfp-c-incomplete @(Model.AmountsRevealed ? "" : "bfp-hidden")"
+                     data-alt="@AltFmt(Model.IncompleteProfitUsd)" data-usd="@UsdFmt(Model.IncompleteProfitUsd)"
+                     data-order-ids="@IdsAttr(Model.IncompleteOrderIds)"
+                     data-nav-order-ids="@NavIdsAttr(Model.IncompleteOrderIds, Model.DelegatedIncompleteOrderIds)">
+                    <div class="bfp-currency-icon"><img src="/static/bonus-currency-icon.png" alt="currency"></div>
+                    <div class="bfp-toggle-icon"><img src="@(Model.AmountsRevealed ? "/static/bonus-eye-on.svg" : "/static/bonus-eye-off.svg")" alt="toggle" class="bfp-toggleBtn"></div>
+                    <div class="bfp-card-top">
+                        <div class="bfp-card-title">الطلبات غير المكتملة</div>
+                        <div class="bfp-card-subtitle">@Model.AltCurrencySubtitle</div>
+                        <div class="bfp-card-amount-row">
+                            <span class="bfp-card-amount">@AltFmt(Model.IncompleteProfitUsd)</span>
+                        </div>
+                    </div>
+                    <hr class="bfp-card-divider" />
+                    <div class="bfp-card-bottom">
+                        <div class="bfp-card-bottom-group">
+                            <span class="bfp-card-label">عدد الطلبات</span>
+                            <span class="bfp-card-gain">@Model.IncompleteCount</span>
+                        </div>
+                        <div class="bfp-card-bottom-group">
+                            <span class="bfp-card-label">اليوم</span>
+                            <span class="bfp-card-gain">@Model.IncompleteTodayCount</span>
+                        </div>
+                    </div>
+                </div>
+
+                @* 5. قيد التحصيل — projected bonus + profit *@
+                <div class="bfp-card bfp-c-collection @(Model.AmountsRevealed ? "" : "bfp-hidden")"
+                     data-alt="@AltFmt(Model.CollectionProjectedBonusUsd)" data-usd="@UsdFmt(Model.CollectionProjectedBonusUsd)"
+                     data-order-ids="@IdsAttr(Model.CollectionOrderIds)">
+                    <div class="bfp-currency-icon"><img src="/static/bonus-currency-icon.png" alt="currency"></div>
+                    <div class="bfp-toggle-icon"><img src="@(Model.AmountsRevealed ? "/static/bonus-eye-on.svg" : "/static/bonus-eye-off.svg")" alt="toggle" class="bfp-toggleBtn"></div>
+                    <div class="bfp-card-top">
+                        <div class="bfp-card-title">قيد التحصيل</div>
+                        <div class="bfp-card-subtitle">@Model.AltCurrencySubtitle</div>
+                        <div class="bfp-card-amount-row">
+                            <span class="bfp-card-amount">@AltFmt(Model.CollectionProjectedBonusUsd)</span>
+                        </div>
+                    </div>
+                    <hr class="bfp-card-divider" />
+                    <div class="bfp-card-bottom">
+                        <div class="bfp-card-bottom-group">
+                            <span class="bfp-card-label">عدد الطلبات</span>
+                            <span class="bfp-card-gain">@Model.CollectionCount</span>
+                        </div>
+                        <div class="bfp-card-bottom-group">
+                            <span class="bfp-card-label">اليوم</span>
+                            <span class="bfp-card-gain">@Model.CollectionTodayCount</span>
+                        </div>
+                        <div class="bfp-card-bottom-group">
+                            <span class="bfp-card-label">إجمالي المبيعات</span>
+                            <span class="bfp-card-gain" data-alt="@AltFmt(Model.CollectionProfitUsd)" data-usd="@UsdFmt(Model.CollectionProfitUsd)">@AltFmt(Model.CollectionProfitUsd)</span>
+                        </div>
+                    </div>
+                </div>
+
+                @* 6. الطلبات المؤجلة — net profit + count *@
+                <div class="bfp-card bfp-c-delayed @(Model.AmountsRevealed ? "" : "bfp-hidden")"
+                     data-alt="@AltFmt(Model.DelayedProfitUsd)" data-usd="@UsdFmt(Model.DelayedProfitUsd)"
+                     data-order-ids="@IdsAttr(Model.DelayedOrderIds)">
+                    <div class="bfp-currency-icon"><img src="/static/bonus-currency-icon.png" alt="currency"></div>
+                    <div class="bfp-toggle-icon"><img src="@(Model.AmountsRevealed ? "/static/bonus-eye-on.svg" : "/static/bonus-eye-off.svg")" alt="toggle" class="bfp-toggleBtn"></div>
+                    <div class="bfp-card-top">
+                        <div class="bfp-card-title">الطلبات المؤجلة</div>
+                        <div class="bfp-card-subtitle">@Model.AltCurrencySubtitle</div>
+                        <div class="bfp-card-amount-row">
+                            <span class="bfp-card-amount">@AltFmt(Model.DelayedProfitUsd)</span>
+                        </div>
+                    </div>
+                    <hr class="bfp-card-divider" />
+                    <div class="bfp-card-bottom">
+                        <div class="bfp-card-bottom-group">
+                            <span class="bfp-card-label">عدد الطلبات</span>
+                            <span class="bfp-card-gain">@Model.DelayedCount</span>
+                        </div>
+                        <div class="bfp-card-bottom-group">
+                            <span class="bfp-card-label">اليوم</span>
+                            <span class="bfp-card-gain">@Model.DelayedTodayCount</span>
+                        </div>
+                    </div>
+                </div>
+
+                @* 7. المبلغ المتبقي من النسبة المئوية — only when configured *@
+                @if (Model.HasProConfigured)
+                {
+                    <div class="bfp-card bfp-c-pro @(Model.AmountsRevealed ? "" : "bfp-hidden")"
+                         data-alt="@AltFmt(Model.ProRemainingUsd)" data-usd="@UsdFmt(Model.ProRemainingUsd)">
+                        <div class="bfp-currency-icon"><img src="/static/bonus-currency-icon.png" alt="currency"></div>
+                        <div class="bfp-toggle-icon"><img src="@(Model.AmountsRevealed ? "/static/bonus-eye-on.svg" : "/static/bonus-eye-off.svg")" alt="toggle" class="bfp-toggleBtn"></div>
+                        <div class="bfp-card-top">
+                            <div class="bfp-card-title">المبلغ المتبقي من النسبة المئوية</div>
+                            <div class="bfp-card-subtitle">@Model.AltCurrencySubtitle</div>
+                            <div class="bfp-card-amount-row">
+                                <span class="bfp-card-amount">@AltFmt(Model.ProRemainingUsd)</span>
+                            </div>
+                        </div>
+                        <hr class="bfp-card-divider" />
+                        <div class="bfp-card-bottom">
+                            <div class="bfp-card-bottom-group">
+                                <span class="bfp-card-label">الحالي</span>
+                                <span class="bfp-card-gain" data-alt="@AltFmt(Model.ProCurrentProfitUsd)" data-usd="@UsdFmt(Model.ProCurrentProfitUsd)">@AltFmt(Model.ProCurrentProfitUsd)</span>
+                            </div>
+                            <div class="bfp-card-bottom-group">
+                                <span class="bfp-card-label">الحد</span>
+                                <span class="bfp-card-gain" data-alt="@AltFmt(Model.ProThresholdUsd)" data-usd="@UsdFmt(Model.ProThresholdUsd)">@AltFmt(Model.ProThresholdUsd)</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var panel = document.getElementById('bonusFloatingPanel');
+            if (!panel) return;
+            var eyeOff = '/static/bonus-eye-off.svg';
+            var eyeOn  = '/static/bonus-eye-on.svg';
+
+            var cards = panel.querySelectorAll('.bfp-card');
+            var toggleBtns = panel.querySelectorAll('.bfp-toggleBtn');
+            var currencyIcons = panel.querySelectorAll('.bfp-currency-icon');
+            var globalHidden = @(Model.AmountsRevealed ? "false" : "true");
+            var globalCurrency = 'ALT';
+            var altSubtitle = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AltCurrencySubtitle));
+
+            toggleBtns.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    globalHidden = !globalHidden;
+                    cards.forEach(function (c) {
+                        if (c.hasAttribute('data-alt')) c.classList.toggle('bfp-hidden', globalHidden);
+                    });
+                    toggleBtns.forEach(function (b) { b.src = globalHidden ? eyeOff : eyeOn; });
+
+                    var token = document.querySelector('input[name="__RequestVerificationToken"]');
+                    var body = new FormData();
+                    body.append('revealed', globalHidden ? 'false' : 'true');
+                    if (token) body.append('__RequestVerificationToken', token.value);
+                    fetch('/Home/ToggleBonusAmountsReveal', { method: 'POST', body: body, credentials: 'same-origin' });
+                });
+            });
+
+            currencyIcons.forEach(function (icon) {
+                icon.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    globalCurrency = globalCurrency === 'ALT' ? 'USD' : 'ALT';
+                    cards.forEach(function (c) {
+                        if (!c.hasAttribute('data-alt')) return;
+                        var amt = c.querySelector('.bfp-card-amount');
+                        var sub = c.querySelector('.bfp-card-subtitle');
+                        if (amt) amt.textContent = c.getAttribute(globalCurrency === 'ALT' ? 'data-alt' : 'data-usd');
+                        if (sub) sub.textContent = globalCurrency === 'ALT'
+                            ? altSubtitle
+                            : '(ما يقابله بالدولار الأمريكي)';
+                        c.querySelectorAll('.bfp-card-gain[data-alt][data-usd]').forEach(function (g) {
+                            g.textContent = g.getAttribute(globalCurrency === 'ALT' ? 'data-alt' : 'data-usd');
+                        });
+                    });
+                });
+            });
+
+        })();
+    </script>

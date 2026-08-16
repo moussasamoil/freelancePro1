@@ -1,0 +1,4697 @@
+@model lotus_blue.Models.ViewModel.SidebarViewModel
+@{
+    /*
+        IsAdminSwitchSession = true معناها إن الحساب الحالي مفتوح من خلال الأدمن.
+        مهم: بعد التنقل من موظف لموظف، بعض الصفحات قد لا تقرأ Roles/Claims بنفس اللحظة،
+        لذلك لا نعتمد على Role Admin فقط. نعتبر الجلسة Admin Switch إذا وجد أي Claim من Claims السويتش
+        أو وجد أي Cookie من Cookies السيرفر الخاصة بالـ Admin Switch.
+        في الحالة دي: يظهر زر السويتش، والخروج لا يطلب صورة خروج، لكنه يعمل Logout كامل إلى صفحة Login.
+    */
+    var originalAdminUserId = User.FindFirst("OriginalAdminUserId")?.Value ?? "";
+    var originalAdminEmail = User.FindFirst("OriginalAdminEmail")?.Value ?? "";
+    var originalAdminName = User.FindFirst("OriginalAdminName")?.Value ?? "Admin";
+
+    var hasAdminSwitchCookie =
+        Context.Request.Cookies.ContainsKey("LuxiraAdminSwitchLogin") ||
+        Context.Request.Cookies.ContainsKey("LuxiraOriginalAdminUserId") ||
+        Context.Request.Cookies.ContainsKey("LuxiraOriginalAdminEmail") ||
+        Context.Request.Cookies.ContainsKey("LuxiraOriginalAdminName");
+
+    var isAdminSwitchSession =
+        User.HasClaim("IsAdminSwitchSession", "true") ||
+        User.HasClaim("IsSwitchedAccount", "true") ||
+        !string.IsNullOrWhiteSpace(originalAdminUserId) ||
+        hasAdminSwitchCookie;
+
+    var canUseAccountSwitch = User.IsInRole("Admin") || isAdminSwitchSession;
+
+    var skipSecureLogoutFaceCapture =
+        isAdminSwitchSession ||
+        User.IsInRole("Admin") ||
+        User.IsInRole("DeliveryCompany") ||
+        User.IsInRole("OrderPreparer");
+}
+<form id="luxiraAccountSwitchAntiForgeryForm" method="post" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
+
+<style amp-boilerplate>
+    body {
+        -webkit-animation: -amp-start 8s steps(1, end) 0s 1 normal both;
+        -moz-animation: -amp-start 8s steps(1, end) 0s 1 normal both -ms-animation: -amp-start 8s steps(1, end) 0s 1 normal both;
+        animation: -amp-start 8s steps(1, end) 0s 1 normal both
+    }
+    /* sad */
+    @@-webkit-keyframes -amp-start {
+        from {
+            visibility: hidden
+        }
+
+        to {
+            visibility: visible
+        }
+    }
+
+    @@-moz-keyframes -amp-start {
+        from {
+            visibility: hidden
+        }
+
+        to {
+            visibility: visible
+        }
+    }
+
+    @@-ms-keyframes -amp-start {
+        from {
+            visibility: hidden
+        }
+
+        to {
+            visibility: visible
+        }
+    }
+
+    @@-o-keyframes -amp-start {
+        from {
+            visibility: hidden
+        }
+
+        to {
+            visibility: visible
+        }
+    }
+
+    @@keyframes -amp-start {
+        from {
+            visibility: hidden
+        }
+
+        to {
+            visibility: visible
+        }
+    }
+</style>
+<noscript>
+    <style amp-boilerplate>
+            body {
+                -webkit-animation: none;
+                -moz-animation: none;
+                -ms-animation: none;
+                animation: none
+            }
+    </style>
+</noscript>
+
+<style id="luxira-account-switch-sidebar-style">
+    .luxira-account-switch-menu {
+        padding-top: 8px;
+    }
+
+    .luxira-switch-menu-title {
+        padding: 14px 18px 8px;
+        color: #1d273b;
+        font-weight: 900;
+        font-size: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: flex-start;
+        direction: rtl;
+    }
+
+
+    .luxira-switch-search-wrap {
+        padding: 10px 14px 8px;
+        direction: rtl;
+    }
+
+    .luxira-switch-search-input {
+        width: 100%;
+        min-height: 40px;
+        border: 1px solid #d1d5db;
+        border-radius: 999px;
+        background: #ffffff;
+        color: #0f172a;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 800;
+        outline: none;
+        text-align: right;
+        box-sizing: border-box;
+    }
+
+        .luxira-switch-search-input:focus {
+            border-color: #1d273b;
+            box-shadow: 0 0 0 3px rgba(24, 160, 136, 0.12);
+        }
+
+    .luxira-switch-account-name {
+        font-weight: 900;
+        font-size: 13px;
+        color: #0f172a;
+        white-space: normal;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 205px;
+        line-height: 1.45;
+        direction: ltr;
+        text-align: right;
+    }
+
+    .luxira-switch-loading,
+    .luxira-switch-empty {
+        margin: 12px 14px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: #f8fafc;
+        color: #334155;
+        font-weight: 800;
+        text-align: center;
+        line-height: 1.7;
+        border: 1px solid #e2e8f0;
+    }
+
+    .luxira-switch-account-item {
+        width: calc(100% - 22px);
+        margin: 8px 11px;
+        padding: 10px 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        background: #ffffff;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        cursor: pointer;
+        direction: rtl;
+        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
+    }
+
+        .luxira-switch-account-item:hover {
+            border-color: #1d273b;
+            box-shadow: 0 8px 18px rgba(24, 160, 136, 0.16);
+        }
+
+        .luxira-switch-account-item.is-current {
+            background: #ecfdf5;
+            border-color: #1d273b;
+            cursor: default;
+        }
+
+    .luxira-switch-account-info {
+        min-width: 0;
+        text-align: right;
+    }
+
+    .luxira-switch-account-email {
+        display: none !important;
+    }
+
+
+    .luxira-switch-account-role {
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 800;
+        margin-top: 3px;
+    }
+
+    .luxira-switch-current-badge {
+        background: #1d273b;
+        color: #ffffff;
+        border-radius: 999px;
+        padding: 4px 8px;
+        font-size: 10px;
+        font-weight: 900;
+        white-space: nowrap;
+    }
+
+    .luxira-switch-popup-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        z-index: 2147483000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        direction: rtl;
+    }
+
+    .luxira-switch-popup-card {
+        width: min(92vw, 420px);
+        background: #ffffff;
+        border-radius: 18px;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.25);
+        overflow: hidden;
+    }
+
+    .luxira-switch-popup-header {
+        padding: 16px 18px;
+        background: #1d273b;
+        color: #ffffff;
+        font-weight: 900;
+        font-size: 16px;
+        text-align: center;
+    }
+
+    .luxira-switch-popup-body {
+        padding: 18px;
+    }
+
+    .luxira-switch-selected-account {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 10px 12px;
+        color: #0f172a;
+        font-weight: 900;
+        line-height: 1.8;
+        margin-bottom: 12px;
+        overflow-wrap: anywhere;
+    }
+
+    .luxira-switch-password-input {
+        width: 100%;
+        border: 1px solid #d1d5db;
+        border-radius: 14px;
+        padding: 12px 14px;
+        outline: none;
+        font-weight: 800;
+        direction: ltr;
+        text-align: left;
+    }
+
+        .luxira-switch-password-input:focus {
+            border-color: #1d273b;
+            box-shadow: 0 0 0 3px rgba(24, 160, 136, 0.14);
+        }
+
+    .luxira-switch-error {
+        display: none;
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: #fee2e2;
+        color: #991b1b;
+        font-weight: 900;
+        line-height: 1.7;
+        text-align: right;
+    }
+
+    .luxira-switch-popup-actions {
+        display: flex;
+        gap: 10px;
+        padding: 0 18px 18px;
+    }
+
+    .luxira-switch-popup-btn {
+        flex: 1;
+        border: 0;
+        border-radius: 999px;
+        padding: 11px 12px;
+        font-weight: 900;
+        cursor: pointer;
+    }
+
+    .luxira-switch-confirm {
+        background: #1d273b;
+        color: #ffffff;
+    }
+
+        .luxira-switch-confirm:disabled {
+            opacity: .65;
+            cursor: not-allowed;
+        }
+
+    .luxira-switch-cancel {
+        background: #e5e7eb;
+        color: #334155;
+    }
+</style>
+<amp-sidebar id='header-sidebar' side='right' layout='nodisplay'>
+    <div class="luxira-sidebar-profile-header">
+        <img src="/static/sidebar.jpg" class="luxira-sidebar-profile-bg" height="130" width="290" loading="lazy" style="position: absolute; inset: 0; width: 100%; height: 130px; object-fit: cover;">
+
+        <div style="position: absolute; right:11px; top:67px;">
+            @if (!string.IsNullOrEmpty(Model.UserImage))
+            {
+                <img src="/@Model.UserImage" style="border-radius:50%;" width="35" height="35" alt="User Image" />
+            }
+            else
+            {
+                <img src="/static/circle-user-solid.svg" width="40" height="40" alt="User Image" />
+            }
+        </div>
+        <div class="luxira-sidebar-user-name" style="position: absolute; right:10px; left:58px; top:105px; text-align:right;">
+            @if (Model.UserName != null)
+            {
+                <h7 class="text-white mt-2">@Model.UserName</h7>
+            }
+            @if (Model.UserName == null)
+
+            {
+                <h7 class="text-white mt-2">ADNAN MOWAKEH</h7>
+            }
+        </div>
+
+    </div>
+
+
+    @if (canUseAccountSwitch)
+    {
+        <button type="button"
+                id="luxiraOpenAccountSwitchMenu"
+                class="luxira-header-account-switch-btn"
+                title="تبديل الموظف"
+                aria-label="تبديل الموظف">
+            <svg class="luxira-switch-arrows-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" aria-hidden="true" focusable="false">
+                <path d="M44 4 L60 18 L44 32 L44 23 L19 23 C11 23 7 28 7 36 L7 39 L0 39 L0 36 C0 23 8 16 19 16 L44 16 Z"></path>
+                <path d="M20 44 L4 30 L20 16 L20 25 L45 25 C53 25 57 20 57 12 L57 9 L64 9 L64 12 C64 25 56 32 45 32 L20 32 Z"></path>
+            </svg>
+        </button>
+    }
+
+
+    <div class="shake background-white-green" style="overflow-y: auto; height: calc(100vh - 130px);">
+        <nav>
+            <div id="luxiraPrimarySidebarMenu" class="main-menu items" role="menu" aria-label="Menu links" [class]="hidePrimary ? 'main-menu items hide-parent' : 'main-menu items'">
+                <div class="mt-2 pb-2">
+                    <a class=" truncate pe-0 ps-0  " role="menuitem" tabindex="0" aria-label="Mens" aria-haspopup="true" style="">
+
+                        <fieldset class="link-container  pb-2 truncate" role="menuitem" tabindex="0" aria-label="Mens" aria-haspopup="true">
+                            <fieldset class="input-group flex-grow-1 input_with_icon">
+
+                                <input type="text" id="search" name="search" class="pe-5  form-control Search search-input color-input" placeholder="ابحث عن الطلبات..." value="@ViewBag.CurrentFilter">
+                                <span class="icon search-icon">
+                                    <i style="color:#1d273b;" class="fa-solid fa-magnifying-glass fa-rotate-90"></i>
+                                </span>
+                                <span id="searching" class="icon clear-search-icon cursor-pointer">
+                                    <i style="color:#1d273b;" class="fa-solid fa-circle-xmark "></i>
+                                </span>
+                            </fieldset>
+
+                        </fieldset>
+                    </a>
+                </div>
+
+
+                <a href="javascript:void(0);" class="link-container truncate" role="menuitem" tabindex="0" aria-label="Mens" aria-haspopup="true" style="display: flex; justify-content: space-between; align-items: center;" onclick="handleLinkClick(event)" on="tap:header-sidebar.close">
+                    <div>
+                        <i class="fa-light fa-house-chimney"></i>
+                        الصفحة الرئيسية
+                    </div>
+                    <i class="fa-regular fa-chevron-left f-s-12"></i>
+                </a>
+
+
+
+
+
+
+                @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("DeliveryCompany") || User.IsInRole("OrderPreparer") || User.IsInRole("ExecutiveDirector"))
+                {
+                    <a class="link-container  truncate" role="menuitem" tabindex="0" aria-label="Mens" aria-haspopup="true" on="tap:AMP.setState({level_1_0: !level_1_0, hidePrimary: !hidePrimary})" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <i style="padding-right:12px;" class="fa-light fa-file-invoice-dollar "></i>
+                            الحسابات
+                        </div>
+                        <i class="fa-regular fa-chevron-left f-s-12"></i>
+                    </a>
+                }
+
+                <div class="submenu hide-submenu" [class]="(level_1_0 ? 'submenu show-submenu' : 'submenu hide-submenu') + ' ' + (hideSecondary ? 'hide-parent' : '')" role="menu" aria-label="Mens">
+                    <img src="/static/sidebar.jpg" height="130" width="290" loading="lazy" />
+                    <div style="position: absolute; right:11px; top:67px;">
+                        @if (!string.IsNullOrEmpty(Model.UserImage))
+                        {
+                            <img src="/@Model.UserImage" style="border-radius:50%;" width="35" height="35" alt="User Image" />
+                        }
+                        else
+                        {
+                            <img src="/static/circle-user-solid.svg" width="40" height="40" alt="User Image" />
+                        }
+                    </div>
+                    <div class="luxira-sidebar-user-name" style="position: absolute; right:10px; left:56px; top:105px; text-align:right; z-index:25;">
+                        @if (Model.UserName != null)
+                        {
+                            <h7 class="text-white mt-2">@Model.UserName</h7>
+                        }
+                        @if (Model.UserName == null)
+
+                        {
+                            <h7 class="text-white mt-2">ADNAN MOWAKEH</h7>
+                        }
+
+                    </div>
+                    <a class="link-container truncate pe-0" tabindex="0" role="button" on="tap:AMP.setState({level_1_0: !level_1_0, hidePrimary: !hidePrimary})">
+                        <i class="fa-regular fa-chevron-right"></i>  رجوع
+                    </a>
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <a class="link-container truncate me-4" tabindex="0" href="/Financial/Countries">
+                            الملفات الشخصية للموظفين
+                        </a>
+
+                    }
+
+                    @if (User.IsInRole("OrderPreparer"))
+                    {
+                        <a class="link-container truncate me-4" tabindex="0" href="/Financial/OrderByManfacturingCompanyOnGoingDeliveryRepresntaitve">
+                            الملفات الشخصية للموظفين
+                        </a>
+                    }
+
+
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("ExecutiveDirector"))
+                    {
+                        <a class="link-container truncate me-4" tabindex="0" href="/Financial/OrderByManfacturingCompanyOnGoingDeliveryCompany">
+                            حسابات شركات التوصيل
+                        </a>
+                    }
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("ExecutiveDirector"))
+                    {
+                        <a class="link-container truncate me-4" tabindex="0" href="/Financial/OrderByManfacturingCompanyOnGoingDeliveryRepresntaitve">
+                            حسابات    للمندوبين
+                        </a>
+                    }
+                    @if (User.IsInRole("DeliveryCompany"))
+                    {
+                        <a class="link-container truncate me-4" tabindex="0" href="/Financial/OrderByManfacturingCompanyOnGoingDeliveryCompany">
+                            الملفات الشخصية للموظفين
+                        </a>
+                    }
+
+
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("FollowUpDepartment") || User.IsInRole("CallCenter") || User.IsInRole("ExecutiveDirector"))
+                    {
+                        <a class="link-container truncate me-4" tabindex="0" href="/financial/Employees">
+                            حسابات الموظفين
+                        </a>
+                    }
+                    @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("DeliveryCompany") || User.IsInRole("OrderPreparer"))
+                    {
+
+                        <a class="link-container truncate me-4" tabindex="0" href="/financial/OrderReports">
+                            فواتير حسابات شركات التوصيل
+
+                        </a>
+                    }
+                    @if (User.IsInRole("Admin") || User.IsInRole("Accountant"))
+                    {
+                        <a class="link-container truncate me-4" tabindex="0" href="/financial/OrderReportsRepresentative">
+                            فواتير حسابات المندوبين
+                        </a>
+                    }
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("Accountant"))
+                    {
+                        <a class="link-container truncate me-4" tabindex="0" href="/financial/ProfitAndLoss">
+                            تقارير الارباح والخسائر
+                        </a>
+                    }
+                </div>
+                @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("ExecutiveDirector"))
+                {
+                    <a class="link-container submenu-icon truncate" role="menuitem" tabindex="0" aria-haspopup="true" on="tap:AMP.setState({level_1_1: !level_1_1, hidePrimary: !hidePrimary})" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <i class="fa-light fa-credit-card"></i>
+                            المصروفات
+                        </div>
+                        <i class="fa-regular fa-chevron-left f-s-12"></i>
+                    </a>
+
+                    <div class="submenu hide-submenu" [class]="(level_1_1 ? 'submenu show-submenu' : 'submenu hide-submenu') + ' ' + (hideSecondary ? 'hide-parent' : '')" role="menu">
+
+                        <img src="/static/sidebar.jpg" height="130" width="290" loading="lazy" />
+
+                        <div style="position: absolute; right:11px; top:67px;">
+                            @if (!string.IsNullOrEmpty(Model.UserImage))
+                            {
+                                <img src="/@Model.UserImage" style="border-radius:50%;" width="35" height="35" alt="User Image" />
+                            }
+                            else
+                            {
+                                <img src="/static/circle-user-solid.svg" width="40" height="40" alt="User Image" />
+                            }
+                        </div>
+                        <div style="position: absolute; right:10px; top:105px;">
+                            @if (Model.UserName != null)
+                            {
+                                <h7 class="text-white mt-2">@Model.UserName</h7>
+                            }
+                            @if (Model.UserName == null)
+
+                            {
+                                <h7 class="text-white mt-2">ADNAN MOWAKEH</h7>
+                            }
+
+                        </div>
+
+
+
+                        <a class="link-container truncate pe-0" tabindex="0" role="button" on="tap:AMP.setState({level_1_1: !level_1_1, hidePrimary: !hidePrimary})">
+                            <i class="fa-regular fa-chevron-right"></i>  رجوع
+                        </a>
+
+                        <a class="link-container truncate me-4" tabindex="0" href="/Expense/Index">
+                            ادارة المصروفات
+                        </a>
+
+                        <a class="link-container truncate me-4" tabindex="0" href="/Expense/Create">
+                            اضافة مصروفات
+                        </a>
+
+
+                    </div>
+                }
+
+
+                <a class="link-container QR truncate" role="menuitem" aria-label="Mens" aria-haspopup="true" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <i class="fa-light fa-qrcode"></i>
+                        ألأجراءات QR
+                    </div>
+                    <i class="fa-regular fa-chevron-left f-s-12"></i>
+
+                </a>
+                <div class="center-container">
+                    <div id="qr-reader"></div>
+                </div>
+                <div style="display:none;" id="qr-result"></div>
+
+                @if (!User.IsInRole("DeliveryCompany") && !User.IsInRole("OrderPreparer") && !User.IsInRole("CallCenter"))
+                {
+
+                    <a href="/api/facebook/webhook/conversations" class="link-container  truncate" role="menuitem" aria-label="Mens" aria-haspopup="true" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <i class="fa-light fa-qrcode"></i>
+                            محموعة ادارة الأعمال
+                        </div>
+                        <i class="fa-regular fa-chevron-left f-s-12"></i>
+
+                    </a>
+
+                }
+
+                @if (!User.IsInRole("DeliveryCompany") && !User.IsInRole("OrderPreparer") && !User.IsInRole("CallCenter"))
+                {
+                    <a class="link-container submenu-icon truncate" href="http://lotusblue.shop/" role="menuitem" tabindex="0" aria-haspopup="true" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <i class="fa-light fa-truck-ramp-couch"></i>
+                            تتبع الشحنات
+                        </div>
+                        <i class="fa-regular fa-chevron-left f-s-12"></i>
+
+                    </a>
+                }
+
+                @if (User.IsInRole("Admin"))
+                {
+                    <a class="link-container submenu-icon truncate" role="menuitem" tabindex="0" aria-haspopup="true" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <i class="fa-light fa-credit-card-front"></i>
+                            طريقة الدفع
+                        </div>
+                        <i class="fa-regular fa-chevron-left f-s-12"></i>
+
+                    </a>
+                }
+
+                @if (User.IsInRole("Admin"))
+                {
+                    <a href="/EmployeeActivity/LoginSessions"
+                       class="link-container submenu-icon truncate"
+                       role="menuitem"
+                       tabindex="0"
+                       style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <i class="fa-light fa-users"></i>
+                            تسجيلات الدخول
+                        </div>
+                        <i class="fa-regular fa-chevron-left f-s-12"></i>
+                    </a>
+                }
+                @if (User.IsInRole("OrderPreparer"))
+                {
+
+                    <a class="link-container  truncate" href="/warehouse/IndexRepresentative" role="menuitem" tabindex="0" aria-label="Mens" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <i class="fa-light fa-warehouse-full"></i>
+                            المستودعات
+
+                        </div>
+                        <i class="fa-regular fa-chevron-left f-s-12"></i>
+                    </a>
+                }
+
+                @if (User.IsInRole("DeliveryCompany"))
+                {
+
+                    <a class="link-container  truncate" href="/warehouse" role="menuitem" tabindex="0" aria-label="Mens" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <i class="fa-light fa-warehouse-full"></i>
+                            المستودعات
+
+                        </div>
+                        <i class="fa-regular fa-chevron-left f-s-12"></i>
+                    </a>
+                }
+
+
+                @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+                {
+                    <a class="link-container submenu-icon truncate" role="menuitem" tabindex="0" aria-haspopup="true" on="tap:AMP.setState({level_1_3: !level_1_3, hidePrimary: !hidePrimary})" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <i class="fa-light fa-warehouse-full"></i>
+                            المستودعات
+                        </div>
+                        <i class="fa-regular fa-chevron-left f-s-12"></i>
+                    </a>
+                }
+
+
+                <div class="submenu hide-submenu" [class]="(level_1_3 ? 'submenu show-submenu' : 'submenu hide-submenu') + ' ' + (hideSecondary ? 'hide-parent' : '')" role="menu">
+
+
+
+                    <img src="/static/sidebar.jpg" height="130" width="290" loading="lazy" />
+
+                    <div style="position: absolute; right:11px; top:67px;">
+                        @if (!string.IsNullOrEmpty(Model.UserImage))
+                        {
+                            <img src="/@Model.UserImage" style="border-radius:50%;" width="35" height="35" alt="User Image" />
+                        }
+                        else
+                        {
+                            <img src="/static/circle-user-solid.svg" width="40" height="40" alt="User Image" />
+                        }
+                    </div>
+                    <div style="position: absolute; right:10px; top:105px;">
+                        @if (Model.UserName != null)
+                        {
+                            <h7 class="text-white mt-2">@Model.UserName</h7>
+                        }
+                        @if (Model.UserName == null)
+
+                        {
+                            <h7 class="text-white mt-2">ADNAN MOWAKEH</h7>
+                        }
+
+                    </div>
+
+                    <a class="link-container truncate pe-0" tabindex="0" role="button" on="tap:AMP.setState({level_1_3: !level_1_3, hidePrimary: !hidePrimary})">
+                        <i class="fa-regular fa-chevron-right"></i>  رجوع
+                    </a>
+                    @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("ExecutiveDirector"))
+                    {
+
+                        <a class="link-container truncate me-4" tabindex="0" href="/mainwarehouse">
+                            ادارة المستودعات الرئيسية
+                        </a>
+                    }
+                    @if (User.IsInRole("Admin"))
+                    {
+
+                        <a class="link-container truncate me-4" tabindex="0" href="/subwarehouse">
+                            ادارة المستودعات الفرعية
+                        </a>
+                    }
+                    @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("DeliveryCompany") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+                    {
+                        <a class="link-container truncate me-4" tabindex="0" href="/warehouse">
+                            ادارة المستودعات لشركات التوصيل
+                        </a>
+                    }
+                    @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+                    {
+                        <a class="link-container truncate me-4" tabindex="0" href="/warehouse/IndexRepresentative">
+                            ادارة المستودعات للمندوبين
+                        </a>
+                    }
+                    @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("ExecutiveDirector"))
+                    {
+                        <a class="link-container truncate me-4" tabindex="0" href="/mainwarehouse/create">
+                            اضافة منتج رئيسي
+                        </a>
+                    }
+                    @if (User.IsInRole("Admin"))
+                    {
+
+                        <a class="link-container truncate me-4" tabindex="0" href="/subwarehouse/create">
+                            اضافة منتج فرعي
+                        </a>
+                    }
+                    @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+                    {
+                        <a class="link-container truncate me-4" tabindex="0" href="/warehouse/create">
+                            اضافة المنتجات
+                        </a>
+                    }
+
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+                    {
+                        <a class="link-container truncate me-4" tabindex="0" href="/productShipmentInvoice/CreatePriceOffer">
+                            إنشاء فاتورة مبيعات
+                        </a>
+                    }
+                </div>
+
+
+                @if (!User.IsInRole("DeliveryCompany") && !User.IsInRole("OrderPreparer"))
+                {
+                    <a class="link-container submenu-icon truncate" role="menuitem" tabindex="0" aria-haspopup="true" on="tap:AMP.setState({level_9_9: !level_9_9, hidePrimary: !hidePrimary})" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <i class="fa-light fa-warehouse-full"></i>
+                            المنتجات
+                        </div>
+                        <i class="fa-regular fa-chevron-left f-s-12"></i>
+                    </a>
+                }
+
+
+                <div class="submenu hide-submenu" [class]="(level_9_9 ? 'submenu show-submenu' : 'submenu hide-submenu') + ' ' + (hideSecondary ? 'hide-parent' : '')" role="menu">
+
+
+
+                    <img src="/static/sidebar.jpg" height="130" width="290" loading="lazy" />
+
+                    <div style="position: absolute; right:11px; top:67px;">
+                        @if (!string.IsNullOrEmpty(Model.UserImage))
+                        {
+                            <img src="/@Model.UserImage" style="border-radius:50%;" width="35" height="35" alt="User Image" />
+                        }
+                        else
+                        {
+                            <img src="/static/circle-user-solid.svg" width="40" height="40" alt="User Image" />
+                        }
+                    </div>
+                    <div style="position: absolute; right:10px; top:105px;">
+                        @if (Model.UserName != null)
+                        {
+                            <h7 class="text-white mt-2">@Model.UserName</h7>
+                        }
+                        @if (Model.UserName == null)
+
+                        {
+                            <h7 class="text-white mt-2">ADNAN MOWAKEH</h7>
+                        }
+
+                    </div>
+
+                    <a class="link-container truncate pe-0" tabindex="0" role="button" on="tap:AMP.setState({level_9_9: !level_9_9, hidePrimary: !hidePrimary})">
+                        <i class="fa-regular fa-chevron-right"></i>  رجوع
+                    </a>
+
+                    <a class="link-container truncate me-4" tabindex="0" href="/ProductsPrices">
+                        اسعار المنتجات
+                    </a>
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+                    {
+                        <a class="link-container truncate me-4" tabindex="0" href="/ProductsPrices/create">
+                            اضافة المنتجات
+                        </a>
+                    }
+
+                </div>
+
+                @if (!User.IsInRole("DeliveryCompany") && !User.IsInRole("OrderPreparer") && !User.IsInRole("CallCenter"))
+                {
+                    <a class="link-container submenu-icon truncate" role="menuitem" tabindex="0" aria-haspopup="true" on="tap:AMP.setState({level_9_8: !level_9_8, hidePrimary: !hidePrimary})" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <i class="fa-light fa-warehouse-full"></i>
+                            الطلبات
+                        </div>
+                        <i class="fa-regular fa-chevron-left f-s-12"></i>
+                    </a>
+                }
+
+
+                <div class="submenu hide-submenu" [class]="(level_9_8 ? 'submenu show-submenu' : 'submenu hide-submenu') + ' ' + (hideSecondary ? 'hide-parent' : '')" role="menu">
+
+                    <img src="/static/sidebar.jpg" height="130" width="290" loading="lazy" />
+
+                    <div style="position: absolute; right:11px; top:67px;">
+                        @if (!string.IsNullOrEmpty(Model.UserImage))
+                        {
+                            <img src="/@Model.UserImage" style="border-radius:50%;" width="35" height="35" alt="User Image" />
+                        }
+                        else
+                        {
+                            <img src="/static/circle-user-solid.svg" width="40" height="40" alt="User Image" />
+                        }
+                    </div>
+                    <div style="position: absolute; right:10px; top:105px;">
+                        @if (Model.UserName != null)
+                        {
+                            <h7 class="text-white mt-2">@Model.UserName</h7>
+                        }
+                        @if (Model.UserName == null)
+
+                        {
+                            <h7 class="text-white mt-2">ADNAN MOWAKEH</h7>
+                        }
+
+                    </div>
+
+                    <a class="link-container truncate pe-0" tabindex="0" role="button" on="tap:AMP.setState({level_9_8: !level_9_8, hidePrimary: !hidePrimary})">
+                        <i class="fa-regular fa-chevron-right"></i>  رجوع
+                    </a>
+
+
+                    <a class="link-container truncate me-4" tabindex="0" href="/CountryMinimumPrices">
+                        الحد الأدنى للطلبات
+                    </a>
+
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+                    {
+                        <a class="link-container truncate me-4" tabindex="0" href="/ProductMinimumSellingPrices/Create">
+                            الحد الأدنى للبيع
+                        </a>
+                    }
+                    @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+                    {
+                        <a class="link-container truncate me-4" tabindex="0" href="/SalesIndicators">
+                            مؤشرات البيع
+                        </a>
+                    }
+
+                </div>
+
+                <a id="show-more-link" class="text-center link-container  text-gold-v2  truncate"> للمزيد<i class="fa-solid texxt-gold-v2 fa-caret-down"></i></a>
+
+
+                @*  <h2 class="circle-heading mt-5">تعديل</h2> *@
+
+
+                <div class="submenu hide-submenu" [class]="(level_1_2 ? 'submenu show-submenu' : 'submenu hide-submenu') + ' ' + (hideSecondary ? 'hide-parent' : '')" role="menu" aria-label="Kids">
+                    <div class="controls" [class]="hideSecondary ? 'controls hide-parent' : 'controls'" aria-label="Kids controls">
+                        <a tabindex="0" role="button" on="tap:AMP.setState({level_1_2: !level_1_2, hidePrimary: !hidePrimary})">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                                <path d="M16.67 0l2.83 2.829-9.339 9.175 9.339 9.167-2.83 2.829-12.17-11.996z" />
+                            </svg>
+                        </a>
+                        <span class="truncate">Kids</span>
+                        <a tabindex="0" role="button" on='tap:header-sidebar.toggle' aria-label="Close Kids">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                                <path d="M24 20.188l-8.315-8.209 8.2-8.282-3.697-3.697-8.212 8.318-8.31-8.203-3.666 3.666 8.321 8.24-8.206 8.313 3.666 3.666 8.237-8.318 8.285 8.203z" />
+                            </svg>
+                        </a>
+                    </div>
+
+                </div>
+
+
+                <div class="for-more">
+                    @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("ExecutiveDirector"))
+                    {
+                        <a class="link-container submenu-icon truncate" role="menuitem" tabindex="0" aria-haspopup="true" on="tap:AMP.setState({level_1_4: !level_1_4, hidePrimary: !hidePrimary})" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <i class="fa-light fa-user"></i>
+                                ادارة الموظفين
+                            </div>
+                            <i class="fa-regular fa-chevron-left f-s-12"></i>
+                        </a>
+                    }
+
+                    <div class="submenu hide-submenu" [class]="(level_1_4 ? 'submenu show-submenu' : 'submenu hide-submenu') + ' ' + (hideSecondary ? 'hide-parent' : '')" role="menu">
+                        <img src="/static/sidebar.jpg" height="130" width="290" loading="lazy" />
+
+                        <div style="position: absolute; right:11px; top:67px;">
+                            @if (!string.IsNullOrEmpty(Model.UserImage))
+                            {
+                                <img src="/@Model.UserImage" style="border-radius:50%;" width="35" height="35" alt="User Image" />
+                            }
+                            else
+                            {
+                                <img src="/static/circle-user-solid.svg" width="40" height="40" alt="User Image" />
+                            }
+                        </div>
+                        <div style="position: absolute; right:10px; top:105px;">
+                            @if (Model.UserName != null)
+                            {
+                                <h7 class="text-white mt-2">@Model.UserName</h7>
+                            }
+                            @if (Model.UserName == null)
+
+                            {
+                                <h7 class="text-white mt-2">ADNAN MOWAKEH</h7>
+                            }
+
+                        </div>
+
+                        <a class="link-container truncate pe-0" tabindex="0" role="button" on="tap:AMP.setState({level_1_4: !level_1_4, hidePrimary: !hidePrimary})">
+                            <i class="fa-regular fa-chevron-right"></i>  رجوع
+                        </a>
+                        @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("ExecutiveDirector"))
+                        {
+                            <a class="link-container truncate me-4" tabindex="0" href="/Employee">
+                                ادارة الموظفين
+                            </a>
+                        }
+
+
+                        @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+                        {
+                            <a class="link-container truncate me-4" tabindex="0" href="/Employee/create">
+                                اضافة موظفين
+                            </a>
+                        }
+                        @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+                        {
+                            <a class="link-container truncate me-4" tabindex="0" href="/OrderBonusConfiguration">
+                                عمولة المبيعات
+                            </a>
+                        }
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <a class="link-container truncate me-4" tabindex="0" href="/EmployeeBonus/Create">
+                                إضافة عمولة المبيعات
+                            </a>
+                        }
+                        @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+                        {
+                            <a class="link-container truncate me-4" tabindex="0" href="/EmployeeBonus">
+                                العمولات
+                            </a>
+                        }
+                        @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+                        {
+                            <a class="link-container truncate me-4" tabindex="0" href="/EmployeeBonus/Archive">
+                                أرشيف العمولات
+                            </a>
+                        }
+                        @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("ExecutiveDirector"))
+                        {
+                            <a class="link-container truncate me-4" tabindex="0" href="/EmployeeTransactions/create">
+                                إنشاء مكافآت وخصومات
+                            </a>
+                        }
+                        @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("ExecutiveDirector"))
+                        {
+                            <a class="link-container truncate me-4" tabindex="0" href="/EmployeeTransactions">
+                                مكافآت وخصومات
+                            </a>
+                        }
+                        @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("ExecutiveDirector"))
+                        {
+                            <a class="link-container truncate me-4" tabindex="0" href="/employeeaccess">
+                                صلاحية الوصول للمتاجر
+                            </a>
+                        }
+
+                        @if (User.IsInRole("Admin"))
+                        {
+                            @* <a class="link-container truncate me-4"
+                               tabindex="0"
+                               href="/EmployeeAttendance/AssignWorkTimes"
+                               target="_top">
+                                تعيين أوقات الدوام
+                            </a> *@
+
+                            <a class="link-container truncate me-4"
+                               tabindex="0"
+                               href="/EmployeeAttendance/AttendanceLog"
+                               target="_top">
+                                تسجيل الدوام
+                            </a>
+                        }
+
+                    </div>
+
+
+
+
+
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("ExecutiveDirector"))
+                    {
+                        <a class="link-container submenu-icon truncate" role="menuitem" tabindex="0" aria-haspopup="true" on="tap:AMP.setState({level_2_0: !level_2_0, hidePrimary: !hidePrimary})" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <i class="fa-light fa-star"></i>
+                                التقييمات
+                            </div>
+                            <i class="fa-regular fa-chevron-left f-s-12"></i>
+                        </a>
+
+
+
+                        <div class="submenu hide-submenu" [class]="(level_2_0 ? 'submenu show-submenu' : 'submenu hide-submenu') + ' ' + (hideSecondary ? 'hide-parent' : '')" role="menu">
+                            <img src="/static/sidebar.jpg" height="130" width="290" loading="lazy" />
+
+                            <div style="position: absolute; right:11px; top:67px;">
+                                @if (!string.IsNullOrEmpty(Model.UserImage))
+                                {
+                                    <img src="/@Model.UserImage" style="border-radius:50%;" width="35" height="35" alt="User Image" />
+                                }
+                                else
+                                {
+                                    <img src="/static/circle-user-solid.svg" width="40" height="40" alt="User Image" />
+                                }
+                            </div>
+                            <div style="position: absolute; right:10px; top:105px;">
+                                @if (Model.UserName != null)
+                                {
+                                    <h7 class="text-white mt-2">@Model.UserName</h7>
+                                }
+                                @if (Model.UserName == null)
+
+                                {
+                                    <h7 class="text-white mt-2">ADNAN MOWAKEH</h7>
+                                }
+
+                            </div>
+
+                            <a class="link-container truncate pe-0" tabindex="0" role="button" on="tap:AMP.setState({level_2_0: !level_2_0, hidePrimary: !hidePrimary})">
+                                <i class="fa-regular fa-chevron-right"></i>  رجوع
+                            </a>
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/rating/employelist">
+                                التقيم الكلي للموظفين
+                            </a>
+
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/rating/storelist">
+                                التقيم الكلي للمتاجر
+                            </a>
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/rating/Countrylist">
+                                التقيم الكلي للدول
+                            </a>
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/rating/ManufactureCompanyDetails">
+                                التقيم الكلي  للحملات الاعلانية
+                            </a>
+
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/rating/CityByCountryDetails">
+                                التقيم الكلي   للمدن
+                            </a>
+                            <a class="link-container truncate me-4" tabindex="0" href="/rating/FailedAndDeliveredOrders">
+                                التقيم الكلي   للطلبات
+                            </a>
+                        </div>
+                    }
+
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("Accountant") || User.IsInRole("ExecutiveDirector"))
+                    {
+                        <a class="link-container submenu-icon truncate" role="menuitem" tabindex="0" aria-haspopup="true" on="tap:AMP.setState({level_99_0: !level_99_0, hidePrimary: !hidePrimary})" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <i class="fa-light sidebar-element fa-star"></i>
+                                ادارة الحملات الأعلانية
+                            </div>
+                            <i class="fa-regular fa-chevron-left f-s-12"></i>
+                        </a>
+
+
+
+                        <div class="submenu hide-submenu" [class]="(level_99_0 ? 'submenu show-submenu' : 'submenu hide-submenu') + ' ' + (hideSecondary ? 'hide-parent' : '')" role="menu">
+                            <img src="/static/sidebar.jpg" height="130" width="290" loading="lazy" />
+
+                            <div style="position: absolute; right:11px; top:55px;">
+                                @if (!string.IsNullOrEmpty(Model.UserImage))
+                                {
+                                    <img src="/@Model.UserImage" style="border-radius:50%;" width="35" height="35" alt="User Image" />
+                                }
+                                else
+                                {
+                                    <img src="/static/circle-user-solid.svg" width="40" height="40" alt="User Image" />
+                                }
+                            </div>
+                            <div style="position: absolute; right:10px; top:105px;">
+                                @if (Model.UserName != null)
+                                {
+                                    <h7 class="text-white mt-2">@Model.UserName</h7>
+                                }
+                                @if (Model.UserName == null)
+
+                                {
+                                    <h7 class="text-white mt-2">ADNAN MOWAKEH</h7>
+                                }
+
+                            </div>
+
+                            <a class="link-container truncate pe-0" tabindex="0" role="button" on="tap:AMP.setState({level_99_0: !level_99_0, hidePrimary: !hidePrimary})">
+                                <i class="fa-regular fa-chevron-right"></i>  رجوع
+                            </a>
+                            <a class="link-container truncate me-4" tabindex="0" href="/Campaign/CampaignAnalytics">
+                                احصائيات الطلبات
+                            </a>
+
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/Campaign">
+                                ادارة الحملات
+                            </a>
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/Campaign/create">
+                                اضافة حملة جديدة
+                            </a>
+
+
+                        </div>
+                    }
+
+
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("FollowUpDepartment") || User.IsInRole("ExecutiveDirector"))
+                    {
+                        <a class="link-container submenu-icon truncate" role="menuitem" tabindex="0" aria-haspopup="true" on="tap:AMP.setState({level_1_5: !level_1_5, hidePrimary: !hidePrimary})" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <i class="fa-light fa-truck"></i>
+                                شركات التوصيل
+                            </div>
+                            <i class="fa-regular fa-chevron-left f-s-12"></i>
+                        </a>
+
+
+
+                        <div class="submenu hide-submenu" [class]="(level_1_5 ? 'submenu show-submenu' : 'submenu hide-submenu') + ' ' + (hideSecondary ? 'hide-parent' : '')" role="menu">
+                            <img src="/static/sidebar.jpg" height="130" width="290" loading="lazy" />
+
+
+                            <div style="position: absolute; right:11px; top:67px;">
+                                @if (!string.IsNullOrEmpty(Model.UserImage))
+                                {
+                                    <img src="/@Model.UserImage" style="border-radius:50%;" width="35" height="35" alt="User Image" />
+                                }
+                                else
+                                {
+                                    <img src="/static/circle-user-solid.svg" width="40" height="40" alt="User Image" />
+                                }
+                            </div>
+                            <div style="position: absolute; right:10px; top:105px;">
+                                @if (Model.UserName != null)
+                                {
+                                    <h7 class="text-white mt-2">@Model.UserName</h7>
+                                }
+                                @if (Model.UserName == null)
+
+                                {
+                                    <h7 class="text-white mt-2">ADNAN MOWAKEH</h7>
+                                }
+
+                            </div>
+                            <a class="link-container truncate pe-0" tabindex="0" role="button" on="tap:AMP.setState({level_1_5: !level_1_5, hidePrimary: !hidePrimary})">
+                                <i class="fa-regular fa-chevron-right"></i>  رجوع
+                            </a>
+                            <a class="link-container truncate me-4" tabindex="0" href="/DeliveryCompany/create">
+                                اضافة شركة توصيل
+                            </a>
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/DeliveryCompany">
+                                ادارة شركة التوصيل
+                            </a>
+
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/DeliveryCompanyPrice">
+                                اسعار التوصيل
+                            </a>
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/DeliveryCompanyPrice/create">
+                                تعيين اسعار التوصيل
+                            </a>
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/CitiesWithoutDeliveryPrices">
+                                مدن لا تحتوي على اسعار توصيل
+                            </a>
+
+                        </div>
+                    }
+
+
+                    @if (User.IsInRole("FollowUpDepartment"))
+                    {
+                        <a href="/Financial/OrderByManfacturingCompanyOnGoingDeliveryRepresntaitve" class="link-container QR truncate" role="menuitem" aria-label="Mens" aria-haspopup="true" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <i class="fa-light fa-file-invoice-dollar "></i>
+                                حسابات المندوبين
+                            </div>
+                            <i class="fa-regular fa-chevron-left f-s-12"></i>
+
+                        </a>
+                    }
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("FollowUpDepartment") || User.IsInRole("ExecutiveDirector"))
+                    {
+                        <a class="link-container submenu-icon truncate" role="menuitem" tabindex="0" aria-haspopup="true" on="tap:AMP.setState({level_9_1: !level_9_1, hidePrimary: !hidePrimary})" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <i class="fa-light fa-user-tie-hair"></i>
+                                المندوبين
+
+                            </div>
+                            <i class="fa-regular fa-chevron-left f-s-12"></i>
+                        </a>
+
+
+
+                        <div class="submenu hide-submenu" [class]="(level_9_1 ? 'submenu show-submenu' : 'submenu hide-submenu') + ' ' + (hideSecondary ? 'hide-parent' : '')" role="menu">
+                            <img src="/static/sidebar.jpg" height="130" width="290" loading="lazy" />
+
+
+                            <div style="position: absolute; right:11px; top:67px;">
+                                @if (!string.IsNullOrEmpty(Model.UserImage))
+                                {
+                                    <img src="/@Model.UserImage" style="border-radius:50%;" width="35" height="35" alt="User Image" />
+                                }
+                                else
+                                {
+                                    <img src="/static/circle-user-solid.svg" width="40" height="40" alt="User Image" />
+                                }
+                            </div>
+                            <div style="position: absolute; right:10px; top:105px;">
+                                @if (Model.UserName != null)
+                                {
+                                    <h7 class="text-white mt-2">@Model.UserName</h7>
+                                }
+                                @if (Model.UserName == null)
+
+                                {
+                                    <h7 class="text-white mt-2">ADNAN MOWAKEH</h7>
+                                }
+
+                            </div>
+
+                            <a class="link-container truncate pe-0" tabindex="0" role="button" on="tap:AMP.setState({level_9_1: !level_9_1, hidePrimary: !hidePrimary})">
+                                <i class="fa-regular fa-chevron-right"></i>  رجوع
+                            </a>
+                            <a class="link-container truncate me-4" tabindex="0" href="/deliveryrepresentative/create">
+                                اضافة  مندوب
+                            </a>
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/deliveryrepresentative">
+                                ادارة   المندوبين
+
+                            </a>
+
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/deliveryrepresentativePrice">
+                                اسعار توصيل المندوبين
+                            </a>
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/deliveryrepresentativePrice/create">
+                                تعيين اسعار المندوبين
+                            </a>
+
+                        </div>
+                    }
+
+
+
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+                    {
+                        <a class="link-container submenu-icon truncate" role="menuitem" tabindex="0" aria-haspopup="true" on="tap:AMP.setState({level_1_6: !level_1_6, hidePrimary: !hidePrimary})" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <i class="fa-light fa-building"></i>
+                                المتاجر
+                            </div>
+                            <i class="fa-regular fa-chevron-left f-s-12"></i>
+                        </a>
+
+
+
+                        <div class="submenu hide-submenu" [class]="(level_1_6 ? 'submenu show-submenu' : 'submenu hide-submenu') + ' ' + (hideSecondary ? 'hide-parent' : '')" role="menu">
+                            <img src="/static/sidebar.jpg" height="130" width="290" loading="lazy" />
+
+                            <div style="position: absolute; right:11px; top:67px;">
+                                @if (!string.IsNullOrEmpty(Model.UserImage))
+                                {
+                                    <img src="/@Model.UserImage" style="border-radius:50%;" width="35" height="35" alt="User Image" />
+                                }
+                                else
+                                {
+                                    <img src="/static/circle-user-solid.svg" width="40" height="40" alt="User Image" />
+                                }
+                            </div>
+                            <div style="position: absolute; right:10px; top:105px;">
+                                @if (Model.UserName != null)
+                                {
+                                    <h7 class="text-white mt-2">@Model.UserName</h7>
+                                }
+                                @if (Model.UserName == null)
+
+                                {
+                                    <h7 class="text-white mt-2">ADNAN MOWAKEH</h7>
+                                }
+
+                            </div>
+
+                            <a class="link-container truncate pe-0" tabindex="0" role="button" on="tap:AMP.setState({level_1_6: !level_1_6, hidePrimary: !hidePrimary})">
+                                <i class="fa-regular fa-chevron-right"></i>  رجوع
+                            </a>
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/ManufacturingCompany">
+                                ادارة  المتاجر
+                            </a>
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/ManufacturingCompany/create">
+                                اضافة  متجر
+                            </a>
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/Api/GetAllStoreDetails">
+                                ادارة المتاجر في SBS
+                            </a>
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/Api/CreateStoreData">
+                                أضافة متجر في SBS
+                            </a>
+
+
+                        </div>
+                    }
+
+
+                    @if (!User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector") || User.IsInRole("Accountant"))
+                    {
+                        <a class="link-container submenu-icon truncate" href="/ExchangeRate" role="menuitem" tabindex="0" aria-haspopup="true" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <i class="fa-light fa-chart-mixed-up-circle-dollar"></i>
+                                اسعار الصرف
+                            </div>
+                            <i class="fa-regular fa-chevron-left f-s-12"></i>
+                        </a>
+                    }
+
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <a class="link-container submenu-icon truncate" role="menuitem" tabindex="0" aria-haspopup="true" on="tap:AMP.setState({level_1_8: !level_1_8, hidePrimary: !hidePrimary})" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <i class="fa-light fa-chart-mixed-up-circle-dollar"></i>
+                                اسعار الصرف
+                            </div>
+                            <i class="fa-regular fa-chevron-left f-s-12"></i>
+                        </a>
+
+
+
+                        <div class="submenu hide-submenu" [class]="(level_1_8 ? 'submenu show-submenu' : 'submenu hide-submenu') + ' ' + (hideSecondary ? 'hide-parent' : '')" role="menu">
+                            <img src="/static/sidebar.jpg" height="130" width="290" loading="lazy" />
+
+                            <div style="position: absolute; right:11px; top:67px;">
+                                @if (!string.IsNullOrEmpty(Model.UserImage))
+                                {
+                                    <img src="/@Model.UserImage" style="border-radius:50%;" width="35" height="35" alt="User Image" />
+                                }
+                                else
+                                {
+                                    <img src="/static/circle-user-solid.svg" width="40" height="40" alt="User Image" />
+                                }
+                            </div>
+                            <div style="position: absolute; right:10px; top:105px;">
+                                @if (Model.UserName != null)
+                                {
+                                    <h7 class="text-white mt-2">@Model.UserName</h7>
+                                }
+                                @if (Model.UserName == null)
+
+                                {
+                                    <h7 class="text-white mt-2">ADNAN MOWAKEH</h7>
+                                }
+
+                            </div>
+
+                            <a class="link-container truncate pe-0" tabindex="0" role="button" on="tap:AMP.setState({level_1_8: !level_1_8, hidePrimary: !hidePrimary})">
+                                <i class="fa-regular fa-chevron-right"></i>  رجوع
+                            </a>
+
+                            <a class="link-container truncate me-4" tabindex="0" href="/ExchangeRate">
+                                اسعار العملات
+                            </a>
+                            @if (User.IsInRole("Admin") || User.IsInRole("Accountant"))
+                            {
+                                <a class="link-container truncate me-4" tabindex="0" href="/ExchangeRate/create">
+                                    تحديد اسعار الصرف
+                                </a>
+                            }
+
+                        </div>
+                    }
+
+
+
+
+
+
+
+
+                    <a class="link-container submenu-icon truncate" role="menuitem" tabindex="0" aria-haspopup="true" on="tap:AMP.setState({level_1_9: !level_1_9, hidePrimary: !hidePrimary})" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <i class="fa-light fa-language"></i>
+                            اللغات
+                        </div>
+                        <i class="fa-regular fa-chevron-left f-s-12"></i>
+                    </a>
+                    <div class="submenu hide-submenu" [class]="(level_1_9 ? 'submenu show-submenu' : 'submenu hide-submenu') + ' ' + (hideSecondary ? 'hide-parent' : '')" role="menu">
+                        <img src="/static/sidebar.jpg" height="130" width="290" loading="lazy" />
+                        <div style="position: absolute; right:11px; top:67px;">
+                            @if (!string.IsNullOrEmpty(Model.UserImage))
+                            {
+                                <img src="/@Model.UserImage" style="border-radius:50%;" width="35" height="35" alt="User Image" />
+                            }
+                            else
+                            {
+                                <img src="/static/circle-user-solid.svg" width="40" height="40" alt="User Image" />
+                            }
+                        </div>
+                        <div style="position: absolute; right:10px; top:105px;">
+                            @if (Model.UserName != null)
+                            {
+                                <h7 class="text-white mt-2">@Model.UserName</h7>
+                            }
+                            @if (Model.UserName == null)
+
+                            {
+                                <h7 class="text-white mt-2">ADNAN MOWAKEH</h7>
+                            }
+
+                        </div>
+                        <a class="link-container truncate pe-0" tabindex="0" role="button" on="tap:AMP.setState({level_1_9: !level_1_9, hidePrimary: !hidePrimary})">
+                            <i class="fa-regular fa-chevron-right"></i>  رجوع
+                        </a>
+
+                        <a class="link-container truncate me-4" tabindex="0" href="/link">
+                            الانجليزية
+                        </a>
+
+                        <a class="link-container truncate me-4" tabindex="0" href="/link">
+                            العربية
+                        </a>
+
+
+                    </div>
+
+
+
+
+                    @*    @if (User.IsInRole("Admin"))
+                    {
+                    <a class="link-container submenu-icon truncate" role="menuitem" tabindex="0" aria-haspopup="true" on="tap:AMP.setState({level_1_9: !level_1_9, hidePrimary: !hidePrimary})" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                    <i class="fa-light fa-gear"></i>
+                    الاعدادات
+                    </div>
+                    <i class="fa-regular fa-chevron-left f-s-12"></i>
+
+                    </a>
+                    } *@
+
+                    <a class="link-container submenu-icon truncate" href="/Home/HelpCenter" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <i class="fa-light fa-circle-info"></i>
+                            مركز المساعدة
+                        </div>
+                        <i class="fa-regular fa-chevron-left f-s-12"></i>
+
+                    </a>
+
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <a class="link-container submenu-icon truncate" href="/AdminDashboard" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <i class="fa-light fa-shield-halved"></i>
+                                ADMIN DASHBOARD
+                            </div>
+                            <i class="fa-regular fa-chevron-left f-s-12"></i>
+                        </a>
+                    }
+
+
+                    @if (!User.IsInRole("CallCenter"))
+                    {
+                        <a href="https://wa.me/+905312855286" class="link-container submenu-icon truncate" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <i class="fa-light fa-envelope"></i>
+                                تواصل معنا
+                            </div>
+                            <i class="fa-regular fa-chevron-left f-s-12"></i>
+
+                        </a>
+                    }
+
+
+
+                </div>
+
+
+            </div>
+
+
+
+        
+            @if (canUseAccountSwitch)
+            {
+                <div id="luxiraAccountSwitchMenu"
+                     class="main-menu items luxira-account-switch-menu"
+                     role="menu"
+                     aria-label="Account switch menu"
+                     style="display:none;">
+
+                    <a href="javascript:void(0);"
+                       id="luxiraBackToMainMenu"
+                       class="link-container truncate"
+                       role="menuitem"
+                       tabindex="0"
+                       style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <i class="fa-regular fa-arrow-right"></i>
+                            رجوع
+                        </div>
+                        <i class="fa-regular fa-chevron-left f-s-12"></i>
+                    </a>
+
+                    <div class="luxira-switch-search-wrap">
+                        <input type="text"
+                               id="luxiraSwitchEmployeeSearch"
+                               class="luxira-switch-search-input"
+                               placeholder="ابحث باسم الموظف"
+                               autocomplete="off" />
+                    </div>
+
+                    <div id="luxiraSwitchAccountsLoading" class="luxira-switch-loading" style="display:none;">
+                        جاري تحميل الموظفين...
+                    </div>
+
+                    <div id="luxiraSwitchAccountsList" class="luxira-switch-accounts-list"></div>
+
+                    <div id="luxiraSwitchAccountsEmpty" class="luxira-switch-empty" style="display:none;">
+                        لا توجد حسابات موظفين متاحة.
+                    </div>
+                </div>
+            }
+
+
+        </nav>
+        @if (isAdminSwitchSession)
+        {
+            <div class="border pt-0 background-white-green"
+                 onclick="luxiraLogoutSwitchToLogin(event)">
+                <div class="luxira-switch-return-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px;">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    <span>خروج</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="border pt-0 background-white-green" onclick="submitLogoutForm(event)">
+                <form id="logoutForm" class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/", new { area = "" })" method="post">
+                    @Html.AntiForgeryToken()
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:6px;">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    <span>@(skipSecureLogoutFaceCapture ? "خروج" : "خروج امن")</span>
+                </form>
+            </div>
+        }
+
+    </div>
+
+
+</amp-sidebar>
+
+<header style="width:0px" class="headerbar">
+    <div class="hamburger p-1 p-lg-2" role="button" aria-label="mobile menu" on="tap:header-sidebar.toggle" tabindex="0">
+        <svg class="hamburger-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <rect y="3" width="24" height="2.5" fill="#1d273b" />
+            <rect y="10.75" width="24" height="2.5" fill="#1d273b" />
+            <rect y="18.5" width="24" height="2.5" fill="#1d273b" />
+        </svg>
+    </div>
+</header>
+
+
+
+<button id="closeButton" style="display: none;" on="tap:header-sidebar.close"></button>
+
+
+<style amp-custom>
+    body {
+        width: auto;
+        margin: 0;
+        padding: 0;
+        font-family: "Lato", Arial, sans-serif;
+        font-size: 16px;
+        line-height: 1.6;
+        height: 100%;
+    }
+
+    #qr-reader {
+        width: 300px;
+        height: 300px;
+        display: none; /* Initially hide the QR reader */
+    }
+
+    .center-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        width: 100%;
+    }
+
+    amp-sidebar::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -5px; /* Adjust the left value to control the width of the shadow */
+        height: 100%;
+        width: 2px; /* Adjust the width of the shadow */
+        background: rgba(0, 0, 0, 0.2); /* Shadow color */
+        box-shadow: 6px 0px 6px rgba(0, 0, 0, 0.2); /* Box shadow */
+    }
+
+
+
+    ::-webkit-scrollbar {
+        display: none;
+    }
+
+    .headerbar {
+        background: #ffffff;
+        height: 50px;
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+    }
+
+    .hamburger,
+    .site-name {
+        flex: 1 1 auto;
+        padding: 10px;
+    }
+
+    amp-sidebar,
+    amp-sidebar .submenu {
+        width: 290px;
+        height: 100%;
+    }
+
+        amp-sidebar .main-menu,
+        amp-sidebar .submenu {
+            overflow: hidden !important;
+        }
+
+        amp-sidebar .submenu {
+            top: 0;
+            left: 0;
+            position: fixed;
+        }
+
+        amp-sidebar .hide-submenu {
+            visibility: hidden;
+            transform: translateX(-100%);
+        }
+
+        amp-sidebar .show-submenu {
+            visibility: visible;
+            transform: translateX(0);
+        }
+
+        amp-sidebar .hide-parent {
+            visibility: hidden;
+        }
+
+        amp-sidebar .truncate {
+            white-space: nowrap;
+            overflow: hidden !important;
+            text-overflow: ellipsis;
+        }
+
+        amp-sidebar .link-container {
+            display: block;
+            line-height: 44px;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 0 1rem;
+        }
+
+    .link-container:hover {
+        background-color: #F0F0F0 !important;
+    }
+
+    amp-sidebar a {
+        min-width: 44px;
+        min-height: 44px;
+        text-decoration: none;
+        cursor: pointer;
+        font-size: 17px;
+    }
+
+    amp-sidebar .submenu-icon {
+        padding-right: 14px;
+    }
+
+        amp-sidebar .submenu-icon::after {
+            position: absolute;
+            transform: rotate(180deg); /* Rotate the element by 180 degrees */
+
+            height: 44px;
+            width: 44px;
+            content: '';
+            background-size: 1rem;
+            /*                 background-image: url('data:image/svg+xml;utf8, <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M5 3l3.057-3 11.943 12-11.943 12-3.057-3 9-9z"/></svg>');
+                                                                                                                     */ background-repeat: no-repeat;
+            background-position: center;
+        }
+
+    amp-sidebar .controls {
+        display: flex;
+        height: 50px;
+        background: #f0f0f0;
+    }
+
+        amp-sidebar .controls a {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        amp-sidebar .controls span {
+            line-height: 50px;
+            margin: 0 auto;
+        }
+
+    amp-sidebar nav > .controls > a:first-of-type {
+        visibility: hidden;
+    }
+
+    amp-sidebar .controls a svg {
+        height: 1rem;
+        width: 1rem;
+    }
+
+    amp-sidebar .link-icon {
+        float: left;
+        height: 44px;
+        margin-right: 0.75rem;
+    }
+
+        amp-sidebar .link-icon > svg {
+            height: 44px;
+        }
+
+    amp-sidebar {
+        background: #fff;
+        color: #232323;
+        fill: #232323;
+        text-transform: uppercase;
+        letter-spacing: 0.18rem;
+        font-size: 0.875rem;
+    }
+
+        amp-sidebar a {
+            color: black;
+            text-transform: none;
+            letter-spacing: normal;
+        }
+
+    div[class*="-sidebar-mask"] {
+        opacity: 0.8;
+    }
+
+    amp-sidebar a:hover {
+        text-decoration: underline;
+        fill: #232323;
+    }
+
+    amp-sidebar .view-all {
+        font-style: italic;
+        font-weight: bold;
+    }
+
+    .fa-light {
+        color: #1d273b !important;
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    a {
+        font-size: 1rem;
+    }
+
+
+    .circle-heading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: transparent; /* Transparent background color */
+        border: 2px solid #f0eff4; /* Border with the desired color */
+        border-radius: 50%; /* 50% border radius to make it circular */
+        width: 50px; /* Set the width and height to make it circular */
+        height: 50px;
+        font-size: 10px; /* Adjust the font size to make the text smaller */
+        margin: 0 auto; /* Center the element horizontally */
+        color: #f0eff4; /* Text color same as border color */
+        text-decoration: underline; /* Add an underline to the text */
+    }
+
+
+    .border {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        border-top: 1px solid #f0eff4 !important;
+        background-color: #ffffff;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        border-left: none !important;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        gap: 6px;
+        color: #444;
+    }
+
+        .border:hover {
+            background-color: #e53935;
+            color: #1c273c;
+        }
+
+            .border:hover svg {
+                stroke: #1c273c;
+            }
+
+    #logoutForm span {
+        letter-spacing: unset !important;
+    }
+
+    .i-amphtml-sidebar-mask {
+        position: relative !important;
+    }
+
+    .fa-regular {
+        font-size: 20px; /* Adjust the font size to your desired value */
+    }
+
+    a {
+        font-size: 18px; /* Adjust the font size to your desired value */
+    }
+
+
+
+    .i-amphtml-sidebar-mask[open] {
+        animation-name: none !important;
+    }
+
+
+    element.style {
+    }
+
+    .i-amphtml-sidebar-mask[open] {
+        animation-name: none !important;
+    }
+
+    .i-amphtml-sidebar-mask[i-amphtml-sidebar-opened] {
+        animation: none;
+    }
+
+    .i-amphtml-sidebar-mask[open] {
+        animation-name: i-amphtml-sidebar-mask-fade-in;
+    }
+
+    div[class*="-sidebar-mask"] {
+        opacity: 0.8;
+    }
+
+    .i-amphtml-sidebar-mask {
+        position: relative !important;
+    }
+
+    .i-amphtml-sidebar-mask {
+        height: 0 !important;
+    }
+
+    .color-input {
+        background-color: #f0f0f0;
+        !important;
+        box-shadow: none !important;
+    }
+
+
+
+    nav.shake {
+        transition: transform 3s; /* Smooth transition for the transform property */
+    }
+
+    /* Class to be added on scroll */
+    nav.scrolled {
+        transform: translateY(-10px); /* Example transformation, can be changed to your liking */
+    }
+
+    .clear-search-icon {
+        left: 10px;
+        cursor: pointer;
+    }
+
+    .search-icon {
+        right: 15px;
+        position: absolute; /* You can use "relative", "absolute", "fixed", or "sticky" depending on your layout needs */
+        z-index: 1;
+    }
+
+    .icon.search-icon {
+        z-index: 9999 !important; /* Set a high z-index value */
+    }
+
+    #searching {
+        visibility: hidden;
+        z-index: 9999 !important;
+    }
+
+    .hidden {
+        visibility: hidden !important;
+    }
+
+    #searching {
+        visibility: hidden;
+        z-index: 9999 !important;
+    }
+
+    amp-sidebar a:hover {
+        text-decoration: none;
+        color: black;
+    }
+
+
+
+    /* =========================================================
+                                                                       SIDEBAR DESIGN FIX
+                                                                       - يمنع أكل عناصر السايد بار
+                                                                       - يخلي القوائم الطويلة تعمل scroll طبيعي
+                                                                       - يضيف مساحة قبل زر الخروج حتى لا يغطي آخر العناصر
+                                                                       - يظبط عرض الهيدر والاسم/الإيميل
+                                                                       END SIDEBAR DESIGN FIX
+                                                                       ========================================================= */
+
+    :root {
+        --luxira-sidebar-width: min(330px, 88vw);
+        --luxira-sidebar-header-height: 130px;
+        --luxira-sidebar-logout-height: 48px;
+    }
+
+    amp-sidebar {
+        width: var(--luxira-sidebar-width) !important;
+        max-width: 88vw !important;
+        height: 100dvh !important;
+        overflow: hidden !important;
+        background: #ffffff !important;
+        box-sizing: border-box !important;
+    }
+
+        amp-sidebar > div:first-child {
+            height: var(--luxira-sidebar-header-height) !important;
+            width: 100% !important;
+            position: relative !important;
+            overflow: hidden !important;
+            flex: 0 0 auto !important;
+        }
+
+            amp-sidebar > div:first-child > img,
+            amp-sidebar .submenu > img {
+                width: 100% !important;
+                height: var(--luxira-sidebar-header-height) !important;
+                object-fit: cover !important;
+                display: block !important;
+            }
+
+            amp-sidebar > div:first-child > div[style*="top:105px"],
+            amp-sidebar .submenu > div[style*="top:105px"] {
+                right: 10px !important;
+                left: 10px !important;
+                width: auto !important;
+                max-width: calc(100% - 20px) !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                white-space: nowrap !important;
+                text-align: right !important;
+                z-index: 2 !important;
+            }
+
+        amp-sidebar h7 {
+            display: block !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+            line-height: 1.35 !important;
+            letter-spacing: normal !important;
+            font-size: 14px !important;
+        }
+
+    .shake.background-white-green {
+        height: calc(100dvh - var(--luxira-sidebar-header-height)) !important;
+        max-height: calc(100dvh - var(--luxira-sidebar-header-height)) !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        padding-bottom: calc(var(--luxira-sidebar-logout-height) + 16px) !important;
+        box-sizing: border-box !important;
+        scrollbar-width: thin !important;
+        scrollbar-color: #1d273b #e9eaec !important;
+    }
+
+        .shake.background-white-green::-webkit-scrollbar,
+        amp-sidebar .submenu::-webkit-scrollbar {
+            width: 7px !important;
+            display: block !important;
+        }
+
+        .shake.background-white-green::-webkit-scrollbar-track,
+        amp-sidebar .submenu::-webkit-scrollbar-track {
+            background: #e9eaec !important;
+            border-radius: 999px !important;
+        }
+
+        .shake.background-white-green::-webkit-scrollbar-thumb,
+        amp-sidebar .submenu::-webkit-scrollbar-thumb {
+            background: #1d273b !important;
+            border-radius: 999px !important;
+        }
+
+    amp-sidebar .main-menu,
+    amp-sidebar .submenu {
+        width: var(--luxira-sidebar-width) !important;
+        max-width: 88vw !important;
+        box-sizing: border-box !important;
+    }
+
+    amp-sidebar .main-menu {
+        overflow: visible !important;
+        padding-bottom: calc(var(--luxira-sidebar-logout-height) + 18px) !important;
+    }
+
+    amp-sidebar .submenu {
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        right: 0 !important;
+        left: auto !important;
+        top: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        padding-bottom: calc(var(--luxira-sidebar-logout-height) + 18px) !important;
+        background: #ffffff !important;
+        box-sizing: border-box !important;
+        scrollbar-width: thin !important;
+        scrollbar-color: #1d273b #e9eaec !important;
+    }
+
+    amp-sidebar .hide-submenu {
+        visibility: hidden;
+        transform: translateX(100%) !important;
+        pointer-events: none !important;
+    }
+
+    amp-sidebar .show-submenu {
+        visibility: visible;
+        transform: translateX(0) !important;
+        pointer-events: auto !important;
+    }
+
+    amp-sidebar .link-container {
+        min-height: 48px !important;
+        line-height: 48px !important;
+        padding: 0 16px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        border-bottom: 1px solid #e9eaec !important;
+        color: #111827 !important;
+        font-size: 17px !important;
+        letter-spacing: normal !important;
+    }
+
+        amp-sidebar .link-container[style*="display: flex"],
+        amp-sidebar .submenu-icon,
+        amp-sidebar .QR {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            gap: 8px !important;
+        }
+
+        amp-sidebar .link-container > div {
+            min-width: 0 !important;
+            max-width: calc(100% - 34px) !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+        }
+
+        amp-sidebar .link-container.truncate.me-4 {
+            display: block !important;
+            padding-right: 32px !important;
+            padding-left: 12px !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+        }
+
+    amp-sidebar .fa-light {
+        flex: 0 0 auto !important;
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+    }
+
+    amp-sidebar .fa-regular.fa-chevron-left,
+    amp-sidebar .fa-regular.fa-chevron-right {
+        flex: 0 0 auto !important;
+        font-size: 14px !important;
+    }
+
+    .border {
+        position: fixed !important;
+        right: 0 !important;
+        left: auto !important;
+        bottom: 0 !important;
+        width: var(--luxira-sidebar-width) !important;
+        max-width: 88vw !important;
+        height: var(--luxira-sidebar-logout-height) !important;
+        z-index: 99999 !important;
+        background: #ffffff !important;
+        box-sizing: border-box !important;
+        border-top: 1px solid #e9eaec !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-bottom: none !important;
+    }
+
+    #logoutForm,
+    .luxira-switch-return-link {
+        width: 100% !important;
+        height: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        white-space: nowrap !important;
+    }
+
+    @@supports not (height: 100dvh) {
+        amp-sidebar {
+            height: 100vh !important;
+        }
+
+        .shake.background-white-green {
+            height: calc(100vh - var(--luxira-sidebar-header-height)) !important;
+            max-height: calc(100vh - var(--luxira-sidebar-header-height)) !important;
+        }
+
+        amp-sidebar .submenu {
+            height: 100vh !important;
+            max-height: 100vh !important;
+        }
+    }
+
+    @@media (max-width: 420px) {
+        :root {
+            --luxira-sidebar-width: min(315px, 92vw);
+        }
+
+        amp-sidebar .link-container {
+            font-size: 16px !important;
+            padding-right: 14px !important;
+            padding-left: 14px !important;
+        }
+    }
+
+    .shake.background-white-green,
+    amp-sidebar,
+    amp-sidebar .main-menu,
+    amp-sidebar .submenu,
+    amp-sidebar .items,
+    amp-sidebar nav {
+        -ms-overflow-style: none !important;
+        scrollbar-width: none !important;
+    }
+
+        .shake.background-white-green::-webkit-scrollbar,
+        amp-sidebar::-webkit-scrollbar,
+        amp-sidebar .main-menu::-webkit-scrollbar,
+        amp-sidebar .submenu::-webkit-scrollbar,
+        amp-sidebar .items::-webkit-scrollbar,
+        amp-sidebar nav::-webkit-scrollbar {
+            width: 0 !important;
+            height: 0 !important;
+            display: none !important;
+            background: transparent !important;
+        }
+
+        .shake.background-white-green::-webkit-scrollbar-track,
+        amp-sidebar .submenu::-webkit-scrollbar-track,
+        .shake.background-white-green::-webkit-scrollbar-thumb,
+        amp-sidebar .submenu::-webkit-scrollbar-thumb {
+            display: none !important;
+            background: transparent !important;
+        }
+
+        amp-sidebar,
+        amp-sidebar nav,
+        amp-sidebar .main-menu,
+        amp-sidebar .items {
+            -ms-overflow-style: none !important;
+            scrollbar-width: none !important;
+            overflow-x: hidden !important;
+        }
+
+            amp-sidebar::-webkit-scrollbar,
+            amp-sidebar nav::-webkit-scrollbar,
+            amp-sidebar .main-menu::-webkit-scrollbar,
+            amp-sidebar .items::-webkit-scrollbar {
+                width: 0 !important;
+                height: 0 !important;
+                display: none !important;
+                background: transparent !important;
+            }
+
+            /* Keep the small useful scrollbar inside the visible sidebar content */
+            .shake.background-white-green,
+            amp-sidebar .submenu {
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+                -ms-overflow-style: auto !important;
+                scrollbar-width: thin !important;
+                scrollbar-color: #1d273b #e9eaec !important;
+            }
+
+                .shake.background-white-green::-webkit-scrollbar,
+                amp-sidebar .submenu::-webkit-scrollbar {
+                    width: 7px !important;
+                    height: 7px !important;
+                    display: block !important;
+                    background: transparent !important;
+                }
+
+                .shake.background-white-green::-webkit-scrollbar-track,
+                amp-sidebar .submenu::-webkit-scrollbar-track {
+                    background: #e9eaec !important;
+                    border-radius: 999px !important;
+                }
+
+                .shake.background-white-green::-webkit-scrollbar-thumb,
+                amp-sidebar .submenu::-webkit-scrollbar-thumb {
+                    background: #1d273b !important;
+                    border-radius: 999px !important;
+                }
+
+
+
+
+            /* =========================================================
+                                                                       SIDEBAR FINAL HIDE GRAY ONLY FIX
+                                                                       - يخفي الاسكرول الرصاصي الخارجي
+                                                                       - يخلي السكرول الداخلي شغال
+                                                                       - يخلي track شفاف عشان ميبانش خط رمادي
+                                                                       END SIDEBAR FINAL HIDE GRAY ONLY FIX
+                                                                       ========================================================= */
+
+            /* Hide the gray/native scrollbar from AMP/sidebar wrappers */
+            amp-sidebar,
+            amp-sidebar > div:not(.shake),
+            amp-sidebar nav,
+            amp-sidebar .main-menu,
+            amp-sidebar .items,
+            .i-amphtml-sidebar-content,
+            .i-amphtml-sidebar-scroll,
+            .i-amphtml-sidebar-mask {
+                overflow-x: hidden !important;
+                -ms-overflow-style: none !important;
+                scrollbar-width: none !important;
+            }
+
+                amp-sidebar::-webkit-scrollbar,
+                amp-sidebar > div:not(.shake)::-webkit-scrollbar,
+                amp-sidebar nav::-webkit-scrollbar,
+                amp-sidebar .main-menu::-webkit-scrollbar,
+                amp-sidebar .items::-webkit-scrollbar,
+                .i-amphtml-sidebar-content::-webkit-scrollbar,
+                .i-amphtml-sidebar-scroll::-webkit-scrollbar,
+                .i-amphtml-sidebar-mask::-webkit-scrollbar {
+                    width: 0 !important;
+                    height: 0 !important;
+                    display: none !important;
+                    background: transparent !important;
+                }
+
+    /* The only scrollable area */
+    .shake.background-white-green {
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -ms-overflow-style: auto !important;
+        scrollbar-width: thin !important;
+        scrollbar-color: #1d273b transparent !important;
+    }
+
+        .shake.background-white-green::-webkit-scrollbar {
+            width: 7px !important;
+            height: 7px !important;
+            display: block !important;
+            background: transparent !important;
+        }
+
+        .shake.background-white-green::-webkit-scrollbar-track {
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+
+        .shake.background-white-green::-webkit-scrollbar-thumb {
+            background: #1d273b !important;
+            border-radius: 999px !important;
+            border: 2px solid transparent !important;
+            background-clip: content-box !important;
+        }
+
+        .shake.background-white-green::-webkit-scrollbar-corner {
+            background: transparent !important;
+        }
+
+    /* Submenus: same behavior, no gray track */
+    amp-sidebar .submenu {
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -ms-overflow-style: auto !important;
+        scrollbar-width: thin !important;
+        scrollbar-color: #1d273b transparent !important;
+    }
+
+        amp-sidebar .submenu::-webkit-scrollbar {
+            width: 7px !important;
+            height: 7px !important;
+            display: block !important;
+            background: transparent !important;
+        }
+
+        amp-sidebar .submenu::-webkit-scrollbar-track {
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+
+        amp-sidebar .submenu::-webkit-scrollbar-thumb {
+            background: #1d273b !important;
+            border-radius: 999px !important;
+            border: 2px solid transparent !important;
+            background-clip: content-box !important;
+        }
+
+        amp-sidebar .submenu::-webkit-scrollbar-corner {
+            background: transparent !important;
+        }
+
+
+
+    /* =========================================================
+                                                                   FINAL FIX: hide ONLY the outer gray scrollbar
+                                                                   - يخفي السكرول الرصاصي الخارجي الخاص بالصفحة/AMP
+                                                                   - يترك السكرول الداخلي الأخضر شغال داخل المنيو
+                                                                   ========================================================= */
+
+    html,
+    body,
+    html.i-amphtml-scroll-disabled,
+    body.i-amphtml-scroll-disabled,
+    amp-sidebar,
+    amp-sidebar > div:first-child,
+    amp-sidebar nav,
+    amp-sidebar .main-menu,
+    amp-sidebar .items,
+    .i-amphtml-sidebar-scrollbox,
+    .i-amphtml-sidebar-content,
+    .i-amphtml-sidebar-scroll,
+    .i-amphtml-sidebar-mask {
+        overflow-x: hidden !important;
+        -ms-overflow-style: none !important;
+        scrollbar-width: none !important;
+    }
+
+        html::-webkit-scrollbar,
+        body::-webkit-scrollbar,
+        html.i-amphtml-scroll-disabled::-webkit-scrollbar,
+        body.i-amphtml-scroll-disabled::-webkit-scrollbar,
+        amp-sidebar::-webkit-scrollbar,
+        amp-sidebar > div:first-child::-webkit-scrollbar,
+        amp-sidebar nav::-webkit-scrollbar,
+        amp-sidebar .main-menu::-webkit-scrollbar,
+        amp-sidebar .items::-webkit-scrollbar,
+        .i-amphtml-sidebar-scrollbox::-webkit-scrollbar,
+        .i-amphtml-sidebar-content::-webkit-scrollbar,
+        .i-amphtml-sidebar-scroll::-webkit-scrollbar,
+        .i-amphtml-sidebar-mask::-webkit-scrollbar {
+            width: 0 !important;
+            height: 0 !important;
+            display: none !important;
+            background: transparent !important;
+        }
+
+    .i-amphtml-sidebar-scrollbox,
+    .i-amphtml-sidebar-content,
+    .i-amphtml-sidebar-scroll {
+        overflow: hidden !important;
+    }
+
+    /* منطقة الاسكرول الوحيدة داخل السايد بار */
+    .shake.background-white-green {
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -ms-overflow-style: auto !important;
+        scrollbar-width: thin !important;
+        scrollbar-color: #1d273b transparent !important;
+    }
+
+        .shake.background-white-green::-webkit-scrollbar {
+            width: 7px !important;
+            height: 7px !important;
+            display: block !important;
+            background: transparent !important;
+        }
+
+        .shake.background-white-green::-webkit-scrollbar-track {
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+
+        .shake.background-white-green::-webkit-scrollbar-thumb {
+            background: #1d273b !important;
+            border-radius: 999px !important;
+            border: 2px solid transparent !important;
+            background-clip: content-box !important;
+        }
+
+    /* نفس الفكرة للقوائم الفرعية */
+    amp-sidebar .submenu {
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -ms-overflow-style: auto !important;
+        scrollbar-width: thin !important;
+        scrollbar-color: #1d273b transparent !important;
+    }
+
+        amp-sidebar .submenu::-webkit-scrollbar {
+            width: 7px !important;
+            height: 7px !important;
+            display: block !important;
+            background: transparent !important;
+        }
+
+        amp-sidebar .submenu::-webkit-scrollbar-track {
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+
+        amp-sidebar .submenu::-webkit-scrollbar-thumb {
+            background: #1d273b !important;
+            border-radius: 999px !important;
+            border: 2px solid transparent !important;
+            background-clip: content-box !important;
+        }
+
+
+
+    /* =========================================================
+                                                                   HARD FIX: HIDE THE OUTER GRAY SCROLLBAR
+                                                                   السبب: السكرول الرصاصي غالبًا تابع للـ body/html أو AMP outer sidebar،
+                                                                   وليس تابعًا للمنيو الداخلية نفسها.
+                                                                   هذا الكود يخفي الخارجي فقط، ويترك سكرول المنيو الداخلي يعمل.
+                                                                   ========================================================= */
+
+    html.luxira-sidebar-open,
+    body.luxira-sidebar-open,
+    html.i-amphtml-scroll-disabled,
+    body.i-amphtml-scroll-disabled {
+        overflow: hidden !important;
+        max-height: 100vh !important;
+        -ms-overflow-style: none !important;
+        scrollbar-width: none !important;
+    }
+
+        html.luxira-sidebar-open::-webkit-scrollbar,
+        body.luxira-sidebar-open::-webkit-scrollbar,
+        html.i-amphtml-scroll-disabled::-webkit-scrollbar,
+        body.i-amphtml-scroll-disabled::-webkit-scrollbar {
+            width: 0 !important;
+            height: 0 !important;
+            display: none !important;
+            background: transparent !important;
+        }
+
+        html.luxira-sidebar-open::-webkit-scrollbar-button,
+        body.luxira-sidebar-open::-webkit-scrollbar-button,
+        html.i-amphtml-scroll-disabled::-webkit-scrollbar-button,
+        body.i-amphtml-scroll-disabled::-webkit-scrollbar-button {
+            width: 0 !important;
+            height: 0 !important;
+            display: none !important;
+        }
+
+    #header-sidebar,
+    #header-sidebar[open],
+    #header-sidebar.i-amphtml-sidebar-opened,
+    amp-sidebar#header-sidebar,
+    amp-sidebar#header-sidebar[open] {
+        overflow: hidden !important;
+        overflow-x: hidden !important;
+        -ms-overflow-style: none !important;
+        scrollbar-width: none !important;
+    }
+
+        #header-sidebar::-webkit-scrollbar,
+        #header-sidebar[open]::-webkit-scrollbar,
+        #header-sidebar.i-amphtml-sidebar-opened::-webkit-scrollbar,
+        amp-sidebar#header-sidebar::-webkit-scrollbar,
+        amp-sidebar#header-sidebar[open]::-webkit-scrollbar {
+            width: 0 !important;
+            height: 0 !important;
+            display: none !important;
+            background: transparent !important;
+        }
+
+        #header-sidebar::-webkit-scrollbar-button,
+        #header-sidebar[open]::-webkit-scrollbar-button,
+        #header-sidebar.i-amphtml-sidebar-opened::-webkit-scrollbar-button,
+        amp-sidebar#header-sidebar::-webkit-scrollbar-button,
+        amp-sidebar#header-sidebar[open]::-webkit-scrollbar-button {
+            width: 0 !important;
+            height: 0 !important;
+            display: none !important;
+        }
+
+        /* تأكيد أن السكرول الوحيد الظاهر يكون داخل محتوى السايد بار نفسه */
+        #header-sidebar .shake.background-white-green {
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            -ms-overflow-style: auto !important;
+            scrollbar-width: thin !important;
+            scrollbar-color: #1d273b transparent !important;
+        }
+
+            #header-sidebar .shake.background-white-green::-webkit-scrollbar {
+                width: 7px !important;
+                height: 7px !important;
+                display: block !important;
+                background: transparent !important;
+            }
+
+            #header-sidebar .shake.background-white-green::-webkit-scrollbar-track {
+                background: transparent !important;
+                box-shadow: none !important;
+            }
+
+            #header-sidebar .shake.background-white-green::-webkit-scrollbar-thumb {
+                background: #1d273b !important;
+                border-radius: 999px !important;
+                border: 2px solid transparent !important;
+                background-clip: content-box !important;
+            }
+
+
+    /* =========================================================
+                                                           SECURE LOGOUT CAMERA POPUP
+                                                           ========================================================= */
+
+    .secure-logout-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.55);
+        z-index: 999999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+    }
+
+    .secure-logout-modal {
+        width: min(460px, 96vw);
+        background: #ffffff;
+        border-radius: 0 0 18px 18px;
+        overflow: hidden;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.28);
+        text-align: center;
+        direction: rtl;
+    }
+
+    .secure-logout-header {
+        background: #1d273b;
+        color: #ffffff;
+        padding: 16px;
+        font-size: 26px;
+        font-weight: 800;
+    }
+
+    .secure-logout-body {
+        padding: 18px 20px 22px;
+    }
+
+    .secure-logout-note {
+        color: #334155;
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 14px;
+    }
+
+    .secure-logout-camera-box {
+        position: relative;
+        width: 100%;
+        height: 310px;
+        border-radius: 18px;
+        border: 2px solid #1d273b;
+        background: #0f172a;
+        overflow: hidden;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+    }
+
+    #secureLogoutCamera,
+    #secureLogoutPreview {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        background: #0f172a;
+        display: block;
+    }
+
+    .secure-logout-loading-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.38);
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+    }
+
+    .secure-logout-loading-card {
+        width: min(290px, 78%);
+        min-height: 230px;
+        border-radius: 18px;
+        background: rgba(48, 50, 57, 0.94);
+        color: #ffffff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 18px 38px rgba(0, 0, 0, 0.24);
+    }
+
+    .secure-logout-check-icon {
+        width: 94px;
+        height: 94px;
+        border-radius: 50%;
+        border: 6px solid #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 62px;
+        line-height: 1;
+        margin-bottom: 22px;
+        font-weight: 500;
+        color: #ffffff;
+    }
+
+    .secure-logout-loading-text {
+        font-size: 27px;
+        font-weight: 900;
+    }
+
+    .secure-logout-error {
+        color: #dc2626;
+        font-size: 18px;
+        font-weight: 800;
+        margin-top: 14px;
+    }
+
+    .secure-logout-success {
+        color: rgb(42, 177, 73);
+        font-size: 18px;
+        font-weight: 800;
+        margin-top: 14px;
+    }
+
+    .secure-logout-actions {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 22px;
+    }
+
+    .secure-logout-confirm,
+    .secure-logout-retake {
+        position: relative;
+        overflow: hidden;
+        border: 0;
+        min-width: 150px;
+        min-height: 48px;
+        border-radius: 999px;
+        color: #ffffff;
+        font-size: 18px;
+        font-weight: 800;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
+    }
+
+    .secure-logout-confirm {
+        background: #f28e02 !important;
+        color: #ffffff !important;
+        cursor: pointer;
+    }
+
+        .secure-logout-confirm:hover,
+        .secure-logout-confirm:focus,
+        .secure-logout-confirm:active {
+            background: #f28e02 !important;
+            color: #ffffff !important;
+            border: 0 !important;
+            opacity: 1 !important;
+            cursor: pointer !important;
+            pointer-events: auto !important;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16) !important;
+        }
+
+        .secure-logout-confirm:disabled,
+        .secure-logout-confirm.is-logging-out,
+        .secure-logout-confirm.is-logging-out:disabled,
+        .secure-logout-confirm[aria-disabled="true"] {
+            background: #f28e02 !important;
+            color: #ffffff !important;
+            border: 0 !important;
+            opacity: 0.82 !important;
+            cursor: not-allowed !important;
+            pointer-events: none !important;
+            box-shadow: none !important;
+            filter: grayscale(10%) saturate(0.82) !important;
+        }
+
+            .secure-logout-confirm:disabled::after,
+            .secure-logout-confirm.is-logging-out::after,
+            .secure-logout-confirm.is-logging-out:disabled::after,
+            .secure-logout-confirm[aria-disabled="true"]::after {
+                content: "";
+                position: absolute;
+                inset: 0;
+                border-radius: inherit;
+                background: rgba(255, 255, 255, 0.34);
+                pointer-events: none;
+            }
+
+            .secure-logout-confirm.is-logging-out,
+            .secure-logout-confirm.is-logging-out:disabled {
+                width: min(450px, 92%) !important;
+                min-width: min(450px, 92%) !important;
+                height: 48px !important;
+                min-height: 48px !important;
+                border-radius: 999px !important;
+            }
+
+    .secure-logout-retake {
+        background: #64748b;
+    }
+
+        .secure-logout-retake:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            pointer-events: none;
+            filter: grayscale(20%) !important;
+        }
+
+    .secure-logout-btn-content {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .secure-logout-btn-check {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 2px solid #ffffff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        line-height: 1;
+        font-weight: 900;
+    }
+
+
+
+
+
+    @@media (max-width: 767.98px) {
+        #header-sidebar .attendance-admin-menu {
+            display: none !important;
+            visibility: hidden !important;
+        }
+    }
+
+    #header-sidebar,
+    #header-sidebar *,
+    amp-sidebar#header-sidebar,
+    amp-sidebar#header-sidebar * {
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+    }
+
+        #header-sidebar::-webkit-scrollbar,
+        #header-sidebar *::-webkit-scrollbar,
+        amp-sidebar#header-sidebar::-webkit-scrollbar,
+        amp-sidebar#header-sidebar *::-webkit-scrollbar {
+            width: 0 !important;
+            height: 0 !important;
+            display: none !important;
+            background: transparent !important;
+        }
+
+        #header-sidebar::-webkit-scrollbar-thumb,
+        #header-sidebar *::-webkit-scrollbar-thumb,
+        #header-sidebar::-webkit-scrollbar-track,
+        #header-sidebar *::-webkit-scrollbar-track,
+        #header-sidebar::-webkit-scrollbar-button,
+        #header-sidebar *::-webkit-scrollbar-button {
+            width: 0 !important;
+            height: 0 !important;
+            display: none !important;
+            background: transparent !important;
+        }
+
+        #header-sidebar .shake.background-white-green,
+        #header-sidebar .submenu {
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+</style>
+
+
+<script>
+    function handleLinkClick(event) {
+        // Check if the current page is not the home page
+        if (window.location.pathname !== '/') {
+            // Prevent the default action (sidebar close)
+            event.preventDefault();
+
+            // Redirect to the home page
+            window.location.href = '/';
+        }
+        // If it's the home page, the default 'tap:header-sidebar.close' behavior will occur
+    }
+
+
+    var sidebar = document.getElementById('header-sidebar');
+    var closeButton = document.getElementById('closeButton');
+
+    // Close sidebar when clicking outside of it
+    document.addEventListener('click', function (event) {
+        var isClickInsideSidebar = event.target.closest('#header-sidebar') !== null;
+        var isClickOnHamburger = event.target.closest('.hamburger') !== null;
+
+        if (!isClickInsideSidebar && !isClickOnHamburger && sidebar.hasAttribute('open')) {
+            console.log('Clicked outside sidebar. Closing sidebar...');
+            closeButton.click(); // Simulate click on the hidden button to close the sidebar
+            console.log('Success message closed (clicked outside).');
+        }
+    });
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+
+
+        const searchInput = document.getElementById("search");
+        const clearSearchIcon = document.getElementById("searching");
+
+        // Function to toggle the visibility of the clear-search icon
+        function toggleClearIconVisibility() {
+            if (searchInput.value.length > 0) {
+                clearSearchIcon.style.visibility = 'visible'; // Directly setting visibility to visible
+            } else {
+                clearSearchIcon.style.visibility = 'hidden'; // Directly setting visibility to hidden
+            }
+        }
+
+        // Event listener for input changes
+        searchInput.addEventListener("input", function () {
+            toggleClearIconVisibility();
+        });
+
+        // Event listener for clearing the search term
+        clearSearchIcon.addEventListener("click", function () {
+            searchInput.value = ""; // Clear the input field
+            toggleClearIconVisibility(); // Update the clear icon visibility
+        });
+
+        // Initial check for clear icon visibility
+        toggleClearIconVisibility();
+    });
+
+
+
+
+    const isAdminSwitchSession = @isAdminSwitchSession.ToString().ToLowerInvariant();
+    const skipSecureLogoutFaceCapture = @skipSecureLogoutFaceCapture.ToString().ToLowerInvariant();
+    const originalAdminLoginEmail = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(originalAdminEmail));
+    const originalAdminLoginName = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(originalAdminName));
+    const switchReturnToAdminUrl = '/AccountSwitch/ReturnToOriginalAdmin';
+    const switchReturnToAdminDirectUrl = '/AccountSwitch/ReturnToOriginalAdminDirect';
+    const switchLogoutToLoginUrl = '/AccountSwitch/LogoutSwitchToLogin';
+
+    function rememberOriginalAdminOnLoginPage() {
+        if (!originalAdminLoginEmail) {
+            return;
+        }
+
+        try {
+            localStorage.setItem('luxiraLoginLastSelectedProfileEmail', originalAdminLoginEmail);
+            sessionStorage.setItem('luxiraLoginLastSelectedProfileEmail', originalAdminLoginEmail);
+            sessionStorage.setItem('luxiraLoginLastSelectedProfileName', originalAdminLoginName || 'Admin');
+        } catch (e) {
+            // Ignore browser storage errors.
+        }
+    }
+
+    async function luxiraReturnToOriginalAdmin(event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        clearLuxiraLogoutClientState();
+        rememberOriginalAdminOnLoginPage();
+
+        try {
+            const response = await fetch(switchReturnToAdminUrl, {
+                method: 'POST',
+                cache: 'no-store',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            let result = null;
+
+            try {
+                result = await response.json();
+            } catch (jsonError) {
+                result = null;
+            }
+
+            if (response.ok && result && result.success) {
+                const redirectUrl = result.redirectUrl || '/Home/Index';
+                const separator = redirectUrl.indexOf('?') === -1 ? '?' : '&';
+                const targetUrl = redirectUrl + separator + '_adminReturn=' + new Date().getTime();
+
+                window.location.replace(targetUrl);
+
+                window.setTimeout(function () {
+                    window.location.href = targetUrl;
+                }, 250);
+
+                return;
+            }
+        } catch (e) {
+            // fallback below
+        }
+
+        /*
+            Fallback مباشر:
+            لو الـ POST رجع Redirect/HTML أو حصلت مشكلة JSON، نستخدم GET endpoint.
+            برضه لا يوجد تصوير خروج ولا إدخال باسورد.
+        */
+        var separator = switchReturnToAdminDirectUrl.indexOf('?') === -1 ? '?' : '&';
+        var targetUrl = switchReturnToAdminDirectUrl + separator + '_=' + new Date().getTime();
+
+        window.location.replace(targetUrl);
+
+        window.setTimeout(function () {
+            window.location.href = targetUrl;
+        }, 250);
+    }
+
+    function luxiraLogoutSwitchToLogin(event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        clearLuxiraLogoutClientState();
+        rememberOriginalAdminOnLoginPage();
+
+        var separator = switchLogoutToLoginUrl.indexOf('?') === -1 ? '?' : '&';
+        var targetUrl = switchLogoutToLoginUrl + separator + '_=' + new Date().getTime();
+
+        window.location.replace(targetUrl);
+
+        window.setTimeout(function () {
+            window.location.href = targetUrl;
+        }, 250);
+    }
+
+    let secureLogoutStream = null;
+    let secureLogoutFaceBase64 = "";
+    let secureLogoutIpAddress = "";
+    let secureLogoutLocation = "";
+    let isSecureLogoutSubmitting = false;
+
+    function buildSecureLogoutLocationText(data) {
+        const parts = [];
+
+        if (data.city) parts.push(data.city);
+        if (data.region) parts.push(data.region);
+        if (data.country_name) parts.push(data.country_name);
+
+        return parts.join(' - ');
+    }
+
+    async function loadSecureLogoutIpAndLocation() {
+        secureLogoutIpAddress = "";
+        secureLogoutLocation = "";
+
+        try {
+            const response = await fetch('https://ipapi.co/json/', {
+                method: 'GET',
+                cache: 'no-store'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to load IP location');
+            }
+
+            const data = await response.json();
+
+            secureLogoutIpAddress = data && data.ip ? data.ip : "";
+            secureLogoutLocation = data ? buildSecureLogoutLocationText(data) : "";
+        } catch (error) {
+            try {
+                const fallbackResponse = await fetch('https://api.ipify.org?format=json', {
+                    method: 'GET',
+                    cache: 'no-store'
+                });
+
+                const fallbackData = await fallbackResponse.json();
+
+                secureLogoutIpAddress = fallbackData && fallbackData.ip ? fallbackData.ip : "";
+                secureLogoutLocation = "";
+            } catch {
+                secureLogoutIpAddress = "";
+                secureLogoutLocation = "";
+            }
+        }
+    }
+
+
+    function clearLuxiraLogoutClientState() {
+        try {
+            document.cookie = 'LuxiraRequireCheckInFaceCapture=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+            document.cookie = 'LoginWelcomeText=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+            sessionStorage.removeItem('luxiraPostLoginCheckInCaptured');
+        } catch (e) {
+            // Ignore browser storage errors.
+        }
+    }
+
+    function submitLogoutForm(event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        if (isAdminSwitchSession) {
+            luxiraLogoutSwitchToLogin(event);
+            return;
+        }
+
+        const logoutForm = document.getElementById('logoutForm');
+
+        if (skipSecureLogoutFaceCapture) {
+            clearLuxiraLogoutClientState();
+
+            if (logoutForm) {
+                logoutForm.submit();
+            }
+
+            return;
+        }
+
+        openSecureLogoutPopup();
+    }
+
+    function openSecureLogoutPopup() {
+        let oldPopup = document.getElementById('secureLogoutPopup');
+        if (oldPopup) {
+            oldPopup.remove();
+        }
+
+        secureLogoutFaceBase64 = "";
+        isSecureLogoutSubmitting = false;
+
+        const popup = document.createElement('div');
+        popup.id = 'secureLogoutPopup';
+        popup.innerHTML = `
+                    <div class="secure-logout-backdrop">
+                        <div class="secure-logout-modal">
+                            <div class="secure-logout-header">تسجيل خروج آمن</div>
+
+                            <div class="secure-logout-body">
+                                <p class="secure-logout-note">يجب التقاط صورة الوجه قبل تسجيل الخروج.</p>
+
+                                <div class="secure-logout-camera-box">
+                                    <video id="secureLogoutCamera" autoplay playsinline muted></video>
+                                    <canvas id="secureLogoutCanvas" style="display:none;"></canvas>
+
+                                    <img id="secureLogoutPreview" src="" alt="صورة الخروج" style="display:none;" />
+
+                                    <div id="secureLogoutLoadingOverlay" class="secure-logout-loading-overlay" style="display:none;">
+                                        <div class="secure-logout-loading-card">
+                                            <div class="secure-logout-check-icon">✓</div>
+                                            <div class="secure-logout-loading-text">جاري تسجيل الخروج</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="secureLogoutError" class="secure-logout-error" style="display:none;"></div>
+                                <div id="secureLogoutSuccess" class="secure-logout-success" style="display:none;">تم التقاط صورة الخروج بنجاح</div>
+
+                                <div class="secure-logout-actions">
+                                    <button type="button" id="secureLogoutConfirmBtn" class="secure-logout-confirm">
+                                        تأكيد الخروج
+                                    </button>
+
+                                    <button type="button" id="secureLogoutRetakeBtn" class="secure-logout-retake">
+                                        إعادة التصوير
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+        document.body.appendChild(popup);
+
+        document.getElementById('secureLogoutConfirmBtn').addEventListener('click', handleSecureLogoutConfirm);
+        document.getElementById('secureLogoutRetakeBtn').addEventListener('click', retakeSecureLogoutPhoto);
+
+        loadSecureLogoutIpAndLocation();
+        startSecureLogoutCamera();
+    }
+
+    async function startSecureLogoutCamera() {
+        const video = document.getElementById('secureLogoutCamera');
+        const errorBox = document.getElementById('secureLogoutError');
+        const successBox = document.getElementById('secureLogoutSuccess');
+        const preview = document.getElementById('secureLogoutPreview');
+
+        try {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                errorBox.innerText = "المتصفح لا يدعم تشغيل الكاميرا";
+                errorBox.style.display = "block";
+                return;
+            }
+
+            secureLogoutStream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: "user",
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                },
+                audio: false
+            });
+
+            video.srcObject = secureLogoutStream;
+
+            try {
+                await video.play();
+            } catch (playError) {
+                // Some browsers start playback automatically because the video has autoplay/muted.
+            }
+
+            video.style.display = "block";
+            preview.style.display = "none";
+            errorBox.style.display = "none";
+            successBox.style.display = "none";
+
+            const loadingOverlay = document.getElementById('secureLogoutLoadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.style.display = "none";
+            }
+        } catch (error) {
+            errorBox.innerText = "يجب السماح باستخدام الكاميرا لتسجيل الخروج";
+            errorBox.style.display = "block";
+        }
+    }
+
+    function stopSecureLogoutCamera() {
+        if (secureLogoutStream) {
+            secureLogoutStream.getTracks().forEach(function (track) {
+                track.stop();
+            });
+
+            secureLogoutStream = null;
+        }
+    }
+
+    const secureLogoutFaceValidationMessage = "يجب أخذ صورة للوجه بشكل صحيح";
+
+    function getSecureLogoutFaceImageQuality(canvasElement) {
+        const ctx = canvasElement.getContext('2d');
+        const width = canvasElement.width;
+        const height = canvasElement.height;
+        const imageData = ctx.getImageData(0, 0, width, height).data;
+        const step = 8;
+        let count = 0;
+        let luminanceSum = 0;
+        let luminanceSquaresSum = 0;
+        let skinLikePixels = 0;
+        let coloredPixels = 0;
+
+        for (let y = 0; y < height; y += step) {
+            for (let x = 0; x < width; x += step) {
+                const index = (y * width + x) * 4;
+                const r = imageData[index];
+                const g = imageData[index + 1];
+                const b = imageData[index + 2];
+                const max = Math.max(r, g, b);
+                const min = Math.min(r, g, b);
+                const luminance = (0.299 * r) + (0.587 * g) + (0.114 * b);
+
+                count++;
+                luminanceSum += luminance;
+                luminanceSquaresSum += luminance * luminance;
+
+                if (max - min > 18) {
+                    coloredPixels++;
+                }
+
+                const isSkinLike =
+                    r > 70 && g > 35 && b > 20 &&
+                    r > g * 1.03 && r > b * 1.12 &&
+                    (max - min) > 15;
+
+                if (isSkinLike) {
+                    skinLikePixels++;
+                }
+            }
+        }
+
+        const averageLuminance = count ? luminanceSum / count : 0;
+        const variance = count ? (luminanceSquaresSum / count) - (averageLuminance * averageLuminance) : 0;
+
+        return {
+            averageLuminance: averageLuminance,
+            variance: variance,
+            skinRatio: count ? skinLikePixels / count : 0,
+            colorRatio: count ? coloredPixels / count : 0
+        };
+    }
+
+    function hasLikelySecureLogoutHumanFaceFallback(canvasElement, quality) {
+        const ctx = canvasElement.getContext('2d');
+        const width = canvasElement.width;
+        const height = canvasElement.height;
+
+        if (!ctx || !width || !height) {
+            return false;
+        }
+
+        const imageData = ctx.getImageData(0, 0, width, height).data;
+        const step = 6;
+        let skinPixels = 0;
+        let upperSkinPixels = 0;
+        let lowerSkinPixels = 0;
+        let rightSkinPixels = 0;
+        let leftSkinPixels = 0;
+        let minX = width;
+        let maxX = 0;
+        let minY = height;
+        let maxY = 0;
+
+        for (let y = 0; y < height; y += step) {
+            for (let x = 0; x < width; x += step) {
+                const index = (y * width + x) * 4;
+                const r = imageData[index];
+                const g = imageData[index + 1];
+                const b = imageData[index + 2];
+                const max = Math.max(r, g, b);
+                const min = Math.min(r, g, b);
+
+                const isSkinLike =
+                    r > 55 && g > 28 && b > 18 &&
+                    r > g * 0.95 && r > b * 1.08 &&
+                    max - min > 12 &&
+                    !(r > 220 && g > 220 && b > 220) &&
+                    !(Math.abs(r - g) < 10 && Math.abs(g - b) < 10);
+
+                if (isSkinLike) {
+                    skinPixels++;
+                    if (y < height * 0.70) upperSkinPixels++;
+                    else lowerSkinPixels++;
+                    if (x > width * 0.55) rightSkinPixels++;
+                    if (x < width * 0.45) leftSkinPixels++;
+                    minX = Math.min(minX, x);
+                    maxX = Math.max(maxX, x);
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
+                }
+            }
+        }
+
+        if (skinPixels < 18) {
+            return false;
+        }
+
+        const skinWidth = maxX - minX;
+        const skinHeight = maxY - minY;
+        const hasFaceSizedSkinPatch = skinWidth >= 32 && skinHeight >= 32;
+        const hasSkinInFaceArea = upperSkinPixels >= 10 || rightSkinPixels >= 10 || leftSkinPixels >= 10;
+
+        return hasFaceSizedSkinPatch && hasSkinInFaceArea && quality.skinRatio >= 0.003;
+    }
+
+    async function validateSecureLogoutFaceImage(canvasElement) {
+        const quality = getSecureLogoutFaceImageQuality(canvasElement);
+
+        // نرفض الصورة الفاضية/السوداء/الرمادي، لكن نسمح بصورة وجه بعيدة أو فيها حركة بسيطة.
+        if (quality.averageLuminance < 28 || quality.averageLuminance > 248 || quality.variance < 55 || quality.colorRatio < 0.006) {
+            return false;
+        }
+
+        // الأفضل استخدام FaceDetector لو متاح، مع قبول الوجه حتى لو بعيد أو في طرف الصورة.
+        if ('FaceDetector' in window) {
+            try {
+                const detector = new FaceDetector({ fastMode: true, maxDetectedFaces: 5 });
+                const faces = await detector.detect(canvasElement);
+
+                if (faces && faces.length > 0) {
+                    const imageArea = canvasElement.width * canvasElement.height;
+                    const hasValidDetectedFace = faces.some(function (face) {
+                        const box = face.boundingBox || {};
+                        const faceWidth = box.width || 0;
+                        const faceHeight = box.height || 0;
+                        const faceArea = faceWidth * faceHeight;
+
+                        return faceWidth >= 28 && faceHeight >= 28 && imageArea > 0 && (faceArea / imageArea) >= 0.0035;
+                    });
+
+                    if (hasValidDetectedFace) {
+                        return true;
+                    }
+                }
+            } catch (error) {
+                // نستخدم الفحص الاحتياطي بالأسفل لأن بعض المتصفحات تفشل في FaceDetector مع الإضاءة أو الحركة.
+            }
+        }
+
+        return hasLikelySecureLogoutHumanFaceFallback(canvasElement, quality);
+    }
+
+    async function captureSecureLogoutPhoto() {
+        const video = document.getElementById('secureLogoutCamera');
+        const canvas = document.getElementById('secureLogoutCanvas');
+        const preview = document.getElementById('secureLogoutPreview');
+        const errorBox = document.getElementById('secureLogoutError');
+        const successBox = document.getElementById('secureLogoutSuccess');
+
+        if (!video || !video.videoWidth || !video.videoHeight) {
+            errorBox.innerText = "الكاميرا لم تعمل بعد، انتظر لحظة ثم حاول مرة أخرى";
+            errorBox.style.display = "block";
+            return false;
+        }
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        const canvasContext = canvas.getContext('2d');
+        canvasContext.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const isValidFaceImage = await validateSecureLogoutFaceImage(canvas);
+
+        if (!isValidFaceImage) {
+            secureLogoutFaceBase64 = "";
+            preview.src = "";
+            preview.style.display = "none";
+            video.style.display = "block";
+            successBox.style.display = "none";
+            errorBox.innerText = secureLogoutFaceValidationMessage;
+            errorBox.style.display = "block";
+            return false;
+        }
+
+        secureLogoutFaceBase64 = canvas.toDataURL('image/jpeg', 0.75);
+
+        preview.src = secureLogoutFaceBase64;
+        preview.style.display = "block";
+        video.style.display = "none";
+
+        errorBox.style.display = "none";
+        successBox.style.display = "block";
+
+        stopSecureLogoutCamera();
+
+        return true;
+    }
+
+    function retakeSecureLogoutPhoto() {
+        secureLogoutFaceBase64 = "";
+
+        const preview = document.getElementById('secureLogoutPreview');
+        const successBox = document.getElementById('secureLogoutSuccess');
+        const errorBox = document.getElementById('secureLogoutError');
+
+        if (preview) {
+            preview.src = "";
+            preview.style.display = "none";
+        }
+
+        if (successBox) {
+            successBox.style.display = "none";
+        }
+
+        if (errorBox) {
+            errorBox.style.display = "none";
+        }
+
+        hideSecureLogoutLoading();
+
+        startSecureLogoutCamera();
+    }
+
+    function showSecureLogoutLoading() {
+        const loadingOverlay = document.getElementById('secureLogoutLoadingOverlay');
+        const errorBox = document.getElementById('secureLogoutError');
+        const successBox = document.getElementById('secureLogoutSuccess');
+        const confirmBtn = document.getElementById('secureLogoutConfirmBtn');
+        const retakeBtn = document.getElementById('secureLogoutRetakeBtn');
+
+        if (errorBox) {
+            errorBox.style.display = "none";
+        }
+
+        if (successBox) {
+            successBox.style.display = "none";
+        }
+
+        if (loadingOverlay) {
+            loadingOverlay.style.display = "flex";
+        }
+
+        isSecureLogoutSubmitting = true;
+
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.setAttribute('disabled', 'disabled');
+            confirmBtn.setAttribute('aria-disabled', 'true');
+            confirmBtn.classList.add('is-logging-out');
+            confirmBtn.innerHTML = `
+                        <span class="secure-logout-btn-content">
+                            <span class="secure-logout-btn-check">✓</span>
+                            <span>جاري تسجيل الخروج</span>
+                        </span>
+                    `;
+        }
+
+        if (retakeBtn) {
+            retakeBtn.disabled = true;
+            retakeBtn.setAttribute('disabled', 'disabled');
+            retakeBtn.setAttribute('aria-disabled', 'true');
+        }
+    }
+
+    function hideSecureLogoutLoading() {
+        const loadingOverlay = document.getElementById('secureLogoutLoadingOverlay');
+        const confirmBtn = document.getElementById('secureLogoutConfirmBtn');
+        const retakeBtn = document.getElementById('secureLogoutRetakeBtn');
+
+        if (loadingOverlay) {
+            loadingOverlay.style.display = "none";
+        }
+
+        isSecureLogoutSubmitting = false;
+
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.removeAttribute('disabled');
+            confirmBtn.setAttribute('aria-disabled', 'false');
+            confirmBtn.classList.remove('is-logging-out');
+            confirmBtn.innerHTML = "تأكيد الخروج";
+        }
+
+        if (retakeBtn) {
+            retakeBtn.disabled = false;
+            retakeBtn.removeAttribute('disabled');
+            retakeBtn.setAttribute('aria-disabled', 'false');
+        }
+    }
+
+    function secureLogoutDelay(milliseconds) {
+        return new Promise(function (resolve) {
+            setTimeout(resolve, milliseconds);
+        });
+    }
+
+    async function handleSecureLogoutConfirm() {
+        const errorBox = document.getElementById('secureLogoutError');
+        const confirmBtn = document.getElementById('secureLogoutConfirmBtn');
+
+        if (isSecureLogoutSubmitting || (confirmBtn && confirmBtn.disabled)) {
+            return;
+        }
+
+        if (!secureLogoutFaceBase64) {
+            const captured = await captureSecureLogoutPhoto();
+
+            if (!captured) {
+                return;
+            }
+        }
+
+        try {
+            showSecureLogoutLoading();
+
+            const tokenInput = document.querySelector('#logoutForm input[name="__RequestVerificationToken"]');
+            const token = tokenInput ? tokenInput.value : "";
+
+            const response = await fetch('/EmployeeAttendance/RegisterCheckOut', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token
+                },
+                body: JSON.stringify({
+                    faceImageBase64: secureLogoutFaceBase64,
+                    checkOutIpAddress: secureLogoutIpAddress,
+                    checkOutLocation: secureLogoutLocation
+                })
+            });
+
+            const result = await response.json();
+
+            if (result && result.success) {
+                stopSecureLogoutCamera();
+
+                await secureLogoutDelay(900);
+
+                const popup = document.getElementById('secureLogoutPopup');
+                if (popup) {
+                    popup.remove();
+                }
+
+                clearLuxiraLogoutClientState();
+
+                document.getElementById('logoutForm').submit();
+                return;
+            }
+
+            errorBox.innerText = result && result.message
+                ? result.message
+                : "حصل خطأ أثناء تسجيل الخروج، حاول مرة أخرى.";
+
+            errorBox.style.display = "block";
+            hideSecureLogoutLoading();
+        } catch (error) {
+            errorBox.innerText = "حصل خطأ أثناء تسجيل الخروج، حاول مرة أخرى.";
+            errorBox.style.display = "block";
+            hideSecureLogoutLoading();
+        }
+    }
+
+
+
+
+
+
+
+
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var sidebar = document.getElementById('header-sidebar');
+        var moreLink = document.getElementById('show-more-link');
+        var moreDiv = document.querySelector('.for-more');
+        var heading = document.querySelector('.circle-heading');
+
+        if (moreDiv) {
+            moreDiv.style.display = 'none';
+        }
+
+        if (moreLink) {
+            moreLink.addEventListener('click', function (event) {
+                event.preventDefault();
+                moreDiv.style.display = '';
+                moreLink.style.display = 'none';
+                heading.style.display = 'none';
+            });
+        }
+
+        if (sidebar) {
+            sidebar.addEventListener('sidebarOpen', function () {
+                if (moreDiv) {
+                    moreDiv.style.display = 'none';
+                }
+                if (moreLink) {
+                    moreLink.style.display = '';
+                }
+                if (heading) {
+                    heading.style.display = '';
+                }
+            });
+
+            sidebar.addEventListener('sidebarClose', function () {
+                if (moreDiv) {
+                    moreDiv.style.display = 'none';
+                }
+                if (moreLink) {
+                    moreLink.style.display = '';
+                }
+                if (heading) {
+                    heading.style.display = '';
+                }
+            });
+        }
+
+        // Get a reference to the link element with the QR class
+        const linkElement = document.querySelector(".QR");
+
+        // Get a reference to the QR reader element
+        const qrReaderElement = document.getElementById("qr-reader");
+
+        // Get a reference to the QR result element
+        const qrResultElement = document.getElementById("qr-result");
+
+        // Debugging logs
+        console.log('linkElement:', linkElement);
+        console.log('qrReaderElement:', qrReaderElement);
+        console.log('qrResultElement:', qrResultElement);
+
+        let html5QrCode;
+
+        if (linkElement && qrReaderElement && qrResultElement) {
+            // Add a click event listener to the link element
+            linkElement.addEventListener("click", () => {
+                if (qrReaderElement.style.display === "block") {
+                    // If the QR reader is already displayed, hide it and stop the scanner
+                    qrReaderElement.style.display = "none";
+                    if (html5QrCode) {
+                        html5QrCode.stop().catch(err => console.error("Unable to stop scanning", err));
+                    }
+                } else {
+                    // If the QR reader is not displayed, show it and start the scanner
+                    qrReaderElement.style.display = "block";
+
+                    // Initialize the HTML5 QR Code scanner if not already initialized
+                    if (!html5QrCode) {
+                        html5QrCode = new Html5Qrcode("qr-reader");
+                    }
+
+                    // Start the QR code scanner with the user's rear-facing camera
+                    html5QrCode.start(
+                        { facingMode: "environment" },
+                        {
+                            fps: 10,    // Frames per second to capture
+                            qrbox: 250  // Size of the scanning box (square)
+                        },
+                        qrCodeMessage => {
+                            // Handle the QR code message
+                            qrResultElement.innerHTML = `QR Code detected: ${qrCodeMessage}`;
+                            html5QrCode.stop();
+
+                            // Redirect to the detected URL
+                            window.location.href = qrCodeMessage;
+                        },
+                        errorMessage => {
+                            // Handle errors during scanning
+                            console.warn(`QR Code no longer in front of camera.`);
+                        }
+                    ).catch(err => {
+                        // Handle errors during initialization
+                        console.error(`Unable to start scanning: ${err}`);
+                    });
+                }
+            });
+        } else {
+            console.error('One or more elements not found.');
+        }
+    });
+
+
+
+
+
+
+
+
+
+    /* =========================================================
+       HARD FIX JS: lock page/body scroll while AMP sidebar is open
+       هذا يمنع ظهور السكرول الرصاصي الخارجي الموجود خلف السايد بار.
+       ========================================================= */
+    (function () {
+        function toggleOuterScrollbarLock(isOpen) {
+            if (document.documentElement) {
+                document.documentElement.classList.toggle('luxira-sidebar-open', isOpen);
+            }
+
+            if (document.body) {
+                document.body.classList.toggle('luxira-sidebar-open', isOpen);
+            }
+        }
+
+        function initOuterScrollbarFix() {
+            var sidebarElement = document.getElementById('header-sidebar');
+
+            if (!sidebarElement) {
+                return;
+            }
+
+            function syncSidebarState() {
+                var isOpen = sidebarElement.hasAttribute('open') ||
+                    sidebarElement.classList.contains('i-amphtml-sidebar-opened');
+
+                toggleOuterScrollbarLock(isOpen);
+            }
+
+            sidebarElement.addEventListener('sidebarOpen', function () {
+                toggleOuterScrollbarLock(true);
+            });
+
+            sidebarElement.addEventListener('sidebarClose', function () {
+                toggleOuterScrollbarLock(false);
+            });
+
+            if (window.MutationObserver) {
+                var observer = new MutationObserver(syncSidebarState);
+                observer.observe(sidebarElement, {
+                    attributes: true,
+                    attributeFilter: ['open', 'class']
+                });
+            }
+
+            syncSidebarState();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initOuterScrollbarFix);
+        } else {
+            initOuterScrollbarFix();
+        }
+    })();
+
+</script>
+
+
+<script id="luxira-account-switch-sidebar-script">
+    (function () {
+        var selectedEmployeeProfile = null;
+        var loadedEmployeeProfiles = [];
+        var currentSwitchSearchText = "";
+
+        function getSwitchAntiForgeryToken() {
+            var tokenInput =
+                document.querySelector('#luxiraAccountSwitchAntiForgeryForm input[name="__RequestVerificationToken"]') ||
+                document.querySelector('#logoutForm input[name="__RequestVerificationToken"]') ||
+                document.querySelector('input[name="__RequestVerificationToken"]');
+
+            return tokenInput ? tokenInput.value : "";
+        }
+
+        async function readSwitchJsonResponse(response) {
+            var text = await response.text();
+
+            if (!text || !text.trim()) {
+                return {
+                    success: false,
+                    message: response.ok
+                        ? 'الرد من السيرفر فارغ.'
+                        : 'السيرفر رفض الطلب. غالبًا توكن الحماية غير موجود أو الجلسة انتهت.'
+                };
+            }
+
+            try {
+                return JSON.parse(text);
+            } catch (error) {
+                return {
+                    success: false,
+                    message: response.ok
+                        ? 'الرد من السيرفر ليس JSON صالح.'
+                        : 'السيرفر رجّع صفحة أو Redirect بدل JSON. تأكدي من تسجيل الدخول وصلاحية الجلسة.'
+                };
+            }
+        }
+
+        function showPrimarySidebarMenu() {
+            var primary = document.getElementById('luxiraPrimarySidebarMenu');
+            var switchMenu = document.getElementById('luxiraAccountSwitchMenu');
+
+            if (primary) {
+                primary.style.display = '';
+            }
+
+            if (switchMenu) {
+                switchMenu.style.display = 'none';
+            }
+        }
+
+        function showEmployeeProfilesMenu() {
+            var primary = document.getElementById('luxiraPrimarySidebarMenu');
+            var switchMenu = document.getElementById('luxiraAccountSwitchMenu');
+            var searchInput = document.getElementById('luxiraSwitchEmployeeSearch');
+
+            if (primary) {
+                primary.style.display = 'none';
+            }
+
+            if (switchMenu) {
+                switchMenu.style.display = '';
+            }
+
+            if (searchInput) {
+                searchInput.value = "";
+                currentSwitchSearchText = "";
+            }
+
+            loadEmployeeProfiles();
+        }
+
+        function normalizeSwitchText(value) {
+            return String(value || '')
+                .toLowerCase()
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function readFirstExistingValue(account, keys) {
+            if (!account) {
+                return "";
+            }
+
+            for (var index = 0; index < keys.length; index++) {
+                var key = keys[index];
+
+                if (Object.prototype.hasOwnProperty.call(account, key) && account[key] !== null && account[key] !== undefined) {
+                    var value = String(account[key]).trim();
+
+                    if (value) {
+                        return value;
+                    }
+                }
+            }
+
+            return "";
+        }
+
+        function valueLooksLikeEmail(value) {
+            var text = String(value || '').trim();
+            var atSign = String.fromCharCode(64);
+            var atIndex = text.indexOf(atSign);
+
+            return atIndex > 0
+                && atIndex < text.length - 1
+                && text.indexOf('.', atIndex + 2) > atIndex + 1
+                && text.indexOf(' ') < 0;
+        }
+
+        function getAccountId(account) {
+            return readFirstExistingValue(account, [
+                'id',
+                'Id',
+                'userId',
+                'UserId',
+                'applicationUserId',
+                'ApplicationUserId',
+                'aspNetUserId',
+                'AspNetUserId',
+                'targetUserId',
+                'TargetUserId'
+            ]);
+        }
+
+        function isTrueValue(value) {
+            if (value === true || value === 1) {
+                return true;
+            }
+
+            var textValue = String(value || '').trim().toLowerCase();
+
+            return textValue === 'true' || textValue === '1' || textValue === 'yes';
+        }
+
+        function getAccountIsCurrent(account) {
+            if (!account) {
+                return false;
+            }
+
+            var currentKeys = [
+                'isCurrent',
+                'IsCurrent',
+                'current',
+                'Current',
+                'isCurrentUser',
+                'IsCurrentUser'
+            ];
+
+            for (var index = 0; index < currentKeys.length; index++) {
+                var key = currentKeys[index];
+
+                if (Object.prototype.hasOwnProperty.call(account, key)) {
+                    return isTrueValue(account[key]);
+                }
+            }
+
+            return false;
+        }
+
+        function getAccountFullName(account) {
+            var fullName = readFirstExistingValue(account, [
+                'englishFullName',
+                'EnglishFullName',
+                'employeeEnglishName',
+                'EmployeeEnglishName',
+                'fullNameEnglish',
+                'FullNameEnglish',
+                'englishName',
+                'EnglishName',
+                'fullName',
+                'FullName',
+                'employeeFullName',
+                'EmployeeFullName',
+                'employeeName',
+                'EmployeeName',
+                'displayName',
+                'DisplayName',
+                'name',
+                'Name'
+            ]);
+
+            if (!fullName || valueLooksLikeEmail(fullName)) {
+                fullName = readFirstExistingValue(account, [
+                    'userName',
+                    'UserName'
+                ]);
+            }
+
+            if (!fullName || valueLooksLikeEmail(fullName)) {
+                fullName = 'بدون اسم';
+            }
+
+            return fullName;
+        }
+
+        function getAccountRole(account) {
+            return readFirstExistingValue(account, [
+                'roleName',
+                'RoleName',
+                'role',
+                'Role',
+                'userRole',
+                'UserRole',
+                'roles',
+                'Roles',
+                'permission',
+                'Permission'
+            ]);
+        }
+
+        function translateRoleToArabic(roleName) {
+            var role = String(roleName || '').trim();
+
+            if (!role) {
+                return 'بدون صلاحية';
+            }
+
+            if (role.indexOf(',') >= 0) {
+                role = role.split(',')[0].trim();
+            }
+
+            var normalizedRole = role.toLowerCase().replace(/\s+/g, '');
+
+            var roleMap = {
+                'admin': 'مدير النظام',
+                'administrator': 'مدير النظام',
+                'executivedirector': 'المدير التنفيذي',
+                'accountant': 'محاسب',
+                'followupdepartment': 'قسم المتابعة',
+                'callcenter': 'كول سنتر',
+                'deliverycompany': 'شركة التوصيل',
+                'orderpreparer': 'تجهيز الطلبات',
+                'deliveryrepresentative': 'مندوب التوصيل',
+                'representative': 'مندوب',
+                'employee': 'موظف',
+                'user': 'مستخدم'
+            };
+
+            return roleMap[normalizedRole] || role;
+        }
+
+        function isExplicitlyInactiveValue(value) {
+            if (value === false || value === 0) {
+                return true;
+            }
+
+            var textValue = String(value).trim().toLowerCase();
+
+            return textValue === 'false' ||
+                textValue === '0' ||
+                textValue === 'no' ||
+                textValue === 'inactive' ||
+                textValue === 'غير نشط';
+        }
+
+        function isActiveAccount(account) {
+            if (!account) {
+                return false;
+            }
+
+            var activeKeys = [
+                'isActive',
+                'IsActive',
+                'employeeIsActive',
+                'EmployeeIsActive',
+                'isEmployeeActive',
+                'IsEmployeeActive',
+                'active',
+                'Active',
+                'isActiveEmployee',
+                'IsActiveEmployee',
+                'userIsActive',
+                'UserIsActive'
+            ];
+
+            for (var index = 0; index < activeKeys.length; index++) {
+                var key = activeKeys[index];
+
+                if (Object.prototype.hasOwnProperty.call(account, key)) {
+                    return !isExplicitlyInactiveValue(account[key]);
+                }
+            }
+
+            /*
+                لو الـ API الحالي لا يرجع IsActive، نترك الحساب ظاهرًا حتى لا تختفي القائمة كلها.
+                الفلترة النهائية Active = 1 يجب أن تكون من AccountSwitchController.
+            */
+            return true;
+        }
+
+        function getAccountsArrayFromResult(result) {
+            if (!result) {
+                return [];
+            }
+
+            if (Array.isArray(result.accounts)) {
+                return result.accounts;
+            }
+
+            if (Array.isArray(result.Accounts)) {
+                return result.Accounts;
+            }
+
+            if (Array.isArray(result.data)) {
+                return result.data;
+            }
+
+            if (Array.isArray(result.Data)) {
+                return result.Data;
+            }
+
+            if (Array.isArray(result.items)) {
+                return result.items;
+            }
+
+            if (Array.isArray(result.Items)) {
+                return result.Items;
+            }
+
+            return [];
+        }
+
+        function prepareAccountForSwitch(account) {
+            var userId = getAccountId(account);
+            var fullName = getAccountFullName(account);
+            var roleName = getAccountRole(account);
+            var roleArabic = translateRoleToArabic(roleName);
+            var isCurrent = getAccountIsCurrent(account);
+
+            account._switchUserId = userId;
+            account._switchFullName = fullName;
+            account._switchRoleArabic = roleArabic;
+            account._switchIsCurrent = isCurrent;
+
+            return account;
+        }
+
+        function filterAccountsForSwitch(accounts) {
+            var searchText = normalizeSwitchText(currentSwitchSearchText);
+
+            return (accounts || [])
+                .map(prepareAccountForSwitch)
+                .filter(function (account) {
+                    return !!account._switchUserId;
+                })
+                .filter(isActiveAccount)
+                .filter(function (account) {
+                    if (!searchText) {
+                        return true;
+                    }
+
+                    var nameText = normalizeSwitchText(account._switchFullName);
+
+                    return nameText.indexOf(searchText) >= 0;
+                });
+        }
+
+        function renderEmployeeProfiles(accounts) {
+            var list = document.getElementById('luxiraSwitchAccountsList');
+            var empty = document.getElementById('luxiraSwitchAccountsEmpty');
+            var filteredAccounts = filterAccountsForSwitch(accounts);
+
+            if (!list) {
+                return;
+            }
+
+            list.innerHTML = "";
+
+            if (!filteredAccounts.length) {
+                if (empty) {
+                    empty.textContent = currentSwitchSearchText
+                        ? 'لا توجد نتائج مطابقة لاسم الموظف.'
+                        : 'لا توجد حسابات موظفين Active.';
+                    empty.style.display = 'block';
+                }
+
+                return;
+            }
+
+            if (empty) {
+                empty.style.display = 'none';
+            }
+
+            filteredAccounts.forEach(function (account) {
+                var item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'luxira-switch-account-item' + (account._switchIsCurrent ? ' is-current' : '');
+                item.dataset.userId = account._switchUserId;
+
+                item.innerHTML =
+                    '<div class="luxira-switch-account-info">' +
+                        '<div class="luxira-switch-account-name"></div>' +
+                        '<div class="luxira-switch-account-role"></div>' +
+                    '</div>' +
+                    '<span class="luxira-switch-current-badge" style="' + (account._switchIsCurrent ? '' : 'display:none;') + '">الحالي</span>';
+
+                item.querySelector('.luxira-switch-account-name').textContent = account._switchFullName;
+                item.querySelector('.luxira-switch-account-role').textContent = account._switchRoleArabic;
+
+                if (!account._switchIsCurrent) {
+                    item.addEventListener('click', function () {
+                        openEmployeeProfileConfirmPopup(account);
+                    });
+                }
+
+                list.appendChild(item);
+            });
+        }
+
+        async function fetchEmployeeProfilesFromServer() {
+            var firstResponse = await fetch('/AccountSwitch/MyAccounts?activeOnly=true', {
+                method: 'GET',
+                cache: 'no-store',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            var firstResult = await readSwitchJsonResponse(firstResponse);
+
+            if (firstResponse.ok && firstResult && firstResult.success !== false) {
+                return firstResult;
+            }
+
+            /*
+                Fallback:
+                لو الـ Controller عندك لا يدعم activeOnly أو بيرجع Error بسببها،
+                نرجع للـ endpoint القديم بدون تغيير الراوت.
+            */
+            var fallbackResponse = await fetch('/AccountSwitch/MyAccounts', {
+                method: 'GET',
+                cache: 'no-store',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            var fallbackResult = await readSwitchJsonResponse(fallbackResponse);
+
+            if (!fallbackResponse.ok || !fallbackResult || fallbackResult.success === false) {
+                throw new Error(
+                    (firstResult && firstResult.message) ||
+                    (fallbackResult && fallbackResult.message) ||
+                    'تعذر تحميل الموظفين.'
+                );
+            }
+
+            return fallbackResult;
+        }
+
+        async function loadEmployeeProfiles() {
+            var loading = document.getElementById('luxiraSwitchAccountsLoading');
+            var list = document.getElementById('luxiraSwitchAccountsList');
+            var empty = document.getElementById('luxiraSwitchAccountsEmpty');
+
+            if (loading) loading.style.display = 'block';
+            if (list) list.innerHTML = "";
+            if (empty) empty.style.display = 'none';
+
+            try {
+                var result = await fetchEmployeeProfilesFromServer();
+
+                loadedEmployeeProfiles = getAccountsArrayFromResult(result);
+                renderEmployeeProfiles(loadedEmployeeProfiles);
+            } catch (e) {
+                loadedEmployeeProfiles = [];
+
+                if (empty) {
+                    empty.textContent = e && e.message ? e.message : 'تعذر تحميل الموظفين.';
+                    empty.style.display = 'block';
+                }
+            } finally {
+                if (loading) loading.style.display = 'none';
+            }
+        }
+
+        function removeEmployeeProfilePopup() {
+            var oldPopup = document.getElementById('luxiraSwitchPasswordPopup');
+            if (oldPopup) {
+                oldPopup.remove();
+            }
+        }
+
+        function openEmployeeProfileConfirmPopup(account) {
+            selectedEmployeeProfile = prepareAccountForSwitch(account);
+            removeEmployeeProfilePopup();
+
+            var popup = document.createElement('div');
+            popup.id = 'luxiraSwitchPasswordPopup';
+            popup.className = 'luxira-switch-popup-backdrop';
+
+            popup.innerHTML =
+                '<div class="luxira-switch-popup-card">' +
+                    '<div class="luxira-switch-popup-header">تبديل الموظف</div>' +
+                    '<div class="luxira-switch-popup-body">' +
+                        '<div class="luxira-switch-selected-account">' +
+                            '<div id="luxiraSwitchSelectedName"></div>' +
+                            '<div id="luxiraSwitchSelectedRole"></div>' +
+                        '</div>' +
+                        '<div class="luxira-switch-confirm-note">سيتم فتح حساب هذا الموظف مباشرة بدون باسورد، مع الاحتفاظ بجلسة الأدمن الأصلية.</div>' +
+                        '<div id="luxiraSwitchError" class="luxira-switch-error"></div>' +
+                    '</div>' +
+                    '<div class="luxira-switch-popup-actions">' +
+                        '<button type="button" id="luxiraSwitchCancelBtn" class="luxira-switch-popup-btn luxira-switch-cancel">إلغاء</button>' +
+                        '<button type="button" id="luxiraSwitchConfirmBtn" class="luxira-switch-popup-btn luxira-switch-confirm">فتح الحساب</button>' +
+                    '</div>' +
+                '</div>';
+
+            document.body.appendChild(popup);
+
+            document.getElementById('luxiraSwitchSelectedName').textContent = selectedEmployeeProfile._switchFullName;
+            document.getElementById('luxiraSwitchSelectedRole').textContent = selectedEmployeeProfile._switchRoleArabic;
+
+            var cancelBtn = document.getElementById('luxiraSwitchCancelBtn');
+            var confirmBtn = document.getElementById('luxiraSwitchConfirmBtn');
+
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', removeEmployeeProfilePopup);
+            }
+
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', submitEmployeeProfileSwitch);
+            }
+        }
+
+        function showSwitchError(message) {
+            var error = document.getElementById('luxiraSwitchError');
+
+            if (!error) {
+                return;
+            }
+
+            error.textContent = message || 'حدث خطأ أثناء فتح حساب الموظف.';
+            error.style.display = 'block';
+        }
+
+        function buildSwitchRedirectUrl(url) {
+            var targetUrl = url || '/Home/Index';
+            var separator = targetUrl.indexOf('?') === -1 ? '?' : '&';
+
+            return targetUrl + separator + '_switch=' + new Date().getTime();
+        }
+
+        function redirectAfterEmployeeProfileSwitch(url) {
+            var targetUrl = buildSwitchRedirectUrl(url);
+
+            removeEmployeeProfilePopup();
+
+            window.location.replace(targetUrl);
+
+            window.setTimeout(function () {
+                window.location.href = targetUrl;
+            }, 250);
+
+            window.setTimeout(function () {
+                window.location.reload();
+            }, 1500);
+        }
+
+        function readSwitchJsonResponseWithTimeout(response, timeoutMs) {
+            return Promise.race([
+                readSwitchJsonResponse(response),
+                new Promise(function (resolve) {
+                    window.setTimeout(function () {
+                        resolve({
+                            success: true,
+                            redirectUrl: '/Home/Index',
+                            timedOut: true
+                        });
+                    }, timeoutMs || 700);
+                })
+            ]);
+        }
+
+        async function submitEmployeeProfileSwitch() {
+            if (!selectedEmployeeProfile || !selectedEmployeeProfile._switchUserId) {
+                showSwitchError('اختاري الموظف أولًا.');
+                return;
+            }
+
+            var confirmBtn = document.getElementById('luxiraSwitchConfirmBtn');
+            var hardRedirectTimer = null;
+
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'جاري الفتح...';
+            }
+
+            try {
+                hardRedirectTimer = window.setTimeout(function () {
+                    redirectAfterEmployeeProfileSwitch('/Home/Index');
+                }, 1800);
+
+                var response = await fetch('/AccountSwitch/Switch', {
+                    method: 'POST',
+                    cache: 'no-store',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'RequestVerificationToken': getSwitchAntiForgeryToken()
+                    },
+                    body: JSON.stringify({
+                        targetUserId: selectedEmployeeProfile._switchUserId
+                    })
+                });
+
+                var result = await readSwitchJsonResponseWithTimeout(response, 700);
+
+                if (hardRedirectTimer) {
+                    window.clearTimeout(hardRedirectTimer);
+                    hardRedirectTimer = null;
+                }
+
+                if (!response.ok || !result || result.success === false) {
+                    throw new Error(result && result.message ? result.message : 'فشل فتح حساب الموظف.');
+                }
+
+                redirectAfterEmployeeProfileSwitch(result.redirectUrl || '/Home/Index');
+            } catch (e) {
+                if (hardRedirectTimer) {
+                    window.clearTimeout(hardRedirectTimer);
+                    hardRedirectTimer = null;
+                }
+
+                showSwitchError(e && e.message ? e.message : 'فشل فتح حساب الموظف.');
+
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = 'فتح الحساب';
+                }
+            }
+        }
+
+        function initEmployeeProfilesSidebar() {
+            var openBtn = document.getElementById('luxiraOpenAccountSwitchMenu');
+            var backBtn = document.getElementById('luxiraBackToMainMenu');
+            var searchInput = document.getElementById('luxiraSwitchEmployeeSearch');
+
+            if (!openBtn) {
+                return;
+            }
+
+            openBtn.addEventListener('click', function (event) {
+                event.preventDefault();
+                showEmployeeProfilesMenu();
+            });
+
+            if (backBtn) {
+                backBtn.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    showPrimarySidebarMenu();
+                });
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener('input', function () {
+                    currentSwitchSearchText = searchInput.value || "";
+                    renderEmployeeProfiles(loadedEmployeeProfiles);
+                });
+            }
+
+            var sidebar = document.getElementById('header-sidebar');
+
+            if (sidebar) {
+                sidebar.addEventListener('sidebarClose', function () {
+                    removeEmployeeProfilePopup();
+                    showPrimarySidebarMenu();
+
+                    if (searchInput) {
+                        searchInput.value = "";
+                    }
+
+                    currentSwitchSearchText = "";
+                    loadedEmployeeProfiles = [];
+                });
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initEmployeeProfilesSidebar);
+        } else {
+            initEmployeeProfilesSidebar();
+        }
+    })();
+
+</script>
+
+
+<style id="luxira-account-switch-header-icon-style">
+    /* إصلاح الفراغ الأبيض على شمال الهيدر: الصورة الخضراء تغطي عرض السايد بار كامل */
+    #header-sidebar .luxira-sidebar-profile-header {
+        position: relative !important;
+        width: 100% !important;
+        min-width: 100% !important;
+        height: 130px !important;
+        min-height: 130px !important;
+        overflow: hidden !important;
+        z-index: 50 !important;
+        background: #1d273b !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    #header-sidebar .luxira-sidebar-profile-bg {
+        position: absolute !important;
+        inset: 0 !important;
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: none !important;
+        height: 130px !important;
+        object-fit: cover !important;
+        object-position: center center !important;
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        z-index: 1 !important;
+    }
+
+    #header-sidebar .luxira-sidebar-profile-header > div[style*="right:11px"] {
+        z-index: 70 !important;
+    }
+
+    #header-sidebar .luxira-sidebar-profile-header .luxira-sidebar-user-name {
+        right: 10px !important;
+        left: 52px !important;
+        top: 105px !important;
+        z-index: 80 !important;
+        max-width: calc(100% - 62px) !important;
+    }
+
+        #header-sidebar .luxira-sidebar-profile-header .luxira-sidebar-user-name h7 {
+            display: block !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+            direction: ltr !important;
+            text-align: right !important;
+            color: #ffffff !important;
+            font-size: 12px !important;
+            font-weight: 900 !important;
+            line-height: 18px !important;
+            margin-top: 0 !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,.24) !important;
+        }
+
+    #header-sidebar #luxiraOpenAccountSwitchMenu.luxira-header-account-switch-btn {
+        position: absolute !important;
+        left: 10px !important;
+        top: 99px !important;
+        z-index: 999999 !important;
+        width: 34px !important;
+        height: 26px !important;
+        min-width: 34px !important;
+        min-height: 26px !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        color: #ffffff !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        cursor: pointer !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        box-shadow: none !important;
+        outline: none !important;
+        transform: none !important;
+    }
+
+        #header-sidebar #luxiraOpenAccountSwitchMenu.luxira-header-account-switch-btn:hover {
+            background: transparent !important;
+            color: #ffffff !important;
+            transform: scale(1.06) !important;
+        }
+
+    #header-sidebar #luxiraOpenAccountSwitchMenu .luxira-switch-arrows-icon {
+        width: 34px !important;
+        height: 26px !important;
+        display: block !important;
+        fill: currentColor !important;
+        color: #ffffff !important;
+        filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)) !important;
+    }
+
+    #luxiraPrimarySidebarMenu > a.luxira-account-switch-open {
+        display: none !important;
+    }
+</style>
+
+
+<style id="luxira-employee-profiles-extra-style">
+    .luxira-switch-confirm-note {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: #ecfdf5;
+        color: #1a263e;
+        font-weight: 900;
+        line-height: 1.8;
+        text-align: right;
+        border: 1px solid rgba(24, 160, 136, 0.20);
+    }
+
+    .luxira-switch-menu-title {
+        font-size: 14px !important;
+    }
+
+    .luxira-switch-account-item {
+        min-height: 58px;
+    }
+
+    #luxiraSwitchSelectedName {
+        direction: ltr;
+        text-align: right;
+        color: #0f172a;
+        font-size: 15px;
+        font-weight: 900;
+        line-height: 1.7;
+        word-break: break-word;
+    }
+
+    #luxiraSwitchSelectedRole {
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 900;
+        line-height: 1.7;
+        text-align: right;
+    }
+
+    .luxira-switch-accounts-list {
+        max-height: calc(100vh - 260px);
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+</style>
+
+
+<script id="luxira-shift-auto-logout-script">
+    (function () {
+        if (window.__luxiraShiftAutoLogoutStarted) {
+            return;
+        }
+
+        window.__luxiraShiftAutoLogoutStarted = true;
+
+        async function checkCurrentShiftAccess() {
+            try {
+                const response = await fetch('/ShiftAccess/CheckCurrentShift', {
+                    method: 'GET',
+                    cache: 'no-store',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const result = await response.json();
+
+                if (result && result.shouldLogout && result.redirectUrl) {
+                    window.location.href = result.redirectUrl;
+                }
+            } catch {
+                // Silent check: if the network fails, the next timer run will try again.
+            }
+        }
+
+        window.setTimeout(checkCurrentShiftAccess, 10000);
+        window.setInterval(checkCurrentShiftAccess, 60000);
+    })();
+</script>
+

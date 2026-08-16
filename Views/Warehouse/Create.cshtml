@@ -1,0 +1,268 @@
+﻿@model lotus_blue.Models.ViewModel.WarehouseViewModel
+@{
+    ViewData["Title"] = "تعديل المستودع";
+}
+<div class="container-fluid">
+    <form asp-action="Create" method="post" enctype="multipart/form-data">
+        <div class="row">
+            <div class="col-lg-4">
+                <div class="form-group background-white me-5">
+                    <div class="d-flex bd align-items-center">
+                        <img id="logoImage1" class="image-upload img-fluid me-5" src="/static/warehouse.png" alt="Uploaded Logo" style="max-width: 500px; max-height: 350px;">
+                    </div>
+                    <div class="d-flex bd align-items-center">
+                        <img id="logoImage2" class="image-upload img-fluid mt-5 me-5" src="/static/warehousesmall.png" alt="Uploaded Logo" style="max-width: 100px; max-height: 100px;">
+                    </div>
+
+                    <div class="input-group w-50 mt-4 me-5">
+                        <input type="file" id="prodtuctimage" name="prodtuctimage" class="form-control-file image-upload w-25" accept="image/*" style="display: none;">
+                        <label class="form-control" for="prodtuctimage" aria-describedby="prodtuctimage">تحميل صورة المنتج</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <div class="row">
+                  
+                    <div class="form-group col-lg-6">
+                        <select asp-for="ManufacturingCompanyId" class="form-control" id="manufacturingCompanyDropdown">
+                            <option value="">ِاسم الشركة</option>
+                        </select>
+                        <span asp-validation-for="ManufacturingCompanyId" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="form-group col-lg-6">
+                        <input required placeholder="الكمية" asp-for="Amount" class="form-control" value="" />
+                        <span asp-validation-for="Amount" class="text-danger"></span>
+                    </div>
+                    <div class="form-group col-lg-6">
+                        <input required placeholder="السعر" asp-for="Price" class="form-control" value="" />
+                        <span asp-validation-for="Price" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <select required asp-for="Countries" class="form-control" id="countryDropdown">
+                                <option value="">---اختر الدولة ---</option>
+
+                                @foreach (var country in Enum.GetValues(typeof(Common.Countries)))
+                                {
+                                    <option value="@country">@country</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Countries" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <select asp-for="City" class="form-control" id="cityDropdown">
+                            <option value="" selected>المدينة</option>
+                        </select>
+                        <span asp-validation-for="City" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="form-group col-lg-6">
+                        <select required asp-for="DeliveryCompanyId" class="form-control" id="deliveryCompanyDropdown">
+                            <option value="">اختار الشركة</option>
+                        </select>
+                        <span asp-validation-for="DeliveryCompanyId" class="text-danger"></span>
+                    </div>
+                    <div class="form-group col-lg-6">
+                        <input required id="Total" class="form-control" placeholder="السعر الأجمالي" readonly />
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="form-group col-lg-6">
+                        <select id="warehouseId" required asp-for="MainWarehouseId" class="form-control">
+                            <option value="">احتار المستودع الرئيسي</option>
+                        </select>
+                        <span asp-validation-for="MainWarehouseId" class="text-danger"></span>
+                    </div>
+             
+
+        
+                    <div class="form-group col-lg-6">
+                        <select id="subWarehouseId" required asp-for="SubWarehouseId" class="form-control">
+                            <option value="">احتار المستودع الفرعي</option>
+                        </select>
+                        <span asp-validation-for="SubWarehouseId" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="form-group col-lg-6">
+                        <input required asp-for="ProductCode" placeholder=" رقم الكود (مطابق للمتجر)" class="form-control" />
+                        <span asp-validation-for="ProductCode" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-success mt-5">موافقة </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    $(function () {
+        // Fetch manufacturing companies
+        $.ajax({
+            url: '/DATALIST/GetAllStores',
+            type: 'GET',
+            success: function (data) {
+                var dropdown = $('#manufacturingCompanyDropdown');
+                dropdown.empty();
+                dropdown.append('<option value="">ِاسم الشركة</option>');
+                $.each(data, function (index, company) {
+                    dropdown.append($('<option>', {
+                        value: company.id,
+                        text: company.name,
+                        'data-image': company.logoUrl
+                    }));
+                });
+            },
+            error: function (error) {
+                console.error('Error fetching companies:', error);
+            }
+        });
+
+        // Fetch main warehouses
+        $.ajax({
+            url: '/DATALIST/GetMainWarehouses',
+            type: 'GET',
+            success: function (data) {
+                var dropdown = $('#warehouseId');
+                dropdown.empty();
+                dropdown.append('<option value="">احتار المستودع الرئيسي</option>');
+                $.each(data, function (index, warehouse) {
+                    dropdown.append($('<option>', {
+                        value: warehouse.id,
+                        text: warehouse.name
+                    }));
+                });
+            },
+            error: function (error) {
+                console.error('Error fetching warehouses:', error);
+            }
+        });
+
+
+        // Handle change event for MainWarehouseId dropdown
+        $('#warehouseId').change(function () {
+            var selectedMainWarehouseId = $(this).val();
+            var selectedDeliveryCompanyId = $('#deliveryCompanyDropdown').val();
+            var subWarehouseDropdown = $('#subWarehouseId');
+
+            if (selectedMainWarehouseId && selectedDeliveryCompanyId) {
+                $.ajax({
+                    url: '/Warehouse/GetSubWarehouses',
+                    type: 'GET',
+                    data: { mainWarehouseId: selectedMainWarehouseId },
+                    success: function (data) {
+                        subWarehouseDropdown.empty();
+                        subWarehouseDropdown.append('<option value="">احتار المستودع الفرعي</option>');
+                        $.each(data, function (index, subWarehouse) {
+                            subWarehouseDropdown.append($('<option>', {
+                                value: subWarehouse.id,
+                                text: subWarehouse.name
+                            }));
+                        });
+                    },
+                    error: function (error) {
+                        console.error('Error fetching sub warehouses:', error);
+                    }
+                });
+            } else {
+                subWarehouseDropdown.empty();
+                subWarehouseDropdown.append('<option value="">احتار المستودع الفرعي</option>');
+            }
+        });
+
+
+
+
+        $("#countryDropdown").change(function () {
+            var selectedCountry = $(this).val();
+            var cityDropdown = $("#cityDropdown");
+
+            cityDropdown.empty();
+            if (selectedCountry !== "") {
+                cityDropdown.prop("disabled", false);
+                var cities = @Html.Raw(Json.Serialize(Common.CitiesByCountry));
+
+                cityDropdown.append($("<option></option>").attr("value", "").text("--اختار المدينة--"));
+                cities[selectedCountry].forEach(function (city) {
+                    cityDropdown.append($("<option></option>").attr("value", city).text(city));
+                });
+            } else {
+                cityDropdown.prop("disabled", true);
+            }
+        });
+
+        $("#cityDropdown").change(function () {
+            var selectedCountry = $("#countryDropdown").val();
+            var selectedCity = $(this).val();
+            getDeliveryCompanies(selectedCountry, selectedCity);
+        });
+
+        function getDeliveryCompanies(selectedCountry, selectedCity) {
+            $.ajax({
+                url: '@Url.Action("GetAllDeliveryCompaniesAndRepresentatives", "DataList")',
+                type: 'GET',
+                data: { countryId: selectedCountry, cityId: selectedCity },
+                success: function (companies) {
+                    var dropdown = $('#deliveryCompanyDropdown');
+                    dropdown.empty();
+                    dropdown.append($('<option>', { value: '', text: 'اختار الشركة' }));
+                    $.each(companies, function (index, company) {
+                        dropdown.append($('<option>', {
+                            value: company.id,
+                            text: company.name
+                        }));
+                    });
+                },
+                error: function () {
+                    alert('Could not retrieve delivery companies.');
+                }
+            });
+        }
+
+        function calculateTotal() {
+            var price = parseFloat($("#Price").val()) || 0;
+            var amount = parseInt($("#Amount").val()) || 0;
+            var total = price * amount;
+            if (!isNaN(total) && total !== 0) {
+                $("#Total").val(total.toFixed(2)); // Format to two decimal places
+            } else {
+                $("#Total").val(''); // Clear the value if total is 0 or NaN
+            }
+        }
+
+        // Attach input events to Price and Amount inputs
+        $("#Price, #Amount").on("input", function () {
+            calculateTotal();
+        });
+
+        // Initial calculation to ensure total is set on page load
+        calculateTotal();
+    });
+
+</script>
+
+<style>
+    .col-lg-8 {
+        border-right: 1px solid #ccc;
+    }
+
+    .bd {
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2);
+    }
+</style>

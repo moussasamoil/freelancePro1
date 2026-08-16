@@ -1,0 +1,66 @@
+@using lotus_blue.Models.ViewModel
+@model List<StoreDataViewModel>
+
+<div class="row mb-3">
+    <!-- First column -->
+    <div class="col-lg-6">
+        <div class="input-group flex-grow-1 input_with_icon">
+            <input type="text" id="searchInput" name="search" class="pe-5 form-control Search search-input" placeholder="ابحث عن الطلبات...">
+
+            <span class="icon search-icon">
+                <i class="fa-solid fa-magnifying-glass fa-rotate-90"></i>
+            </span>
+            <span id="searchingshow" class="icon clear-search-icon cursor-pointer">
+                <i style="color:#1d273b;" class="fa-solid fa-circle-xmark "></i>
+            </span>
+        </div>
+    </div>
+
+    <!-- Second column -->
+    <div class="col-lg-6 d-flex align-items-center justify-content-end">
+        <div class="form-group d-flex align-items-center">
+            <label for="pageSize" class="me-2">أظهر:</label>
+            <select id="pageSize" name="pageSize" class="form-control me-2">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            <label for="pageSize">مدخلات</label>
+        </div>
+    </div>
+</div>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>اسم الشركة</th>
+            <th>العنوان</th>
+            <th>رقم الهاتف</th>
+            <th>المدينة</th>
+            <th>البلد</th>
+            <th>الإجرائات</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model != null)
+        {
+            @foreach (var company in Model)
+            {
+                <tr>
+                    <td>@company.Id</td>
+                    <td>@company.Name</td>
+                    <td>@company.Address</td>
+                    <td>@company.PhoneNumber</td>
+                    <td>@company.City</td>
+                    <td>@company.SelectedCountry</td>
+                    <td><a asp-controller="Api" asp-action="GetStoreDetails" asp-route-id="@company.Id">ألتفاصيل</a></td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+
+

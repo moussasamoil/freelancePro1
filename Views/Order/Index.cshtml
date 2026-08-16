@@ -1,0 +1,313 @@
+@model lotus_blue.Models.ViewModel.HomeViewModel
+@{
+    Layout = "AllOrdersLayout";
+    ViewData["Title"] = "تحديث حالات الطلبات";
+}
+
+<meta name="format-detection" content="telephone=no" />
+
+<style>
+    .status-update-home-page {
+        direction: rtl;
+        min-height: calc(100vh - 72px);
+        padding: 38px 18px 48px;
+        background: radial-gradient(circle at top right, rgba(24, 160, 136, .11), transparent 32%), radial-gradient(circle at bottom left, rgba(220, 38, 38, .08), transparent 28%), #f8fbfa;
+    }
+
+    .status-update-home-shell {
+        width: min(1280px, 100%);
+        margin: 0 auto;
+    }
+
+    .status-update-hero {
+        background: rgba(255, 255, 255, .92);
+        border: 1px solid rgba(226, 232, 240, .95);
+        border-radius: 24px;
+        padding: 26px 22px 30px;
+        box-shadow: 0 14px 38px rgba(15, 23, 42, .08);
+        text-align: center;
+    }
+
+    .status-update-hero-icon {
+        width: 58px;
+        height: 58px;
+        margin: 0 auto 12px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #e9fbe9;
+        color: #18a088;
+        box-shadow: 0 8px 18px rgba(24, 160, 136, .16);
+        font-size: 24px;
+    }
+
+        .status-update-hero-icon img {
+            width: 34px;
+            height: 34px;
+            display: block;
+        }
+
+    .status-update-hero-title {
+        color: #0f172a;
+        font-size: clamp(20px, 2vw, 28px);
+        font-weight: 900;
+        margin: 0 0 8px;
+    }
+
+    .status-update-navigation-cards {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 18px;
+        margin-top: 22px;
+    }
+
+    .status-update-nav-card {
+        min-height: 176px;
+        border-radius: 24px;
+        padding: 22px 18px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        text-decoration: none !important;
+        border: 1px solid transparent;
+        box-shadow: 0 12px 26px rgba(15, 23, 42, .10);
+        transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .status-update-nav-card::before {
+            content: "";
+            position: absolute;
+            inset: -55% auto auto -35%;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .45);
+            pointer-events: none;
+        }
+
+        .status-update-nav-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 34px rgba(15, 23, 42, .14);
+            opacity: .96;
+        }
+
+    .status-update-nav-card-icon {
+        width: 58px;
+        height: 58px;
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, .72);
+        position: relative;
+        z-index: 1;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 6px 14px rgba(15,23,42,.08);
+    }
+
+    .status-update-nav-card-icon-img {
+        width: 42px;
+        height: 42px;
+        display: block;
+        object-fit: contain;
+    }
+
+    .status-update-nav-card-title {
+        font-size: 17px;
+        font-weight: 900;
+        position: relative;
+        z-index: 1;
+    }
+
+    .status-update-nav-card-text {
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.7;
+        opacity: .82;
+        position: relative;
+        z-index: 1;
+    }
+
+    .status-update-nav-failed-card {
+        background: #fee2e2;
+        color: #b91c1c;
+        border-color: #fecaca;
+    }
+
+    .status-update-nav-delivered-card {
+        background: #dcfce7;
+        color: #15803d;
+        border-color: #bbf7d0;
+    }
+
+    .status-update-nav-all-card {
+        background: #f6ead7;
+        color: #8a5b17;
+        border-color: #e7cda7;
+    }
+
+
+
+    /* Multi-order split search results */
+    .multi-order-split-wrapper {
+        width: 100%;
+        padding: 0 10px 18px;
+        position: relative;
+        z-index: 20;
+        background: #f8fbfa;
+    }
+
+    .multi-order-split-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 18px;
+    }
+
+    .status-update-suggestion-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 18px;
+        padding: 15px 16px;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, .06);
+        text-align: right;
+    }
+
+    .status-update-suggestion-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #0f172a;
+        font-size: 13px;
+        font-weight: 900;
+        margin-bottom: 7px;
+    }
+
+    .multi-order-card-header a {
+        color: #18a088;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .status-update-suggestion-text {
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.8;
+        margin: 0;
+    }
+
+    .status-update-note {
+        margin-top: 16px;
+        border-radius: 18px;
+        padding: 13px 16px;
+        background: #ffffff;
+        border: 1px dashed #cbd5e1;
+        color: #475569;
+        font-size: 12px;
+        font-weight: 800;
+        text-align: center;
+        line-height: 1.8;
+    }
+
+    .multi-order-split-grid.has-scroll::-webkit-scrollbar-thumb {
+        background: #18a088;
+        border-radius: 10px;
+    }
+
+    body.multi-order-split-active #ordersListToolbar,
+    body.multi-order-split-active #OrderStatus,
+    body.multi-order-split-active #ordersTable,
+    body.multi-order-split-active #pagination-link,
+    body.multi-order-split-active .pagination, function loadData(page)
+    body.multi-order-split-active .price-container-wrapper {
+        display: none !important;
+    }
+
+    
+
+        .multi-order-split-grid.count-3 .multi-order-card:nth-child(3) {
+            grid-column: auto;
+        }
+    .status-update-nav-split-card {
+        background: #e0f2fe;
+        color: #0369a1;
+        border-color: #bae6fd;
+    }
+
+    @@media (max-width: 1200px) {
+        .status-update-navigation-cards {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .status-update-navigation-cards {
+            grid-template-columns: 1fr;
+        }
+
+        .status-update-nav-card {
+            min-height: 145px;
+        }
+    }
+</style>
+
+<div class="status-update-home-page">
+    <div class="status-update-home-shell">
+        <section class="status-update-hero">
+            <div class="status-update-hero-icon">
+                <img alt="تحديث حالات الطلبات"
+                     src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CjxyZWN0IHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgcng9IjE4IiBmaWxsPSIjZWNmZGY1Ii8+CjxjaXJjbGUgY3g9IjMyIiBjeT0iMzIiIHI9IjI0IiBmaWxsPSIjMTZhMzRhIi8+CjxwYXRoIGQ9Ik0yMCAzMy41IDI4LjUgNDIgNDUgMjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iNyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPg==" />
+            </div>
+
+            <h1 class="status-update-hero-title">تحديث حالات الطلبات</h1>
+
+            <div class="status-update-navigation-cards">
+                <a href="/Order/UpdateFailedDelivery" class="status-update-nav-card status-update-nav-failed-card">
+                    <span class="status-update-nav-card-icon">
+                        <img class="status-update-nav-card-icon-img"
+                             alt="تحديث فشل التسليم"
+                             src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CjxyZWN0IHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgcng9IjE4IiBmaWxsPSIjZmZmMWYyIi8+CjxwYXRoIGQ9Ik0zMiA5IDU4IDUzSDZMMzIgOVoiIGZpbGw9IiNlZjQ0NDQiLz4KPHJlY3QgeD0iMjkiIHk9IjIzIiB3aWR0aD0iNiIgaGVpZ2h0PSIxNyIgcng9IjMiIGZpbGw9IndoaXRlIi8+CjxjaXJjbGUgY3g9IjMyIiBjeT0iNDciIHI9IjMuNSIgZmlsbD0id2hpdGUiLz4KPC9zdmc+" />
+                    </span>
+                    <span class="status-update-nav-card-title">تحديث فشل التسليم</span>
+                    <span class="status-update-nav-card-text">اختيار سبب الفشل وصورة سبب الفشل ثم تحديث الحالة.</span>
+                </a>
+
+                <a href="/Order/UpdateDelivered" class="status-update-nav-card status-update-nav-delivered-card">
+                    <span class="status-update-nav-card-icon">
+                        <img class="status-update-nav-card-icon-img"
+                             alt="تحديث تم التسليم"
+                             src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CjxyZWN0IHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgcng9IjE4IiBmaWxsPSIjZWNmZGY1Ii8+CjxjaXJjbGUgY3g9IjMyIiBjeT0iMzIiIHI9IjI0IiBmaWxsPSIjMTZhMzRhIi8+CjxwYXRoIGQ9Ik0yMCAzMy41IDI4LjUgNDIgNDUgMjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iNyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPg==" />
+                    </span>
+                    <span class="status-update-nav-card-title">تحديث تم التسليم</span>
+                    <span class="status-update-nav-card-text">تحديد الطلبات قيد التوصيل ثم اعتماد تحديثها لتم التوصيل.</span>
+                </a>
+
+                <a href="/Order/UpdateAllStatuses" class="status-update-nav-card status-update-nav-all-card">
+                    <span class="status-update-nav-card-icon">
+                        <img class="status-update-nav-card-icon-img"
+                             alt="تحديث جميع الحالات"
+                             src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CjxyZWN0IHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgcng9IjE4IiBmaWxsPSIjZmZmN2VkIi8+CjxyZWN0IHg9IjE0IiB5PSIxNCIgd2lkdGg9IjM2IiBoZWlnaHQ9IjkiIHJ4PSI0IiBmaWxsPSIjZDk3NzA2Ii8+CjxyZWN0IHg9IjE0IiB5PSIyNy41IiB3aWR0aD0iMzYiIGhlaWdodD0iOSIgcng9IjQiIGZpbGw9IiNiNDUzMDkiLz4KPHJlY3QgeD0iMTQiIHk9IjQxIiB3aWR0aD0iMzYiIGhlaWdodD0iOSIgcng9IjQiIGZpbGw9IiM5MjQwMGUiLz4KPGNpcmNsZSBjeD0iMjAiIGN5PSIxOC41IiByPSIyIiBmaWxsPSJ3aGl0ZSIvPgo8Y2lyY2xlIGN4PSIyMCIgY3k9IjMyIiByPSIyIiBmaWxsPSJ3aGl0ZSIvPgo8Y2lyY2xlIGN4PSIyMCIgY3k9IjQ1LjUiIHI9IjIiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPg==" />
+                    </span>
+                    <span class="status-update-nav-card-title">تحديث جميع الحالات</span>
+                    <span class="status-update-nav-card-text">فتح جدول كل الحالات للتصفية والتحديث العام.</span>
+                </a>
+
+                <a href="/Order/UpdateDeliverySplit" class="status-update-nav-card status-update-nav-split-card">
+                    <span class="status-update-nav-card-icon">
+                        <img class="status-update-nav-card-icon-img"
+                             alt="تم التسليم وفشل التسليم"
+                             src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CjxyZWN0IHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgcng9IjE4IiBmaWxsPSIjZWZmNmZmIi8+CjxyZWN0IHg9IjEyIiB5PSIxNCIgd2lkdGg9IjE4IiBoZWlnaHQ9IjM2IiByeD0iNSIgZmlsbD0iIzBlYTVlOSIvPgo8cmVjdCB4PSIzNCIgeT0iMTQiIHdpZHRoPSIxOCIgaGVpZ2h0PSIzNiIgcng9IjUiIGZpbGw9IiMwMjg0YzciLz4KPHBhdGggZD0iTTE4IDI0aDZNMTggMzJoNk0xOCA0MGg2TTQwIDI0aDZNNDAgMzJoNk00MCA0MGg2IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4=" />
+                    </span>
+                    <span class="status-update-nav-card-title">تم التسليم + فشل التسليم</span>
+                    <span class="status-update-nav-card-text">فتح صفحتي تم التسليم وفشل التسليم جنب بعض في صفحة واحدة.</span>
+                </a>
+            </div>
+        </section>
+    </div>
+</div>
+```

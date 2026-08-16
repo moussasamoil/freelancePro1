@@ -1,0 +1,19 @@
+﻿@model lotus_blue.Models.ViewModel.ExpenseViewModel
+@{
+    ViewData["Title"] = "إنشاء  مصروف";
+}
+
+
+<form asp-action="Create" method="post">
+    <div class="form-group">
+        <label asp-for="Description"> الوصف</label>
+        <input asp-for="Description" class="form-control w-50" />
+        <span asp-validation-for="Description" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Amount"> المبلغ</label>
+        <input asp-for="Amount" class="form-control w-50" />
+        <span asp-validation-for="Amount" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-success mt-2">موافقة</button>
+</form>

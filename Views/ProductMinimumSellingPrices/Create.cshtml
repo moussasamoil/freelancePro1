@@ -1,0 +1,848 @@
+@using lotus_blue.Models
+@model lotus_blue.ViewModels.ProductMinimumSellingPriceViewModel
+
+@{
+    var isEdit = Model.Id > 0;
+    var pageHeaderTitle = isEdit ? "تعديل الحد الأدنى للبيع" : "إنشاء الحد الأدنى للبيع";
+
+    ViewData["Title"] = pageHeaderTitle;
+    ViewBag.Title = pageHeaderTitle;
+    ViewBag.PageTitle = pageHeaderTitle;
+    ViewBag.HeaderTitle = pageHeaderTitle;
+
+    var stores = ViewBag.Stores as List<lotus_blue.Models.ManufacturingCompany> ?? new List<lotus_blue.Models.ManufacturingCompany>();
+    var mainProducts = ViewBag.MainProducts as List<lotus_blue.Models.MainWarehouse> ?? new List<lotus_blue.Models.MainWarehouse>();
+
+    var formAction = isEdit ? "Edit" : "Create";
+}
+
+@functions {
+    static string MinSaleImageUrl(string? raw, string fallback = "/static/box-open-regular.svg")
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return fallback;
+        }
+
+        var value = raw.Trim().Replace("\\", "/");
+
+        if (value.StartsWith("~/", System.StringComparison.OrdinalIgnoreCase))
+        {
+            value = value.Substring(1);
+        }
+
+        if (value.StartsWith("http://", System.StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith("https://", System.StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith("data:", System.StringComparison.OrdinalIgnoreCase))
+        {
+            return value;
+        }
+
+        return "/" + value.TrimStart('/');
+    }
+
+    static string MinSaleCountryImage(lotus_blue.Models.Common.Countries country)
+    {
+        return MinSaleImageUrl(
+            lotus_blue.Models.Common.GetImageUrlByCountryName(country.ToString()),
+            "/static/earth-americas-sharp-solid.svg");
+    }
+}
+
+<style>
+    .min-sale-page {
+        width: 100%;
+        padding: 0 28px 24px;
+        direction: rtl;
+        overflow: visible !important;
+    }
+
+    .min-sale-layout-back-link {
+        position: fixed;
+        top: 0;
+        left: 46px;
+        z-index: 1060;
+        height: 34px;
+        min-width: 142px;
+        padding: 0 16px;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        color: #f28e02 !important;
+        font-size: 13px;
+        font-weight: 900;
+        text-decoration: none !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        white-space: nowrap;
+        outline: none !important;
+    }
+
+        .min-sale-layout-back-link:hover,
+        .min-sale-layout-back-link:focus,
+        .min-sale-layout-back-link:active {
+            background: transparent !important;
+            color: #f28e02 !important;
+            text-decoration: none !important;
+            box-shadow: none !important;
+        }
+
+    .min-sale-card {
+        width: 100%;
+        background: #ffffff;
+        border-radius: 18px;
+        box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08);
+        overflow: visible !important;
+        border: 1px solid #e5e7eb;
+        position: relative;
+        z-index: 1;
+    }
+
+    .min-sale-card-header {
+        background: #F5F5F5;
+        color: #f28e02;
+        padding: 18px 22px;
+        font-size: 22px;
+        font-weight: 900;
+        border-bottom: 1px solid #dbe3ea;
+        text-align: right;
+    }
+
+    .min-sale-card-body {
+        padding: 24px;
+        overflow: visible !important;
+        position: relative;
+        z-index: 3;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(180px, 1fr));
+        gap: 16px;
+        align-items: start;
+        overflow: visible !important;
+    }
+
+    .form-group {
+        overflow: visible !important;
+    }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #334155;
+            font-weight: 900;
+            font-size: 14px;
+        }
+
+    .form-control {
+        width: 100% !important;
+        height: 46px !important;
+        min-height: 46px !important;
+        border: 1px solid #d7dee6 !important;
+        border-radius: 12px !important;
+        background: #ffffff !important;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+        color: #0f172a !important;
+        font-size: 14px !important;
+        font-weight: 700 !important;
+    }
+
+    .min-sale-hidden-field {
+        display: none !important;
+    }
+
+    .min-sale-custom-select {
+        position: relative;
+        width: 100%;
+        direction: rtl;
+        overflow: visible !important;
+        z-index: 20;
+    }
+
+        .min-sale-custom-select.open {
+            z-index: 2147483000;
+        }
+
+    .min-sale-custom-trigger {
+        width: 100%;
+        height: 46px;
+        min-height: 46px;
+        border: 1px solid #d7dee6;
+        border-radius: 12px;
+        background: #ffffff;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+        color: #0f172a;
+        font-size: 14px;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 0 14px;
+        cursor: pointer;
+        overflow: hidden;
+        text-align: right;
+    }
+
+    .min-sale-custom-trigger-main {
+        min-width: 0;
+        flex: 1 1 auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        overflow: hidden;
+    }
+
+    .min-sale-custom-image {
+        width: 24px;
+        height: 24px;
+        min-width: 24px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid #dbe3ea;
+        background: #f8fafc;
+        display: none;
+    }
+
+    .min-sale-custom-select.has-value .min-sale-custom-image {
+        display: inline-block;
+    }
+
+    .min-sale-custom-text {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #0f172a;
+    }
+
+    .min-sale-custom-select:not(.has-value) .min-sale-custom-text {
+        color: #64748b;
+    }
+
+    .min-sale-custom-arrow {
+        flex: 0 0 auto;
+        color: #64748b;
+        font-size: 13px;
+        transition: transform .15s ease;
+    }
+
+    .min-sale-custom-select.open .min-sale-custom-arrow {
+        transform: rotate(180deg);
+    }
+
+    .min-sale-custom-menu {
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        left: 0;
+        z-index: 2147483000;
+        display: none;
+        background: #ffffff;
+        border: 1px solid #111827;
+        border-radius: 12px;
+        box-shadow: 0 16px 38px rgba(15, 23, 42, 0.18);
+        overflow: hidden;
+    }
+
+    .min-sale-custom-select.open .min-sale-custom-menu {
+        display: block;
+    }
+
+    .min-sale-custom-options {
+        max-height: 360px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        background: #ffffff;
+    }
+
+    .min-sale-custom-option {
+        width: 100%;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border: 0;
+        border-bottom: 1px solid #111827;
+        background: #ffffff;
+        color: #0f172a;
+        font-size: 14px;
+        font-weight: 900;
+        padding: 10px 12px;
+        text-align: right;
+        cursor: pointer;
+    }
+
+        .min-sale-custom-option:last-child {
+            border-bottom: 0;
+        }
+
+        .min-sale-custom-option:hover,
+        .min-sale-custom-option.selected {
+            background: rgba(15, 159, 133, 0.10);
+            color: #1b263d;
+        }
+
+        .min-sale-custom-option::before {
+            content: "";
+            width: 16px;
+            height: 16px;
+            min-width: 16px;
+            border-radius: 50%;
+            border: 2px solid #cbd5e1;
+            background: #ffffff;
+            display: inline-block;
+        }
+
+        .min-sale-custom-option.selected::before {
+            border-color: #1b263d;
+            background: radial-gradient(circle, #1b263d 0 42%, #ffffff 45% 100%);
+        }
+
+        .min-sale-custom-option img {
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid #dbe3ea;
+            background: #f8fafc;
+            display: inline-block;
+        }
+
+        .min-sale-custom-option span {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+    .actions-row {
+        display: flex;
+        justify-content: flex-start;
+        gap: 10px;
+        margin-top: 22px;
+    }
+
+    .btn-save {
+        background: #f28e02;
+        color: #ffffff;
+        border: none;
+        border-radius: 999px;
+        padding: 11px 28px;
+        font-weight: 900;
+        box-shadow: 0 8px 18px rgba(242, 142, 2, 0.22);
+    }
+
+    .text-danger,
+    .validation-summary-errors {
+        display: none !important;
+    }
+
+    .min-sale-error-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+        background: rgba(15, 23, 42, 0.42);
+        direction: rtl;
+    }
+
+        .min-sale-error-overlay.show {
+            display: flex;
+        }
+
+    .min-sale-error-popup {
+        width: min(460px, 94vw);
+        max-height: min(72vh, 560px);
+        background: #ffffff;
+        border-radius: 18px;
+        box-shadow: 0 18px 46px rgba(15, 23, 42, 0.24);
+        border: 1px solid #eef2f7;
+        overflow: hidden;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .min-sale-error-close {
+        position: absolute;
+        top: 10px;
+        left: 12px;
+        border: 0;
+        background: transparent;
+        color: #64748b;
+        font-size: 26px;
+        line-height: 1;
+        cursor: pointer;
+        z-index: 2;
+    }
+
+    .min-sale-error-icon {
+        width: 58px;
+        height: 58px;
+        min-width: 58px;
+        margin: 22px auto 8px;
+        border-radius: 50%;
+        background: rgba(242, 142, 2, 0.12);
+        color: #f28e02;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .min-sale-error-title {
+        color: #0f172a;
+        text-align: center;
+        font-size: 18px;
+        font-weight: 900;
+        padding: 0 20px 8px;
+    }
+
+    .min-sale-error-message {
+        color: #334155;
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 1.85;
+        text-align: center;
+        padding: 0 22px 20px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        white-space: normal;
+        max-height: 280px;
+    }
+
+        .min-sale-error-message div + div {
+            margin-top: 6px;
+        }
+
+    .min-sale-error-actions {
+        border-top: 1px solid #edf2f7;
+        display: flex;
+    }
+
+    .min-sale-error-ok {
+        width: 100%;
+        min-height: 44px;
+        border: 0;
+        background: #ffffff;
+        color: #1b263d;
+        font-size: 15px;
+        font-weight: 900;
+        cursor: pointer;
+    }
+
+        .min-sale-error-ok:hover {
+            background: #f8fafc;
+        }
+
+    @@media (max-width: 1200px) {
+        .form-grid {
+            grid-template-columns: repeat(2, minmax(180px, 1fr));
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .min-sale-page {
+            padding: 0 14px 14px;
+        }
+
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .min-sale-layout-back-link {
+            left: 40px;
+            top: 0;
+            height: 32px;
+            min-width: 124px;
+            padding-inline: 10px;
+            font-size: 12px;
+        }
+    }
+</style>
+
+<a asp-action="Index" class="min-sale-layout-back-link">عرض الحد الأدنى للبيع</a>
+
+<div class="min-sale-page">
+    <div class="min-sale-card">
+        <div class="min-sale-card-header">
+            @pageHeaderTitle
+        </div>
+
+        <div class="min-sale-card-body">
+            <form asp-action="@formAction" id="createProductMinSaleForm" method="post">
+                @Html.AntiForgeryToken()
+
+                @if (isEdit)
+                {
+                    <input asp-for="Id" type="hidden" />
+                }
+
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label asp-for="Country">الدولة</label>
+                        <input asp-for="Country" type="hidden" id="countryDropdown" class="min-sale-hidden-field" />
+
+                        <div class="min-sale-custom-select" data-target="#countryDropdown" data-placeholder="اختار البلد">
+                            <button type="button" class="min-sale-custom-trigger">
+                                <span class="min-sale-custom-trigger-main">
+                                    <img class="min-sale-custom-image" src="" alt="" />
+                                    <span class="min-sale-custom-text">اختار البلد</span>
+                                </span>
+                                <span class="min-sale-custom-arrow">▾</span>
+                            </button>
+
+                            <div class="min-sale-custom-menu">
+                                <div class="min-sale-custom-options">
+                                    @foreach (Common.Countries country in Enum.GetValues(typeof(Common.Countries)))
+                                    {
+                                        <button type="button"
+                                                class="min-sale-custom-option"
+                                                data-value="@((int)country)"
+                                                data-text="@country"
+                                                data-image="@MinSaleCountryImage(country)">
+                                            <img src="@MinSaleCountryImage(country)" alt="" onerror="this.remove();" />
+                                            <span>@country</span>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <span asp-validation-for="Country" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label asp-for="ManufacturingCompanyId">المتجر</label>
+                        <input asp-for="ManufacturingCompanyId" type="hidden" id="manufacturingCompanyDropdown" class="min-sale-hidden-field" />
+
+                        <div class="min-sale-custom-select" data-target="#manufacturingCompanyDropdown" data-placeholder="اسم المتجر">
+                            <button type="button" class="min-sale-custom-trigger">
+                                <span class="min-sale-custom-trigger-main">
+                                    <img class="min-sale-custom-image" src="" alt="" />
+                                    <span class="min-sale-custom-text">اسم المتجر</span>
+                                </span>
+                                <span class="min-sale-custom-arrow">▾</span>
+                            </button>
+
+                            <div class="min-sale-custom-menu">
+                                <div class="min-sale-custom-options">
+                                    @foreach (var store in stores)
+                                    {
+                                        var storeImage = MinSaleImageUrl(store.ImageUrl, "/static/building-regular.svg");
+
+                                        <button type="button"
+                                                class="min-sale-custom-option"
+                                                data-value="@store.Id"
+                                                data-text="@store.Name"
+                                                data-image="@storeImage">
+                                            <img src="@storeImage" alt="" onerror="this.remove();" />
+                                            <span>@store.Name</span>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <span asp-validation-for="ManufacturingCompanyId" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label asp-for="MainWarehouseId">المنتج الرئيسي</label>
+                        <input asp-for="MainWarehouseId" type="hidden" id="mainProductDropdown" class="min-sale-hidden-field" />
+
+                        <div class="min-sale-custom-select" data-target="#mainProductDropdown" data-placeholder="اسم المنتج الرئيسي">
+                            <button type="button" class="min-sale-custom-trigger">
+                                <span class="min-sale-custom-trigger-main">
+                                    <img class="min-sale-custom-image" src="" alt="" />
+                                    <span class="min-sale-custom-text">اسم المنتج الرئيسي</span>
+                                </span>
+                                <span class="min-sale-custom-arrow">▾</span>
+                            </button>
+
+                            <div class="min-sale-custom-menu">
+                                <div class="min-sale-custom-options">
+                                    @foreach (var product in mainProducts)
+                                    {
+                                        var productImage = MinSaleImageUrl(product.ImageUrl, "/static/box-open-regular.svg");
+
+                                        <button type="button"
+                                                class="min-sale-custom-option"
+                                                data-value="@product.Id"
+                                                data-text="@product.Name"
+                                                data-image="@productImage">
+                                            <img src="@productImage" alt="" onerror="this.remove();" />
+                                            <span>@product.Name</span>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <span asp-validation-for="MainWarehouseId" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label asp-for="MinimumSellingPrice">الحد الأدنى للبيع</label>
+                        <input asp-for="MinimumSellingPrice"
+                               class="form-control"
+                               type="number"
+                               step="0.01"
+                               min="0"
+                               placeholder="اكتب السعر" />
+                        <span asp-validation-for="MinimumSellingPrice" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="actions-row">
+                    <button type="submit" class="btn-save">موافقة</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="minSaleErrorPopup" class="min-sale-error-overlay" aria-hidden="true">
+    <div class="min-sale-error-popup" role="alertdialog" aria-modal="true" aria-labelledby="minSaleErrorTitle">
+        <button type="button" class="min-sale-error-close" data-close-min-sale-error aria-label="إغلاق">×</button>
+
+        <div class="min-sale-error-icon" aria-hidden="true">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3.25L22 20.25H2L12 3.25Z" fill="currentColor" opacity="0.16"></path>
+                <path d="M12 3.25L22 20.25H2L12 3.25Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+                <path d="M12 8.4V13.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"></path>
+                <path d="M12 17.05H12.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+            </svg>
+        </div>
+
+        <div id="minSaleErrorTitle" class="min-sale-error-title">تنبيه</div>
+        <div id="minSaleErrorText" class="min-sale-error-message"></div>
+
+        <div class="min-sale-error-actions">
+            <button type="button" class="min-sale-error-ok" data-close-min-sale-error>موافق</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        $(function () {
+            function escapeHtml(value) {
+                return $('<div/>').text(value || '').html();
+            }
+
+            function normalizeErrorText(value) {
+                return (value || '').replace(/\s+/g, ' ').trim();
+            }
+
+            function uniqueMessages(messages) {
+                var seen = {};
+                var output = [];
+
+                messages.forEach(function (message) {
+                    var text = normalizeErrorText(message);
+
+                    if (text && !seen[text]) {
+                        seen[text] = true;
+                        output.push(text);
+                    }
+                });
+
+                return output;
+            }
+
+            function showMinSaleErrorPopup(messages) {
+                var cleanMessages = uniqueMessages(Array.isArray(messages) ? messages : [messages]);
+                var popup = $('#minSaleErrorPopup');
+                var textBox = $('#minSaleErrorText');
+
+                if (!cleanMessages.length) {
+                    cleanMessages = ['برجاء مراجعة البيانات المطلوبة.'];
+                }
+
+                textBox.html(cleanMessages.map(function (message) {
+                    return '<div>' + escapeHtml(message) + '</div>';
+                }).join(''));
+
+                popup.addClass('show').attr('aria-hidden', 'false');
+            }
+
+            function hideMinSaleErrorPopup() {
+                $('#minSaleErrorPopup').removeClass('show').attr('aria-hidden', 'true');
+            }
+
+            function closeAllCustomDropdowns(except) {
+                $('.min-sale-custom-select').not(except || null).removeClass('open');
+            }
+
+            function refreshCustomSelect($selectWrap) {
+                var targetSelector = $selectWrap.data('target');
+                var placeholder = $selectWrap.data('placeholder') || 'اختار';
+                var $hiddenInput = $(targetSelector);
+                var value = ($hiddenInput.val() || '').toString();
+                var $text = $selectWrap.find('.min-sale-custom-text');
+                var $image = $selectWrap.find('.min-sale-custom-image');
+
+                $selectWrap.find('.min-sale-custom-option').removeClass('selected');
+
+                if (!value) {
+                    $selectWrap.removeClass('has-value');
+                    $text.text(placeholder);
+                    $image.attr('src', '');
+                    return;
+                }
+
+                var $option = $selectWrap.find('.min-sale-custom-option[data-value="' + value + '"]').first();
+
+                if (!$option.length) {
+                    $selectWrap.removeClass('has-value');
+                    $text.text(placeholder);
+                    $image.attr('src', '');
+                    return;
+                }
+
+                $option.addClass('selected');
+                $selectWrap.addClass('has-value');
+                $text.text($option.data('text') || $.trim($option.text()));
+                $image.attr('src', $option.data('image') || '');
+            }
+
+            $('.min-sale-custom-select').each(function () {
+                refreshCustomSelect($(this));
+            });
+
+            $('.min-sale-custom-trigger').on('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                var $selectWrap = $(this).closest('.min-sale-custom-select');
+                var isOpen = $selectWrap.hasClass('open');
+
+                closeAllCustomDropdowns($selectWrap);
+
+                if (!isOpen) {
+                    $selectWrap.addClass('open');
+                } else {
+                    $selectWrap.removeClass('open');
+                }
+            });
+
+            $('.min-sale-custom-option').on('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                var $option = $(this);
+                var $selectWrap = $option.closest('.min-sale-custom-select');
+                var targetSelector = $selectWrap.data('target');
+
+                $(targetSelector)
+                    .val($option.data('value'))
+                    .trigger('change')
+                    .valid();
+
+                refreshCustomSelect($selectWrap);
+                $selectWrap.removeClass('open');
+            });
+
+            $(document).on('click', function () {
+                closeAllCustomDropdowns();
+            });
+
+            $(document).on('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    closeAllCustomDropdowns();
+                    hideMinSaleErrorPopup();
+                }
+            });
+
+            $('[data-close-min-sale-error]').on('click', hideMinSaleErrorPopup);
+
+            $('#minSaleErrorPopup').on('click', function (event) {
+                if (event.target === this) {
+                    hideMinSaleErrorPopup();
+                }
+            });
+
+            function collectInlineValidationMessages() {
+                var messages = [];
+
+                $('.validation-summary-errors li, .validation-summary-errors, .field-validation-error, .text-danger').each(function () {
+                    var message = normalizeErrorText($(this).text());
+
+                    if (message) {
+                        messages.push(message);
+                    }
+                });
+
+                return uniqueMessages(messages);
+            }
+
+            function collectManualFormMessages() {
+                var messages = [];
+                var minimumPriceValue = $('[name="MinimumSellingPrice"]').val();
+
+                if (!$('#countryDropdown').val()) {
+                    messages.push('يرجى اختيار البلد.');
+                }
+
+                if (!$('#manufacturingCompanyDropdown').val()) {
+                    messages.push('يرجى اختيار متجر.');
+                }
+
+                if (!$('#mainProductDropdown').val()) {
+                    messages.push('يرجى اختيار المنتج الرئيسي.');
+                }
+
+                if (!minimumPriceValue || !isFinite(Number(minimumPriceValue)) || Number(minimumPriceValue) <= 0) {
+                    messages.push('يرجى إدخال الحد الأدنى للبيع بشكل صحيح.');
+                }
+
+                return uniqueMessages(messages);
+            }
+
+            $('#createProductMinSaleForm').on('submit', function (e) {
+                var messages = collectManualFormMessages();
+                var form = $(this);
+
+                if (form.data('validator')) {
+                    var isValid = form.valid();
+
+                    if (!isValid && form.data('validator').errorList) {
+                        form.data('validator').errorList.forEach(function (error) {
+                            messages.push(error.message);
+                        });
+                    }
+                }
+
+                messages = uniqueMessages(messages.concat(collectInlineValidationMessages()));
+
+                if (messages.length) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showMinSaleErrorPopup(messages);
+                    return false;
+                }
+            });
+
+            var serverMessages = collectInlineValidationMessages();
+
+            if (serverMessages.length) {
+                showMinSaleErrorPopup(serverMessages);
+            }
+        });
+    </script>
+}

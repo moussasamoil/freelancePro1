@@ -1,0 +1,321 @@
+﻿@using lotus_blue.Models
+@using lotus_blue.Services
+
+@model lotus_blue.Models.ViewModel.FinancialDeliveryCompanyViewModel
+@{
+    ViewData["Title"] = " إجمالي السعر للطلبات حسب شركة التوصيل  ";
+}
+
+
+
+<div class="data-container">
+    
+
+        @if (User.IsInRole("DeliveryCompany"))
+        {
+            <div class="row mt-3 ">
+                <img width="17" height="17" src="@Common.GetImageUrlByCountryName(Model.DeliveryCompany.Country)">
+                <div class="country fw-bolder text-green">@Model.DeliveryCompany.Country</div>
+
+                <div class="name">
+                                         <img width="17" height="17" src="@Model.DeliveryCompany.LogoUrl">
+
+                    @Model.DeliveryCompany.Name</div>
+
+
+                <div class="row w-100   d-flex justify-content-between ">
+
+
+                    <div class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap clickable-div" data-delivery-company-id="@Model.DeliveryCompanyId">
+                        <h6>الحساب الجاري (<span>@Model.OnGoingAccountCount طلب</span>)</h6>
+                        <h1 class="ltr">
+                            @(Model.OnGoingAccountDifference)
+                            <span class="code">@Model.Currency</span>
+
+                        </h1>
+                    </div>
+
+
+                    <div class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap">
+                        <h6>قيد التحصيل (<span>@Model.deferredOrdersCount طلب</span>)</h6>
+                        <h1 class="ltr">
+                            @(Model.deferredDifference)
+                            <span class="code">@Model.Currency</span>
+
+                        </h1>
+                    </div>
+
+
+                    <div class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap">
+                        <h6>اخطاء المندوبين (<span>@Model.AssignedOrdersCount طلب</span>)</h6>
+                        <h1 class="ltr">
+                            @(Model.AssignedTotalPrice)
+                            <span class="code">@Model.Currency</span>
+                        </h1>
+                    </div>
+
+                </div>
+
+                <div class="row w-100 mt-3  d-flex justify-content-center ">
+
+
+                    <div class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap ">
+                        <h6>   أجور توصيل طلبات الحساب الجاري (<span>@Model.OnGoingAccountCount طلب</span>)</h6>
+                        <h1 class="ltr">
+                            @(Model.OnGoingAccountDeliveryCompanyPrice)
+                            <span class="code">@Model.Currency</span>
+                        </h1>
+                    </div>
+
+
+                    <div class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap me-3">
+                        <h6>   الطلبات قيد التحصيل (<span>@Model.deferredOrdersCount طلب</span>)</h6>
+                        <h1 class="ltr">
+                            @(Model.deferredTotalDeliveryCompanyPrice)
+                            <span class="code">@Model.Currency</span>
+                        </h1>
+                    </div>
+
+
+
+
+
+                </div>
+
+
+            </div>
+        }
+
+        else
+        {
+
+            <input class="companyid" hidden value="@Model.DeliveryCompanyId" />
+
+            <div class="row mt-3 ">
+                <div class="country fw-bolder  text-green">
+
+                    <img width="17" height="17" src="@Common.GetImageUrlByCountryName(Model.DeliveryCompany.Country)">
+                    @Model.DeliveryCompany.Country</div>
+
+                <div class="name">
+                                         <img width="17" height="17" src="@Model.DeliveryCompany.LogoUrl">
+
+                    @Model.DeliveryCompany.Name</div>
+
+
+
+
+                <div class="row w-100   d-flex justify-content-between ">
+
+
+                    <div class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap clickable-div" data-delivery-company-id="@Model.DeliveryCompanyId">
+                        <h6>الحساب الجاري (<span>@Model.OnGoingAccountCount طلب</span>)</h6>
+                        <h1 class="ltr">
+                            @(Model.OnGoingAccountDifference)
+                            <span class="code">@Model.Currency</span>
+
+                        </h1>
+                    </div>
+
+
+                    <div onclick="location.href='@Url.Action("EmployeOrdersDetails", "rating", new { deliveryCompanyId = Model.DeliveryCompanyId, orderStatusesFilter = new List<OrderStatusEnum> {OrderStatusEnum.تم_التجهيز, OrderStatusEnum.قيد_التوصيل } , ignoreDateFilter = true})'" class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap">
+                        <h6>قيد التحصيل (<span>@Model.deferredOrdersCount طلب</span>)</h6>
+                        <h1 class="ltr">
+                            @(Model.deferredDifference)
+                            <span class="code">@Model.Currency</span>
+                        </h1>
+                    </div>
+
+
+                    <div onclick="location.href='@Url.Action("EmployeOrdersDetails", "rating", new { deliveryCompanyId = Model.DeliveryCompanyId, orderStatusesFilter = new List<OrderStatusEnum> { OrderStatusEnum.تم_الدفع }, ignoreDateFilter = true })'" class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap">
+                        <h6>المبلغ المدفوع (<span>@Model.PaidOrdersCount طلب</span>)</h6>
+                        <h1 class="ltr">
+                            @(Model.PaidDifference)
+                            <span class="code">@Model.Currency</span>
+
+                        </h1>
+                    </div>
+                </div>
+
+                <div class="row w-100 mt-3  d-flex justify-content-between ">
+
+
+                    <div onclick="location.href='@Url.Action("EmployeOrdersDetails", "rating", new { deliveryCompanyId = Model.DeliveryCompanyId, orderStatusesFilter = new List<OrderStatusEnum> { OrderStatusEnum.تم_تحديث_الرصيد}, ignoreDateFilter = true })'" class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap">
+                        <h6>   أجور توصيل طلبات الحساب الجاري (<span>@Model.OnGoingAccountCount طلب</span>)</h6>
+                        <h1 class="ltr">
+                            @(Model.OnGoingAccountDeliveryCompanyPrice)
+                            <span class="code">@Model.Currency</span>
+                        </h1>
+                    </div>
+
+
+                    <div onclick="location.href='@Url.Action("EmployeOrdersDetails", "rating", new { deliveryCompanyId = Model.DeliveryCompanyId, orderStatusesFilter = new List<OrderStatusEnum> { OrderStatusEnum.تم_التجهيز, OrderStatusEnum.قيد_التوصيل } , ignoreDateFilter = true})'" class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap">
+                        <h6>   الطلبات قيد التحصيل (<span>@Model.deferredOrdersCount طلب</span>)</h6>
+                        <h1 class="ltr">
+                            @(Model.deferredTotalDeliveryCompanyPrice)
+                            <span class="code">@Model.Currency</span>
+                        </h1>
+                    </div>
+
+
+                    <div onclick="location.href='@Url.Action("EmployeOrdersDetails", "rating", new { deliveryCompanyId = Model.DeliveryCompanyId, orderStatusesFilter = new List<OrderStatusEnum> { OrderStatusEnum.تم_الدفع }, ignoreDateFilter = true })'" class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap">
+                        <h6>   اجمالي أجور التوصيل (<span>@Model.PaidOrdersCount طلب</span>)</h6>
+                        <h1 class="ltr">
+                            @(Model.PaidOrdersDeliveryCompanyPrice)
+                            <span class="code">@Model.Currency</span>
+                        </h1>
+                    </div>
+
+
+
+
+                </div>
+
+
+                <div class="row w-100 mt-3  d-flex justify-content-between ">
+
+
+
+                    <div onclick="location.href='@Url.Action("EmployeOrdersDetails", "rating", new { deliveryCompanyId = Model.DeliveryCompanyId, orderStatusesFilter = new List<OrderStatusEnum> { OrderStatusEnum.الطلبات_المؤجلة }, ignoreDateFilter = true })'" class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap">
+                        <h6>الطلبات المؤجلة (<span>@Model.UnderProcessOrdersCount طلب</span>)</h6>
+                        <h1 class="ltr">
+                            @(Model.UnderProcessTotalPrice)
+                            <span class="code">@Model.Currency</span>
+                        </h1>
+                    </div>
+
+
+                    <div onclick="location.href='@Url.Action("EmployeOrdersDetails", "rating", new { deliveryCompanyId = Model.DeliveryCompanyId, orderStatusesFilter = new List<OrderStatusEnum> { OrderStatusEnum.أخطاء_الشركات_والمندوبين }, ignoreDateFilter = true })'" class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap">
+                        <h6>اخطار المندوبين (<span>@Model.AssignedOrdersCount طلب</span>)</h6>
+                        <h1 class="ltr">
+                            @(Model.AssignedTotalPrice)
+                            <span class="code">@Model.Currency</span>
+                        </h1>
+                    </div>
+
+
+
+                    <div onclick="location.href='@Url.Action("EmployeOrdersDetails", "rating", new { deliveryCompanyId = Model.DeliveryCompanyId, orderStatusesFilter = new List<OrderStatusEnum> { OrderStatusEnum.الطلبات_المرجعة }, ignoreDateFilter = true })'" class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap">
+                        <h6>الطلبات المرجعة (<span>@Model.ReturnedOrdersCount طلب</span>)</h6>
+                        <h1 class="ltr">
+                            @(Model.ReturnedTotalPrice)
+                            <span class="code">@Model.Currency</span>
+                        </h1>
+                    </div>
+
+                </div>
+
+
+                <div class="row w-100 mt-3  d-flex justify-content-between ">
+
+                    <div onclick="location.href='@Url.Action("EmployeOrdersDetails", "rating", new { deliveryCompanyId = Model.DeliveryCompanyId, orderStatusesFilter = new List<OrderStatusEnum> { OrderStatusEnum.طلب_جديد,  }, ignoreDateFilter = true })'" class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap">
+                        <h6> انتظار التجهيز (<span>@Model.PendingOrdersCount طلب</span>)      </h6>
+
+                        <h1 class="ltr">
+                            @(Model.PendingTotalPrice)
+                            <span class="code">@Model.Currency</span>
+                        </h1>
+                    </div>
+
+                    <div onclick="location.href='@Url.Action("EmployeOrdersDetails", "rating", new { deliveryCompanyId = Model.DeliveryCompanyId, orderStatusesFilter = new List<OrderStatusEnum> { OrderStatusEnum.تم_التسليم, } , ignoreDateFilter = true})'" class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap">
+                        <h6>تم التسليم (<span>@Model.DeliveredOrdersCount طلب</span>)</h6>
+                        <h1 class="ltr">
+                            @(Model.DeliveredDifference)
+                            <span class="code">@Model.Currency</span>
+
+                        </h1>
+                    </div>
+
+
+
+                    <div onclick="location.href='@Url.Action("EmployeOrdersDetails", "rating", new { deliveryCompanyId = Model.DeliveryCompanyId, orderStatusesFilter = new List<OrderStatusEnum> { OrderStatusEnum.تم_التسليم, }, ignoreDateFilter = true })'" class="col-lg-3 d-flex justify-content-between align-items-center text-nowrap">
+                        <h6>   اجور طلبات تم التسليم (<span>@Model.DeliveredOrdersCount طلب</span>)</h6>
+                        <h1 class="ltr">
+                            @(Model.DeliveredTotalDelvieryCompanyPrice)
+                            <span class="code">@Model.Currency</span>
+                        </h1>
+                    </div>
+
+
+                </div>
+
+                <div class="row w-100 mt-3  d-flex justify-content-between ">
+
+
+
+                    <div class="col-lg-3 d-flex align-items-center justify-content-between text-nowrap">
+                        <h6>العدد الإجمالي للطلبات</h6>
+                        <h3>@Model.TotalOrdersCount طلب</h3>
+                    </div>
+
+                </div>
+
+            </div>
+        
+    }
+</div>
+
+<style>
+
+    .col-lg-3 {
+        background-color: #ffffff;
+        box-shadow: 0px 0px 4px 4px rgba(0, 0, 0, 0.075);
+        height: 45px;
+        border-radius: 8px !important; /* Border radius for the entire col */
+        font-size: 18px;
+        font-weight: bold;
+        padding: 8px;
+        width: 32.1% !important;
+    }
+
+    .col-lg {
+        background-color: #ffffff;
+        box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2); /* Box shadow */
+        border-radius: 8px !important; /* Border radius for the entire col */
+        font-size: 18px;
+        font-weight: bold;
+        width: 50%;
+        padding: 8px;
+    }
+
+    h6 {
+        color: #b9b8b8 !important;
+        font-weight: bold;
+        font-weight: 700 !important;
+        margin-bottom: 0 !important;
+    }
+
+    h3 {
+        color: #6c757d !important;
+        font-size: 16px;
+        margin-bottom: 0 !important;
+    }
+
+    h1 {
+        color: #6c757d !important;
+        font-weight: bolder !important;
+        font-size: 1.4rem;
+        margin-bottom: 0 !important;
+    }
+
+    span {
+        color: #6c757d !important;
+    }
+
+  
+    .name {
+        color: black;
+        font-size: 1rem;
+    }
+
+    .d-flex.align-items-center {
+        align-items: center !important; /* Use !important to override any other styles */
+    }
+
+    .code {
+        color: #b9b8b8 !important;
+        font-size: 0.8rem;
+    }
+
+</style>
+

@@ -1,0 +1,939 @@
+@using Crm_LotusBlue.Models
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+@{
+    ViewData["Title"] = "تعيين أوقات الدوام";
+    ViewBag.Title = "تعيين أوقات الدوام";
+    ViewBag.PageTitle = "تعيين أوقات الدوام";
+    ViewBag.HeaderTitle = "تعيين أوقات الدوام";
+
+    var employees = ViewBag.Employees as List<SelectListItem>;
+    var recentShifts = ViewBag.RecentShifts as List<Crm_LotusBlue.Controllers.EmployeeWorkShiftRow>;
+    var successMessage = TempData["SuccessMessage"]?.ToString();
+    var errorMessage = TempData["ErrorMessage"]?.ToString();
+}
+
+<div class="work-shift-full-page" dir="rtl">
+    <style>
+            .work-shift-full-page {
+                width: 100%;
+                max-width: 100%;
+                padding: 14px 16px 24px;
+                margin: 0;
+                box-sizing: border-box;
+            }
+
+            .work-shift-page {
+                width: 100%;
+                max-width: 100%;
+                margin: 0;
+            }
+
+            .breadcrumb-card {
+                background: #ffffff;
+                border: 1px solid #e9eaec;
+                border-radius: 14px;
+                padding: 12px 18px;
+                margin-bottom: 16px;
+                box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+                color: #64748b;
+                font-size: 15px;
+                font-weight: 600;
+                width: 100%;
+            }
+
+                .breadcrumb-card a {
+                    color: #1d273b;
+                    text-decoration: none;
+                    font-weight: 700;
+                }
+
+                    .breadcrumb-card a:hover {
+                        color: #1c273c;
+                        text-decoration: underline;
+                    }
+
+            .breadcrumb-separator {
+                color: #94a3b8;
+                font-weight: 700;
+            }
+
+            .assign-work-times-link {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 38px;
+                padding: 7px 18px;
+                border-radius: 999px;
+                background: #1d273b;
+                color: #ffffff !important;
+                text-decoration: none !important;
+                font-size: 15px;
+                font-weight: 800;
+                box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+                white-space: nowrap;
+            }
+
+                .assign-work-times-link:hover {
+                    background: #1d273b;
+                    color: #ffffff !important;
+                    text-decoration: none !important;
+                }
+
+
+            .top-assign-work-times-link {
+                position: absolute;
+                right: 850%;
+                top: 50%;
+                transform: translateY(-50%);
+                z-index: 3;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 28px;
+                padding: 4px 13px;
+                border-radius: 999px;
+                background: #1d273b;
+                color: #ffffff !important;
+                text-decoration: none !important;
+                font-size: 13px;
+                font-weight: 800 !important;
+                line-height: 1.2;
+                white-space: nowrap;
+                vertical-align: middle;
+                box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+            }
+
+                .top-assign-work-times-link:hover {
+                    background: #1d273b;
+                    color: #ffffff !important;
+                    text-decoration: none !important;
+                }
+
+            .top-attendance-log-link {
+                position: fixed;
+                left: 18px;
+                top: 4px;
+                z-index: 100000;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 28px;
+                padding: 4px 13px;
+                border-radius: 999px;
+                background: #1d273b;
+                color: #ffffff !important;
+                text-decoration: none !important;
+                font-size: 13px;
+                font-weight: 800 !important;
+                line-height: 1.2;
+                white-space: nowrap;
+                vertical-align: middle;
+                box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+            }
+
+                .top-attendance-log-link:hover {
+                    background: #1d273b;
+                    color: #ffffff !important;
+                    text-decoration: none !important;
+                }
+
+            .work-shift-card,
+            .work-shift-table-card {
+                background: #ffffff;
+                border-radius: 18px;
+                box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+                border: 1px solid #e9eaec;
+                overflow: hidden;
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .work-shift-table-card {
+                margin-top: 18px;
+            }
+
+            .work-shift-header {
+                background: #F5F5F5;
+                color: #f28e02;
+                padding: 16px 20px;
+                font-size: 22px;
+                font-weight: 900;
+                border-bottom: 1px solid #94a3b8;
+            }
+
+            .work-shift-body {
+                padding: 20px;
+                width: 100%;
+            }
+
+            .form-label-custom {
+                font-weight: 800;
+                color: #334155;
+                margin-bottom: 8px;
+                display: block;
+                font-size: 15px;
+            }
+
+            .form-control-custom {
+                min-height: 44px;
+                height: 44px;
+                border-radius: 8px !important;
+                border: 0 !important;
+                background-color: #ffffff !important;
+                box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2) !important;
+                color: #111827 !important;
+                font-size: 16px;
+                font-weight: 700;
+                padding-right: 14px;
+                padding-left: 14px;
+                outline: none !important;
+            }
+
+            textarea.form-control-custom {
+                height: auto;
+                min-height: 78px;
+                resize: vertical;
+                line-height: 1.7;
+            }
+
+            .form-control-custom:focus {
+                border: 1px solid #1d273b !important;
+                box-shadow: 0 0 0 0.15rem rgba(24, 160, 136, 0.15), 0px 0px 4px rgba(0, 0, 0, 0.2) !important;
+            }
+
+            /* نفس شكل الدروب داون في الاندكس */
+            .employee-custom-dropdown {
+                position: relative;
+                width: 100%;
+            }
+
+            .selected-employee {
+                min-height: 44px;
+                border-radius: 8px !important;
+                background: #ffffff;
+                color: #111827;
+                box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+                padding: 0 14px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                font-size: 16px;
+                font-weight: 800;
+                user-select: none;
+            }
+
+            .selected-employee-text {
+                flex: 1;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                text-align: right;
+            }
+
+            .selected-employee-icon {
+                color: #1d273b;
+                font-size: 15px;
+                transition: transform 0.18s ease;
+            }
+
+            .employee-custom-dropdown.open .selected-employee-icon {
+                transform: rotate(180deg);
+            }
+
+            .employee-options-dropdown {
+                display: none;
+                position: absolute;
+                top: calc(100% + 6px);
+                right: 0;
+                left: 0;
+                z-index: 9999;
+                background: #ffffff;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16);
+                max-height: 290px;
+                overflow-y: auto;
+                overflow-x: hidden;
+                padding: 0;
+            }
+
+            .employee-custom-dropdown.open .employee-options-dropdown {
+                display: block;
+            }
+
+            .employee-option {
+                min-height: 46px;
+                padding: 9px 13px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                color: #111827;
+                font-weight: 800;
+                background: #ffffff;
+                border-bottom: 1.5px solid #111827;
+                cursor: pointer;
+                transition: background 0.15s ease;
+            }
+
+                .employee-option:last-child {
+                    border-bottom: 0;
+                }
+
+                .employee-option:hover,
+                .employee-option.active {
+                    background: #f8fafc;
+                }
+
+            .employee-option-image,
+            .employee-option-placeholder {
+                width: 30px;
+                height: 30px;
+                min-width: 30px;
+                border-radius: 50%;
+                object-fit: cover;
+                border: 1px solid #e9eaec;
+                background: #f8fafc;
+            }
+
+            .employee-option-placeholder {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                color: #1d273b;
+                font-size: 15px;
+            }
+
+            .employee-option-name {
+                flex: 1;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                text-align: right;
+            }
+
+            .employee-options-dropdown::-webkit-scrollbar {
+                width: 7px;
+            }
+
+            .employee-options-dropdown::-webkit-scrollbar-track {
+                background: #e9eaec;
+                border-radius: 999px;
+            }
+
+            .employee-options-dropdown::-webkit-scrollbar-thumb {
+                background: #1d273b;
+                border-radius: 999px;
+            }
+
+            .save-shift-btn {
+                min-width: 180px;
+                min-height: 46px;
+                border: 0;
+                border-radius: 999px;
+                background: #1d273b;
+                color: #ffffff;
+                font-size: 18px;
+                font-weight: 800;
+            }
+
+
+
+            .error-box {
+                background: rgba(239, 68, 68, 0.10);
+                color: #dc2626;
+                border: 1px solid rgba(239, 68, 68, 0.25);
+                border-radius: 12px;
+                padding: 12px 16px;
+                margin-bottom: 16px;
+                font-weight: 700;
+            }
+
+            .table-responsive {
+                width: 100%;
+                max-width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .work-shift-table {
+                width: 100%;
+                min-width: 900px;
+                margin: 0;
+                text-align: center;
+                vertical-align: middle;
+                border-collapse: collapse;
+            }
+
+                .work-shift-table thead {
+                    background: #f8fafc;
+                    color: #334155;
+                }
+
+                    .work-shift-table thead th {
+                        background: #f8fafc !important;
+                        color: #334155 !important;
+                        font-weight: 800;
+                        font-size: 15px;
+                        border-bottom: 1px solid #e2e8f0 !important;
+                    }
+
+                .work-shift-table th,
+                .work-shift-table td {
+                    vertical-align: middle;
+                    white-space: nowrap;
+                    padding: 13px 12px;
+                }
+
+                .work-shift-table tbody td {
+                    color: #334155;
+                    font-weight: 600;
+                    border-bottom: 1px solid #e9eaec;
+                }
+
+            .employee-name-cell {
+                color: #1d273b !important;
+                font-weight: 900 !important;
+            }
+
+            .shift-start-cell {
+                color: #1d273b !important;
+                font-weight: 900 !important;
+            }
+
+            .shift-end-cell {
+                color: #dc2626 !important;
+                font-weight: 900 !important;
+            }
+
+            .work-shift-table tbody tr:hover {
+                background: #f8fafc;
+            }
+
+            .shift-status-active {
+                color: #2ab149;
+                background: rgba(42, 177, 73, 0.12);
+                padding: 5px 14px;
+                border-radius: 999px;
+                font-weight: 800;
+                display: inline-block;
+            }
+
+            .shift-status-inactive {
+                color: #64748b;
+                background: rgba(100, 116, 139, 0.12);
+                padding: 5px 14px;
+                border-radius: 999px;
+                font-weight: 800;
+                display: inline-block;
+            }
+
+            .empty-row {
+                color: #64748b;
+                font-weight: 700;
+                padding: 22px !important;
+            }
+
+            .attendance-success-popup-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.35);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+                padding: 16px;
+            }
+
+            .attendance-success-popup {
+                width: 100%;
+                max-width: 420px;
+                background: #ffffff;
+                border-radius: 18px;
+                box-shadow: 0 18px 40px rgba(15, 23, 42, 0.20);
+                overflow: hidden;
+                text-align: center;
+                animation: attendancePopupFadeIn 0.20s ease-out;
+            }
+
+            .attendance-success-popup-body {
+                padding: 26px 22px 18px;
+            }
+
+            .attendance-success-popup-icon {
+                width: 68px;
+                height: 68px;
+                margin: 0 auto 14px;
+                border-radius: 50%;
+                background: rgba(42, 177, 73, 0.12);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .attendance-success-popup-check {
+                width: 34px;
+                height: 34px;
+                display: block;
+                fill: rgb(42, 177, 73);
+            }
+
+            .attendance-success-popup-title {
+                margin: 0;
+                font-size: 28px;
+                line-height: 1.4;
+                font-weight: 700;
+                color: rgb(42, 177, 73);
+            }
+
+            .attendance-success-popup-footer {
+                border-top: 1px solid #e5e7eb;
+                padding: 0;
+            }
+
+            .attendance-success-popup-btn {
+                width: 100%;
+                min-height: 56px;
+                border: 0;
+                background: #ffffff;
+                color: #f28e02 !important;
+                font-size: 24px;
+                font-weight: 700;
+            }
+
+                .attendance-success-popup-btn:hover {
+                    background: rgba(242, 142, 2, 0.08);
+                    color: #f28e02 !important;
+                }
+
+            @@keyframes attendancePopupFadeIn {
+                from {
+                    opacity: 0;
+                    transform: scale(0.96);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+
+            @@media (max-width: 768px) {
+                .work-shift-full-page {
+                    padding: 10px 10px 18px;
+                }
+
+                .work-shift-body {
+                    padding: 14px;
+                }
+
+                .work-shift-header {
+                    font-size: 19px;
+                }
+
+                .save-shift-btn {
+                    width: 100%;
+                }
+
+                .attendance-success-popup-title {
+                    font-size: 24px;
+                }
+
+                .attendance-success-popup-btn {
+                    font-size: 21px;
+                }
+            }
+    </style>
+
+    <div class="work-shift-page">
+        <div class="work-shift-card">
+            <div class="work-shift-header">تعيين أوقات الدوام</div>
+
+            <div class="work-shift-body">
+                @if (!string.IsNullOrWhiteSpace(errorMessage))
+                {
+                    <div class="error-box">@errorMessage</div>
+                }
+
+                <form asp-controller="EmployeeAttendance" asp-action="AssignWorkTimes" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="row g-3 align-items-end">
+                        <div class="col-12 col-md-6 col-xl-3">
+
+
+                            <input type="hidden" name="employeeId" id="employeeIdInput" required />
+
+                            <div class="employee-custom-dropdown" id="employeeCustomDropdown">
+                                <div class="selected-employee" id="selectedEmployeeButton" role="button" tabindex="0">
+                                    <span class="selected-employee-text" id="selectedEmployeeText">اختر الموظف</span>
+                                    <i class="fa-duotone fa-chevron-down selected-employee-icon"></i>
+                                </div>
+
+                                <div class="employee-options-dropdown" id="employeeOptionsDropdown">
+                                    @if (employees != null && employees.Any())
+                                    {
+                                        foreach (var employee in employees)
+                                        {
+                                            var employeeImage = employee.Group?.Name ?? "";
+
+                                            <div class="employee-option"
+                                                 data-value="@employee.Value"
+                                                 data-text="@employee.Text">
+                                                @if (!string.IsNullOrWhiteSpace(employeeImage))
+                                                {
+                                                    <img src="@employeeImage"
+                                                         class="employee-option-image"
+                                                         alt="@employee.Text"
+                                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" />
+
+                                                    <span class="employee-option-placeholder" style="display:none;">
+                                                        <i class="fa-light fa-user"></i>
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="employee-option-placeholder">
+                                                        <i class="fa-light fa-user"></i>
+                                                    </span>
+                                                }
+
+                                                <span class="employee-option-name">@employee.Text</span>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="employee-option" data-value="" data-text="لا يوجد موظفين">
+                                            <span class="employee-option-placeholder">
+                                                <i class="fa-light fa-user"></i>
+                                            </span>
+                                            <span class="employee-option-name">لا يوجد موظفين</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-md-6 col-xl-3">
+                            <label class="form-label-custom">وقت بداية الدوام</label>
+                            <input type="time" name="shiftStartTime" class="form-control form-control-custom" required />
+                        </div>
+
+                        <div class="col-12 col-md-6 col-xl-3">
+                            <label class="form-label-custom">وقت نهاية الدوام</label>
+                            <input type="time" name="shiftEndTime" class="form-control form-control-custom" required />
+                        </div>
+
+                        <div class="col-12 col-md-6 col-xl-3">
+
+                            <input type="text"
+                                   name="allowedIpAddress"
+                                   class="form-control form-control-custom"
+                                   placeholder="ادخل IP الموظف يدويًا - اختياري مثل: 41.46.62.13" />
+                        </div>
+
+                        <div class="col-12">
+
+                            <textarea name="notes"
+                                      class="form-control form-control-custom"
+                                      rows="3"
+                                      placeholder="ملاحظات اختيارية"></textarea>
+                        </div>
+
+                        <div class="col-12 text-center mt-3">
+                            <button type="submit" class="save-shift-btn">حفظ الدوام</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="work-shift-table-card">
+            <div class="work-shift-header">آخر أوقات دوام تم تعيينها</div>
+
+            <div class="table-responsive">
+                <table class="table work-shift-table">
+                    <thead>
+                        <tr>
+                            <th>الموظف</th>
+                            <th>وقت بداية الدوام</th>
+                            <th>وقت نهاية الدوام</th>
+                            <th>IP الموظف</th>
+                            <th>ملاحظات</th>
+                            <th>الحالة</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @if (recentShifts != null && recentShifts.Any())
+                        {
+                            foreach (var shift in recentShifts)
+                            {
+                                <tr>
+                                    <td class="employee-name-cell">@shift.EmployeeName</td>
+                                    <td class="shift-start-cell">@shift.ShiftStartTime.ToString(@"hh\:mm")</td>
+                                    <td class="shift-end-cell">@shift.ShiftEndTime.ToString(@"hh\:mm")</td>
+                                    <td>@(string.IsNullOrWhiteSpace(shift.AllowedIpAddress) ? "-" : shift.AllowedIpAddress)</td>
+                                    <td>@(string.IsNullOrWhiteSpace(shift.Notes) ? "-" : shift.Notes)</td>
+                                    <td>
+                                        @if (shift.IsActive)
+                                        {
+                                            <span class="shift-status-active">نشط</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="shift-status-inactive">غير نشط</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="6" class="empty-row">لا توجد بيانات حتى الآن</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+            (function () {
+                const dropdown = document.getElementById('employeeCustomDropdown');
+                const button = document.getElementById('selectedEmployeeButton');
+                const selectedText = document.getElementById('selectedEmployeeText');
+                const hiddenInput = document.getElementById('employeeIdInput');
+                const options = Array.from(document.querySelectorAll('.employee-option'));
+
+                if (!dropdown || !button || !selectedText || !hiddenInput) {
+                    return;
+                }
+
+                function closeDropdown() {
+                    dropdown.classList.remove('open');
+                }
+
+                function toggleDropdown() {
+                    dropdown.classList.toggle('open');
+                }
+
+                button.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    toggleDropdown();
+                });
+
+                button.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        toggleDropdown();
+                    }
+
+                    if (event.key === 'Escape') {
+                        closeDropdown();
+                    }
+                });
+
+                options.forEach(function (option) {
+                    option.addEventListener('click', function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        const value = option.getAttribute('data-value') || "";
+                        const text = option.getAttribute('data-text') || "اختاري الموظف";
+
+                        if (!value) {
+                            return;
+                        }
+
+                        hiddenInput.value = value;
+                        selectedText.innerText = text;
+
+                        options.forEach(function (item) {
+                            item.classList.remove('active');
+                        });
+
+                        option.classList.add('active');
+
+                        closeDropdown();
+                    });
+                });
+
+                document.addEventListener('click', function (event) {
+                    if (!dropdown.contains(event.target)) {
+                        closeDropdown();
+                    }
+                });
+            })();
+    </script>
+
+    <script>
+            (function () {
+                function replaceEmployeeManagementTitle() {
+                    const wantedTitle = 'تعيين أوقات الدوام';
+                    const oldTitles = ['ادارة الموظفين', 'إدارة الموظفين', 'اداره الموظفين', 'إداره الموظفين'];
+
+                    document.title = wantedTitle;
+
+                    const targetSelectors = [
+                        'h1',
+                        'h2',
+                        'h3',
+                        '.page-title',
+                        '.header-title',
+                        '.navbar-title',
+                        '.top-title',
+                        '.title',
+                        '.page-header',
+                        '.headerbar',
+                        '.headerbar *',
+                        'header',
+                        'header *',
+                        '.navbar',
+                        '.navbar *'
+                    ];
+
+                    targetSelectors.forEach(function (selector) {
+                        document.querySelectorAll(selector).forEach(function (element) {
+                            const currentText = (element.textContent || '').trim();
+
+                            if (oldTitles.includes(currentText)) {
+                                element.textContent = wantedTitle;
+                            }
+                        });
+                    });
+
+                    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+                        acceptNode: function (node) {
+                            const value = (node.nodeValue || '').trim();
+
+                            if (oldTitles.includes(value)) {
+                                return NodeFilter.FILTER_ACCEPT;
+                            }
+
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                    });
+
+                    const nodesToReplace = [];
+                    let currentNode;
+
+                    while (currentNode = walker.nextNode()) {
+                        nodesToReplace.push(currentNode);
+                    }
+
+                    nodesToReplace.forEach(function (node) {
+                        node.nodeValue = node.nodeValue.replace(/إدارة الموظفين|ادارة الموظفين|إداره الموظفين|اداره الموظفين/g, wantedTitle);
+                    });
+                }
+
+                function ensureAttendanceLogTopLink() {
+                    const linkId = 'topAttendanceLogLink';
+
+                    if (document.getElementById(linkId)) {
+                        return;
+                    }
+
+                    const link = document.createElement('a');
+                    link.id = linkId;
+                    link.className = 'top-attendance-log-link';
+                    link.href = '/EmployeeAttendance/AttendanceLog';
+                    link.textContent = 'سجل أوقات الدوام';
+                    link.setAttribute('aria-label', 'سجل أوقات الدوام');
+
+                    document.body.appendChild(link);
+                }
+
+                document.addEventListener('DOMContentLoaded', function () {
+                    replaceEmployeeManagementTitle();
+                    ensureAttendanceLogTopLink();
+
+                    setTimeout(function () {
+                        replaceEmployeeManagementTitle();
+                        ensureAttendanceLogTopLink();
+                    }, 100);
+
+                    setTimeout(function () {
+                        replaceEmployeeManagementTitle();
+                        ensureAttendanceLogTopLink();
+                    }, 500);
+
+                    setTimeout(function () {
+                        replaceEmployeeManagementTitle();
+                        ensureAttendanceLogTopLink();
+                    }, 1200);
+                });
+
+                if (window.MutationObserver) {
+                    const observer = new MutationObserver(function () {
+                        replaceEmployeeManagementTitle();
+                        ensureAttendanceLogTopLink();
+                    });
+
+                    document.addEventListener('DOMContentLoaded', function () {
+                        observer.observe(document.body, {
+                            childList: true,
+                            subtree: true,
+                            characterData: true
+                        });
+                    });
+                }
+            })();
+    </script>
+
+</div>
+
+@if (!string.IsNullOrWhiteSpace(successMessage))
+{
+    <div id="attendanceSuccessPopup" class="attendance-success-popup-backdrop">
+        <div class="attendance-success-popup">
+            <div class="attendance-success-popup-body">
+                <div class="attendance-success-popup-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" class="attendance-success-popup-check">
+                        <path d="M9.1 16.6 4.9 12.4 3.5 13.8 9.1 19.4 21 7.5 19.6 6.1z"></path>
+                    </svg>
+                </div>
+
+                <p class="attendance-success-popup-title">تم تعيين الدوام</p>
+            </div>
+
+            <div class="attendance-success-popup-footer">
+                <button type="button" id="attendanceSuccessPopupBtn" class="attendance-success-popup-btn">تأكيد</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var popup = document.getElementById('attendanceSuccessPopup');
+            var confirmBtn = document.getElementById('attendanceSuccessPopupBtn');
+            var autoCloseTimer;
+
+            function closePopup() {
+                if (!popup) return;
+
+                popup.style.display = 'none';
+
+                if (autoCloseTimer) {
+                    clearTimeout(autoCloseTimer);
+                }
+            }
+
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', closePopup);
+            }
+
+            autoCloseTimer = setTimeout(closePopup, 3000);
+        })();
+    </script>
+}

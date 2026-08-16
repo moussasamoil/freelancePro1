@@ -1,0 +1,3769 @@
+
+<style>
+    /* يمنع رعشة حقول الأرقام أثناء الكتابة */
+    #TelephoneNumber.error,
+    #SecondTelephoneNumber.error,
+    #TotalPrice.error,
+    #DeliveryPrice.error,
+    input.amount.error,
+    .numeric-no-shake.error {
+        animation: none !important;
+        transform: none !important;
+    }
+</style>
+
+@model lotus_blue.Models.ViewModel.OrderViewModel
+@inject lotus_blue.Services.GetCurrentTimeInIstanbul TimeService
+@{
+    DateTime istanbulTime = TimeService.GetIstanbulTimeWithOffset();
+}
+@* Prevents accidental close during order entry — static backdrop and no keyboard dismiss *@
+<div class="modal   rtl  modal-dialog-centered" id="Create" data-bs-keyboard="false" data-bs-backdrop="static" tabindex="-1" aria-labelledby="Create" aria-hidden="true">
+    @* Large size to fit the full order form without scrolling *@
+    <div class="modal-dialog modal-lg modal-dialog-centered " style="position: relative;">
+        @* Sprite clock — sits above the modal panel, centered. Black rounded slab holds two
+        digit groups: the running mm:ss timer (left, 4 digits) and the current shift's
+        order-creation count (right, 2 digits), separated by a gap. *@
+        <div id="createOrderTimer" class="sprite-clock" aria-live="polite">
+            <div class="sprite-clock-group sprite-clock-timer">
+                <img class="sprite-clock-digit sprite-clock-d0" src="/clock/0.png" alt="" />
+                <img class="sprite-clock-digit sprite-clock-d1" src="/clock/0.png" alt="" />
+                <img class="sprite-clock-colon" src="/clock/column.png" alt=":" />
+                <img class="sprite-clock-digit sprite-clock-d2" src="/clock/0.png" alt="" />
+                <img class="sprite-clock-digit sprite-clock-d3" src="/clock/0.png" alt="" />
+            </div>
+            <div class="sprite-clock-group sprite-clock-count">
+                <img class="sprite-clock-digit sprite-clock-c0" src="/clock/0.png" alt="" />
+                <img class="sprite-clock-digit sprite-clock-c1" src="/clock/0.png" alt="" />
+            </div>
+        </div>
+        @* Relative position required so the loading overlay (absolute) is scoped to this panel *@
+        <div class="modal-content background-white-green" style="position: relative;">
+            <div id="overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(33, 37, 41, 0.1); z-index: 10;"></div>
+            <div id="deleteProductConfirm" style="position: absolute; inset: 0; z-index: 9999; display: none; background: rgba(33,37,41,0.55); align-items: center; justify-content: center;">
+                <div class="row justify-content-center align-items-center" style="width: 100%; margin: 0;">
+                    <div style="background-color:white" class="w-60 flex-column b-r-8 d-flex justify-content-center">
+                        <div class="">
+                            <div class="text-center pt-3">
+                                <img src="/static/trash-can-regular.svg" width="50">
+                            </div>
+                            <p class="text-center pb-3 text-nowrap"> هل أنت متأكد من حذف المستودع .</p>
+                        </div>
+                        <div class="border-top">
+                            <div class="row">
+                                <div class="col-6 py-2 text-center text-green-v2 text-decoration-underline" id="confirm-remove">
+                                    موافقه
+                                </div>
+                                <div class="col-6 py-2 text-center border-right text-grey-v2 text-decoration-underline" id="cancel-remove">
+                                    تراجع
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @* Modal header: title + cancel/confirm dismiss buttons *@
+            <div class="modal-header">
+                <button type="button" class="btn head-16 text-green" data-bs-dismiss="modal" aria-label="Close"> تراجع</button>
+                <h5 class="modal-title  head text center" id="createOrderModalTitle"> إنشاء طلب جديد</h5>
+                <button type="button" class="btn head-16 text-green" data-bs-dismiss="modal" aria-label="Close"> انتهى</button>
+            </div>
+            <div class="modal-body">
+                <form id="createOrderForm">
+                    <div class="row d-flex justify-content-center">
+                        @* Row 1: Country | City *@
+                        <div class="row">
+                            <div class="col-12" id="countryCol">
+                                <div class="form-group ">
+                                    <select asp-for="Country" class="form-control " id="countryDropdown" required>
+                                        <option data-image="/static/earth-americas-sharp-solid.svg" value="" selected>    اختر الدولة   </option>
+                                        @foreach (var country in Enum.GetValues(typeof(lotus_blue.Models.Common.Countries)))
+                                        {
+                                            <option value="@country" data-image="@Common.GetImageUrlByCountryName(country.ToString())">@country</option>
+                                        }
+                                    </select>
+                                    <span asp-validation-for="Country" class="text-danger"></span>
+                                </div>
+                            </div>
+                            @* Cities are empty on load — JS populates them via Ajax when a country is selected *@
+                            <div class="col-6" id="cityCol" style="display: none;">
+                                <div class="form-group ">
+                                    <select asp-for="State" class="form-control" id="cityDropdown" required>
+                                        <option data-image="/static/city-regular.svg" value="" selected>المدينة</option>
+                                        <!-- Add your option elements here -->
+                                    </select>
+                                    <span asp-validation-for="State" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        @* Row 2: Phone1 | Phone2 — hidden until city is selected. Phone2 reveals after phone1 passes validation. *@
+                        <div class="row mt-3" id="phoneRow" style="display: none;">
+                            <div class="col-12" id="primaryPhoneCol">
+                                <div class="form-group w-sm-100 input-wrapper">
+                                    <input type="tel" inputmode="tel" autocomplete="off" required placeholder="رقم الهاتف الأول" asp-for="TelephoneNumber" class="  form-control with-bg-image-phonenumber  numeric-no-shake" />
+                                    <i class="fa-duotone fa-spinner-third fa-spin spinner-icon"></i>
+                                    <span asp-validation-for="TelephoneNumber" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-6" id="secondPhoneCol" style="display: none;">
+                                <div class="form-group">
+                                    <input type="tel" inputmode="tel" autocomplete="off" placeholder="رقم الهاتف الثاني (اختياري) " id="SecondTelephoneNumber" asp-for="SecondTelephoneNumber" class="form-control with-bg-image-phonenumber numeric-no-shake" />
+                                    <span asp-validation-for="SecondTelephoneNumber" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        @* Row 3: Customer name | Store name — hidden until phone1 is valid; store reveals after customer name is valid. *@
+                        <div class="row mt-3" id="customerStoreRow" style="display: none;">
+                            <div class="col-12" id="customerNameCol">
+                                <div class="form-group w-sm-100 input-wrapper">
+                                    <input required placeholder="اسم العميل " id="CustomerName" asp-for="CustomerName" class="form-control  with-bg-image-client" />
+                                    <i class="fa-duotone fa-spinner-third fa-spin spinner-icon"></i>
+                                    <span asp-validation-for="CustomerName" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-6 " id="storeCol" style="display: none;">
+                                <div class="form-group">
+                                    <select asp-for="ManufacturingCompanyId" class="form-control" id="manufacturingCompanyDropdown" required disabled>
+                                        <option data-image="/static/building-regular.svg" value="" disabled selected>اسم المتجر </option>
+                                    </select>
+                                    <span asp-validation-for="ManufacturingCompanyId" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        @* Row 4: Address (full width) — hidden until a store is selected. *@
+                        <div class="row mt-3 " id="addressRow" style="display: none;">
+                            <div class="col-12 ">
+                                <div class="form-group w-100 input-wrapper">
+                                    <input required placeholder="العنوان بالكامل" id="Address" asp-for="Address" class="form-control with-bg-image-address" />
+                                    <i class="fa-duotone fa-spinner-third fa-spin spinner-icon"></i>
+                                    <span asp-validation-for="Address" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        @* Row 5: Delivery party | Order screenshot — hidden until address is valid. Delivery party only shown when 2+ parties (otherwise auto-selected and column stays hidden, screenshot spans full width). *@
+                        <div class="row mt-3" id="deliveryPhotoRow" style="display: none;">
+                            <div class="col-6 " id="deliveryCompanyCol" style="display: none;">
+                                <div class="form-group">
+                                    <select id="deliveryPartyDropdown" asp-for="DeliveryCompanyId" class="form-control" required>
+                                        <option data-image="/static/truck-regular.svg" value="" disabled selected>اختر طرف التوصيل</option>
+                                        <!-- Options populated dynamically based on the selected country and city -->
+                                    </select>
+                                    <span asp-validation-for="DeliveryCompanyId" class="text-danger"></span>
+                                </div>
+                            </div>
+                            @* Order screenshot — text-style field; user pastes (Ctrl+V) an image, which renders inline. The hidden <input type="file"> is what FormData posts. *@
+                            <div class="col-12 " id="orderPhotoCol">
+                                <div class="form-group w-100 input-wrapper">
+                                    <div id="OrderPhotoPaste" class="form-control" contenteditable="true" data-placeholder="صورة الحجز" style="min-height:38px;cursor:text;"></div>
+                                    <input type="file" name="PhotoFile" id="OrderPhotoFile" accept="image/*" style="display:none;" />
+                                </div>
+                            </div>
+                        </div>
+                        @* Row 6: Page type (order source) | Page name — hidden until both screenshot pasted AND delivery party selected. SourceName only shown for non-WhatsApp sources. *@
+                        <div class="row mt-3" id="orderSourceRow" style="display: none;">
+                            <div class="col-12 " id="orderSourceCol">
+                                <div class="form-group">
+                                    <select asp-for="OrderSource" class="form-control" id="orderSourceDropdown" required>
+                                        <option data-image="/static/hashtag-regular.svg" value="" disabled selected>نوع الصفحة</option>
+                                        @foreach (OrderSourceEnum source in Enum.GetValues(typeof(OrderSourceEnum)))
+                                        {
+                                            var sourceText = source.ToString();
+                                            var sourceKey = (sourceText ?? "")
+                                                .Replace("_", "")
+                                                .Replace(" ", "")
+                                                .ToLowerInvariant();
+
+                                            var isAllowedSource =
+                                                sourceKey.Contains("whatsapp") ||
+                                                sourceKey.Contains("واتس") ||
+                                                sourceKey.Contains("facebook") ||
+                                                sourceKey.Contains("فيس") ||
+                                                sourceKey.Contains("instagram") ||
+                                                sourceKey.Contains("insta") ||
+                                                sourceKey.Contains("انست");
+
+                                            if (!isAllowedSource)
+                                            {
+                                                continue;
+                                            }
+
+                                            <option value="@((int)source)" data-image="@Common.GetSocialMediaIconUrl(source)">
+                                                @source
+                                            </option>
+                                        }
+                                    </select>
+                                    <span asp-validation-for="OrderSource" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-6 " id="sourceNameCol" style="display: none;">
+                                <div class="form-group input-wrapper w-sm-100">
+                                    @* Disabled by default so it can't be submitted empty; JS enables it once visible *@
+                                    <input placeholder="اسم الصفحة" id="SourceName" asp-for="SourceName" disabled class=" form-control with-bg-image-pagename" />
+                                    <i class="fa-duotone fa-spinner-third fa-spin spinner-icon"></i>
+                                    <span asp-validation-for="SourceName" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        @* Row 7: Chat URL | CreatedDate. ChatUrl is shown once an order source is selected (and not WhatsApp). CreatedDate appears once chatUrl is valid (or, for WhatsApp orders that have no chat url, once the order source is chosen). Width is reconciled by syncChatUrlDateRow(). *@
+                        <div class="row mt-3 " id="chatUrlDateRow" style="display: none;">
+                            <div class="col-12 " id="chatUrlCol" style="display: none;">
+                                <div class="form-group w-100 input-wrapper">
+                                    <input required placeholder="رابط المحادثة" id="ChatUrl" asp-for="chatUrl" class="form-control with-bg-image-address" />
+                                    <i class="fa-duotone fa-spinner-third fa-spin spinner-icon"></i>
+                                    <span asp-validation-for="chatUrl" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-6 form-group" id="createdDateCol" style="display: none;">
+                                <div class="form-group ">
+                                    <input required asp-for="CreatedDate" name="CreatedDate" value="@TimeService.GetIstanbulTimeWithOffset().ToString("yyyy-MM-ddTHH:mm:ss")" type="datetime-local" class="form-control text-end with-bg-image-calendar calendar  pe-2 ps-2" />
+                                    <span asp-validation-for="CreatedDate" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        @* Hidden FromComments dropdown — kept off-row so it still posts, but no longer renders in the visible layout. *@
+                        <div style="display: none;">
+                            <select asp-for="FromComments" id="CommentsDropdown">
+                                <option selected value="">التعليقات</option>
+                                <option value="true">نعم </option>
+                                <option value="false">لا</option>
+                            </select>
+                        </div>
+                        @* Ad campaign — the dropdown is the model-bound input but is never shown.
+                        The visible UI is #campaignGalleryWrap below, hoisted out of the form rows
+                        so the form layout has no empty row reserved for it (the gallery is
+                        position:absolute and renders off to the side of the modal panel). *@
+                        <select id="campaignDropdown" asp-for="CampaignId" class="form-control" style="display: none;">
+                            <option value="" disabled selected hidden>اختر الإعلان</option>
+                            <option data-image="/static/truck-regular.svg" value="">بدون إعلان</option>
+                            <!-- Options will be dynamically added here based on the selected country and city -->
+                        </select>
+                        <span asp-validation-for="CampaignId" class="text-danger"></span>
+                        @* Product picker — the entry point for building the order's product list.
+                        User flow: the agent picks a product here and confirms it; the product moves into #selectedProductsList as a locked row with a quantity spinner. Repeating this adds more products. Removing a row sends the product back here.
+                        Data flow: warehouseOptions is the available pool. Confirming a product removes it from the pool (so it can't be picked twice); deleting a confirmed row adds it back (sourced from allWarehouseOptions to recover the original stock data). *@
+                        <div id="selectedProductsList" class="row mt-3" style="display: none;">
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <div class="warehouse-item">
+                                        <select class="form-control warehouse-select" id="productDropdown" asp-for="SelectedWarehouses[0].WarehouseId" asp-items="Model?.WarehouseList" disabled>
+                                            <option data-image="/static/box-open-2.svg" disabled selected value="">قم بإختيار إحدى المنتجات</option>
+                                        </select>
+                                        <span asp-validation-for="SelectedWarehouses[0].WarehouseId" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @* Payment status reveals once products + campaign have been chosen. Starts col-12; once "تم التحويل حوالة بنكية" is picked, it shrinks to col-6 and a paste-style payment receipt field appears alongside (mandatory only when paid). TotalPrice still has its own gate. *@
+                        <div class="row mt-3 " id="paymentRow" style="display: none;">
+                            <div class="col-12 form-group" id="paymentCol">
+                                <div class="form-group ">
+                                    <select asp-for="IsPaid" class="form-control w-100" id="IsPaid">
+                                        <option data-image="/static/credit-card-front-regular.svg" value="">طريقة الدفع (اختياري)</option>
+                                        <option value="true" data-image="/static/credit-card-front-regular.svg">تم التحويل حوالة بنكية</option>
+                                        <option value="false" data-image="/static/credit-card-front-regular.svg">غير مدفوع</option>
+                                    </select>
+                                    <span asp-validation-for="Gender" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-6" id="paymentReceiptCol" style="display: none;">
+                                <div class="form-group w-100 input-wrapper">
+                                    <div id="PaymentReceiptPaste" class="form-control" contenteditable="true" data-placeholder="صورة إيصال الحوالة بنكية" style="min-height:38px;cursor:text;"></div>
+                                    <input type="file" name="PaymentReceiptFile" id="PaymentReceiptFile" accept="image/*" style="display:none;" />
+                                </div>
+                            </div>
+                        </div>
+                        @* Notes — own row beneath payment status. Optional. *@
+                        <div class="row mt-3" id="notesRow" style="display: none;">
+                            <div class="col-12" id="notesCol">
+                                <div class="form-group">
+                                    <input placeholder="الملاحظات (اختياري)" id="Notes" asp-for="Notes" class="form-control with-bg-image-note" />
+                                    <span asp-validation-for="Notes" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="d-flex justify-content-center">
+                            </div>
+                        </div>
+                        @* Total price input — hidden until a payment status is picked. Backend min-price validation in OrderController runs after submit; per-country thresholds live in CountryMinimumPrices. *@
+                        <div class="justify-content-center" id="totalPriceWrap" style="display: none;">
+                            <div class="w-25 w-sm-50">
+                                <div class="form-group input-wrapper d-flex justify-content-center">
+                                    <input type="text" inputmode="decimal" autocomplete="off" id="TotalPrice" required value="" asp-for="TotalPrice" class="form-control fw-bold with-bg-image-price text-green numeric-no-shake" placeholder="السعر الأجمالي" />
+                                    <i class="fa-duotone fa-spinner-third fa-spin spinner-icon"></i>
+                                    <span asp-validation-for="TotalPrice" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                        @* Submit button *@
+                        <div class="d-flex mb-3 justify-content-center ">
+                            <button style="font-size:1.3rem;" type="submit" id="submitButton" class="btn py-1 background-gold text-white mb-3  w-65 mt-3">موافقة</button>
+                        </div>
+                        @* Inline error panel shown on submission failure *@
+                        <div style="width:23% !important" id="failedmessage" class="container centered hidden legacy-popup-error-disabled" style="display:none !important; pointer-events:none !important;">
+                            <div class="row justify-content-center align-items-center" style="min-height: 100vh;">
+                                <div style="background-color:white" class=" flex-column b-r-8 d-flex justify-content-center">
+                                    <div class="">
+                                        <div class="text-center pt-3">
+                                            <img src="/static/x-shadow-red.svg" width="50" />
+                                        </div>
+                                        <p class="text-center pb-3 text-black fw-bolder text-nowrap">خطأ في التنزيل.</p>
+                                        <p class="text-center text-black pb-3 message text-nowrap"></p>
+                                    </div>
+                                    <div class="border-top grey-hover">
+                                        <div class="row">
+                                            <div class="py-2 closeFailedMessage  text-center grey-hover text-green-v2 text-decoration-underline">
+                                                موافق
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                @* Campaign gallery — positioned absolutely against the modal-content (which is
+                position:relative). Lives outside the form so the form layout reserves no
+                row for it; only renders when a store is picked (toggleCampaignVisibility). *@
+                <div id="campaignGalleryWrap" style="display: none;">
+                    <div class="campaign-gallery-title">اختار الاعلان</div>
+                    <div id="campaignGallery" class="campaign-gallery"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@* after success order post
+ *@
+<div id="successmessage" class="hidden " style="width:35%;">
+    <div class="container pb-5 custom-box-shadow b-r-8  background-white">
+        <div class="row pt-5">
+            <div class="col text-center ">
+                <img width="70" class="mx-auto d-block" src="/static/turesign.svg">
+            </div>
+        </div>
+        <div class="row">
+            <div class="col text-center">
+                <p><span id="orderIDPlaceholder"></span></p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col text-center">
+                <p>تمت العملية بنجاح</p>
+            </div>
+        </div>
+        <div class="row " style="margin-top: 130px;">
+            <div class="col text-center">
+                <a id="printOrderLink" class="text-green-v2 b-r-8 custom-box-shadow" style="padding-left: 180px; padding-right: 180px;" target="_blank">إيصال</a>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col text-center">
+                <a id="closeAndOpenOrderBtn" style="padding-left:132px; padding-right:132px;" class="text-green-v2  b-r-8 custom-box-shadow">قم بإجراء طلب جديد</a>
+            </div>
+        </div>
+        <div class="row mt-4">
+            <div id="closeSuccess" class="col text-center">
+                <img src="/static/77-01.svg" width="50" />
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+    #campaignGalleryWrap {
+        position: absolute;
+        top: 50%;
+        left: calc(100% + 32px);
+        transform: translateY(-50%);
+        width: 200px;
+        background: #f6f6f6;
+        border-radius: 16px;
+        box-shadow: 0 0 4px rgba(0,0,0,.39);
+        overflow: hidden;
+        z-index: 10;
+    }
+
+    .campaign-gallery-title {
+        padding: 10px 12px 0;
+        color: #111827;
+        font-size: 13px;
+        font-weight: 900;
+        text-align: center;
+        direction: rtl;
+    }
+    /* Campaign dropdown is intentionally fully hidden — gallery is the only UI.
+                               Select2 stays initialized on it (so all the existing data-flow stays intact),
+                               but neither the native select nor its rendered Select2 widget are ever shown. */
+    #Create #campaignDropdown,
+    #Create #campaignDropdown + .select2-container {
+        display: none !important;
+    }
+    /* Digital clock — viewport-fixed, horizontally centered, sits above the modal panel.
+                               Modern black rounded slab holds two digit groups: the running mm:ss timer (left,
+                               4 digits) and the current shift's order-creation count (right, 2 digits), with a
+                               gap between them. Digit images are 174x247 native, displayed at fixed pixel size. */
+    .sprite-clock {
+        position: fixed;
+        top: calc(50% - 420px);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1100;
+        display: flex;
+        /* Force LTR so the timer (DOM-first) sits on the left and the creation
+                                   count (DOM-second) sits on the right, regardless of the modal's RTL ctx. */
+        direction: ltr;
+        align-items: center;
+        gap: 36px;
+        line-height: 0;
+        max-width: 95vw;
+    }
+    /* Each group is its own modern black rounded slab with its own padding/shadow. */
+    .sprite-clock-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 18px 30px;
+        background: #0b0b0b;
+        border-radius: 24px;
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+    }
+
+    .sprite-clock-digit {
+        display: block;
+        height: 108px;
+        width: auto;
+        user-select: none;
+        pointer-events: none;
+    }
+
+    .sprite-clock-colon {
+        display: block;
+        height: 108px;
+        width: auto;
+        user-select: none;
+        pointer-events: none;
+        margin: 0 3px;
+    }
+    /* x4-zone — subtle red tint pulse once we cross 30s (timer digits only) */
+    @@keyframes sprite-clock-fast-pulse {
+        0%, 100% {
+            filter: drop-shadow(0 0 6px rgba(255,0,0,.6));
+        }
+
+        50% {
+            filter: drop-shadow(0 0 14px rgba(255,0,0,.95));
+        }
+    }
+
+    .sprite-clock.fast .sprite-clock-timer .sprite-clock-digit {
+        animation: sprite-clock-fast-pulse 0.5s ease-in-out infinite;
+    }
+    /* Select2 success state: green background on the container */
+    .select2-container:has(.select2-selection__rendered.success) .select2-selection {
+        background: #1d273b !important;
+        background-color: #1d273b !important;
+        border-color: #1d273b !important;
+        border-radius: 4px;
+    }
+    /* Selected text and arrow become white */
+    .select2-container:has(.select2-selection__rendered.success) .select2-selection__rendered {
+        color: white !important;
+    }
+
+    .select2-container:has(.select2-selection__rendered.success) .select2-selection__arrow b {
+        border-color: white transparent transparent transparent !important;
+    }
+    /* Inverted tick icon: white circle, green checkmark */
+    .select2-container:has(.select2-selection__rendered.success) .select2-selection__rendered.success {
+        background-image: url('/static/turesign-inverted.svg') !important;
+        background-position: left 10px center !important;
+        background-repeat: no-repeat !important;
+        background-size: 20px 20px !important;
+        padding-left: 32px !important;
+    }
+
+    .campaign-gallery {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        padding: 16px 16px 8px;
+    }
+
+    .campaign-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+        position: relative;
+    }
+
+    .campaign-card-img-wrap {
+        background: #f6f6f6;
+        border-radius: 16px;
+        width: 100%;
+        aspect-ratio: 1;
+        overflow: hidden;
+        box-shadow: 0 0 4px rgba(0,0,0,.39);
+        margin-bottom: 4px;
+    }
+
+        .campaign-card-img-wrap:hover {
+            background: #c6cbd6;
+        }
+
+        .campaign-card-img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            transition: transform .2s;
+        }
+
+        .campaign-card-img-wrap:hover img {
+            transform: scale(1.15);
+        }
+
+    .campaign-card-name {
+        font-weight: 700;
+        font-size: 8px;
+        color: #000;
+        text-align: center;
+        width: 100%;
+    }
+
+    .campaign-card.selected .campaign-card-img-wrap {
+        background: #c6cbd6;
+        outline: 2px solid #1d273b;
+    }
+
+    .campaign-card-badge {
+        position: absolute;
+        top: 0;
+        left: 0;
+        background: #1d273b;
+        color: white;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .campaign-card.selected .campaign-card-badge {
+        display: flex;
+    }
+    /* Hides the failedmessage by default and sets its background to transparent */
+    #failedmessage {
+        display: none;
+        background-color: transparent;
+        z-index: 11; /* Higher than overlay */
+    }
+        /* Additional style for when #failedmessage is active/visible */
+        #failedmessage.visible {
+            display: block; /* Make it visible */
+            width: 23% !important;
+            min-height: 100vh;
+        }
+
+    .required-message {
+        color: #FFFFFF; /* White text */
+        background-color: #FF0000; /* Red background */
+        font-family: Arial, sans-serif; /* Default sans-serif font */
+        font-size: 12px; /* Small font size, similar to tooltip */
+        padding: 4px 8px; /* Padding inside the box */
+        border-radius: 4px; /* Rounded corners */
+        margin-top: 0.25rem; /* Margin on top */
+    }
+
+    #successmessage {
+        position: fixed; /* Fixed position for centering */
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%); /* Center the message */
+        z-index: 1000; /* Ensure it's on top of other elements */
+    }
+
+    .error {
+        background-image: url('/static/exclamation.svg'); /* Path to your phone image */
+        background-position: left 10px center; /* Position of error image */
+        background-repeat: no-repeat;
+        padding-right: 50px; /* Adjust padding to ensure text does not overlap the images */
+        background-size: 21px; /* Size of phone image */
+    }
+
+    @@keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+    /* Spinner icon styles */
+    .spinner-icon {
+        color: black;
+        position: absolute;
+        left: 10px; /* Same as background position in with-bg-image-phonenumber class */
+        top: 30%;
+        transform: translateY(-50%);
+        font-size: 14px; /* Match the background image size */
+        display: none; /* Initially hidden */
+    }
+
+    .input-wrapper {
+        position: relative;
+        display: block;
+    }
+
+    .success {
+        background-image: url('/static/turesign.svg');
+        background-position: left 10px center;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 25px;
+        background-color: #1d273b !important;
+        color: white !important;
+    }
+
+    .with-bg-image-pagename {
+        background-image: url('/static/page-regular.svg'); /* Path to your image */
+        background-position: right 10px center !important; /* Adjust the vertical positioning to leave space at the bottom */
+        background-repeat: no-repeat;
+        padding-right: 25px; /* Adjust padding to ensure text does not overlap the image */
+        background-size: 14px 14px; /* Set the size of the background image */
+    }
+
+    .success.with-bg-image-pagename {
+        background-image: url('/static/turesign.svg'), url('/static/page-regular.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 25px 25px, 14px 14px;
+        color: white !important;
+    }
+
+    .error.with-bg-image-pagename {
+        background-image: url('/static/exclamation.svg'), url('/static/page-regular.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 21px 21px, 14px 14px; /* Ensure the size for both images is specified correctly */
+    }
+
+    .with-bg-image-phonenumber {
+        background-image: url('/static/phone-regular.svg'); /* Path to your phone image */
+        background-position: right 10px center; /* Position of phone image */
+        background-repeat: no-repeat;
+        padding-right: 25px; /* Adjust padding to ensure text does not overlap the images */
+        background-size: 14px 14px; /* Size of phone image */
+    }
+
+    .success.with-bg-image-phonenumber {
+        background-image: url('/static/turesign.svg'), url('/static/phone-regular.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 25px 25px, 14px 14px;
+        color: white !important;
+    }
+
+    .error.with-bg-image-phonenumber {
+        background-image: url('/static/exclamation.svg'), url('/static/page-regular.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 21px 21px, 14px 14px; /* Ensure the size for both images is specified correctly */
+    }
+
+    .with-bg-image-address {
+        background-image: url('/static/location-dot-light.svg'); /* Path to your image */
+        background-position: right 10px center !important; /* Adjust the vertical positioning to leave space at the bottom */
+        background-repeat: no-repeat;
+        padding-right: 25px; /* Adjust padding to ensure text does not overlap the image */
+        background-size: 14px 14px; /* Set the size of the background image */
+    }
+
+    .success.with-bg-image-address {
+        background-image: url('/static/turesign.svg'), url('/static/location-dot-light.svg') !important;
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 25px 25px, 14px 14px !important;
+        color: white !important;
+    }
+
+    .with-bg-image-note {
+        background-image: url('/static/note-regular.svg'); /* Path to your image */
+        background-position: right 10px center !important; /* Adjust the vertical positioning to leave space at the bottom */
+        background-repeat: no-repeat;
+        padding-right: 25px; /* Adjust padding to ensure text does not overlap the image */
+        background-size: 14px 14px; /* Set the size of the background image */
+    }
+
+    .with-bg-image-client {
+        background-image: url('/static/client.svg'); /* Path to your image */
+        background-position: right 10px center !important; /* Adjust the vertical positioning to leave space at the bottom */
+        background-repeat: no-repeat;
+        padding-right: 25px; /* Adjust padding to ensure text does not overlap the image */
+        background-size: 14px 14px; /* Set the size of the background image */
+    }
+
+    .success.with-bg-image-client {
+        background-image: url('/static/turesign.svg'), url('/static/client.svg') !important;
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 25px 25px, 14px 14px !important;
+        color: white !important;
+    }
+
+    .with-bg-image-price {
+        background-image: url('/static/dollar.svg'); /* Path to your image */
+        background-position: right 10px center !important; /* Adjust the vertical positioning to leave space at the bottom */
+        background-repeat: no-repeat;
+        padding-right: 25px; /* Adjust padding to ensure text does not overlap the image */
+        background-size: 14px 14px; /* Set the size of the background image */
+    }
+
+    .error.with-bg-image-price {
+        background-image: url('/static/exclamation.svg'), url('/static/dollar.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 21px 21px, 14px 14px; /* Ensure the size for both images is specified correctly */
+    }
+
+    .success.with-bg-image-price {
+        background-image: url('/static/turesign.svg'), url('/static/dollar.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px;
+        background-size: 25px 25px, 14px 14px;
+        color: white !important;
+    }
+
+    .with-bg-image-calendar {
+        background-image: url('/static/turesign.svg'), url('/static/calendar.svg');
+        background-position: left 10px center, right 10px center !important;
+        background-repeat: no-repeat;
+        padding-right: 25px; /* Adjust padding to ensure text does not overlap the images */
+        background-size: 25px 25px, 14px 14px; /* Ensure the size for both images is specified correctly */
+    }
+
+    .img-flag {
+        width: 20px;
+        height: 14px;
+        margin-right: 10px;
+        vertical-align: middle;
+    }
+
+    .head {
+        font-size: 18px;
+        text-decoration: none;
+        color: black;
+    }
+
+    .head-16 {
+        font-size: 16px;
+        text-decoration: none;
+        color: grey;
+    }
+
+    .appenddiv {
+        box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2) !important; /* Box shadow */
+        border-radius: 8px !important; /* Border radius for the entire <thead> */
+        padding: 5px !important;
+        width: 105%;
+    }
+    /* Remove increase and decrease buttons for number input */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none !important;
+        margin: 0; /* Optionally, you can adjust margin to remove any remaining space */
+    }
+
+    input[type="number"] {
+        -moz-appearance: textfield !important; /* Firefox */
+    }
+    /* Placeholder for the contenteditable order-photo + payment-receipt paste fields */
+    #OrderPhotoPaste:empty:before,
+    #PaymentReceiptPaste:empty:before {
+        content: attr(data-placeholder);
+        color: #6c757d;
+    }
+</style>
+
+<style>
+    /* Inputs should behave normally: no shake, no transform, no focus-loss animation. */
+    input,
+    textarea,
+    select,
+    .select2-container,
+    #TelephoneNumber,
+    #SecondTelephoneNumber,
+    #TotalPrice,
+    #DeliveryPrice,
+    input.amount {
+        scroll-margin-top: 120px;
+    }
+
+        #TelephoneNumber.error,
+        #SecondTelephoneNumber.error,
+        #TotalPrice.error,
+        #DeliveryPrice.error,
+        input.amount.error,
+        .numeric-no-shake.error {
+            animation: none !important;
+            transform: none !important;
+        }
+</style>
+
+
+<style>
+    /* Popup warning message for Create/Edit validation and server errors.
+                           Keeps long messages inside the popup without overflowing. */
+    .form-inline-error-message {
+        display: none;
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: min(440px, calc(100vw - 32px)) !important;
+        max-width: calc(100vw - 32px) !important;
+        max-height: min(70vh, 520px) !important;
+        margin: 0 !important;
+        padding: 22px 22px 16px !important;
+        border-radius: 18px !important;
+        background: #ffffff !important;
+        border: 1px solid #fde68a !important;
+        color: #334155 !important;
+        font-weight: 800 !important;
+        font-size: 14px !important;
+        line-height: 1.8 !important;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.26), 0 0 0 9999px rgba(15, 23, 42, 0.42) !important;
+        direction: rtl !important;
+        text-align: center !important;
+        z-index: 2147483647 !important;
+        box-sizing: border-box !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+        overflow-wrap: anywhere !important;
+        pointer-events: auto !important;
+    }
+
+        .form-inline-error-message::before {
+            content: "⚠";
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 54px;
+            height: 54px;
+            margin: 0 auto 12px;
+            border-radius: 50%;
+            background: #f59e0b;
+            color: #ffffff;
+            font-size: 30px;
+            font-weight: 900;
+            line-height: 1;
+            box-shadow: 0 8px 20px rgba(245, 158, 11, 0.28);
+        }
+
+    .form-inline-error-title {
+        display: block;
+        color: #111827;
+        font-size: 17px;
+        font-weight: 900;
+        margin-bottom: 8px;
+        line-height: 1.5;
+        white-space: normal !important;
+    }
+
+    .form-inline-error-text {
+        display: block;
+        color: #475569;
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 1.8;
+        max-width: 100%;
+        white-space: normal !important;
+        word-break: break-word !important;
+        overflow-wrap: anywhere !important;
+        text-align: center;
+    }
+
+    .form-inline-error-close {
+        position: absolute;
+        top: 10px;
+        left: 12px;
+        width: 30px;
+        height: 30px;
+        border: 0;
+        border-radius: 50%;
+        background: #f1f5f9;
+        color: #64748b;
+        font-size: 22px;
+        font-weight: 900;
+        cursor: pointer;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .form-inline-error-close:hover {
+            background: #e2e8f0;
+            color: #111827;
+        }
+
+    .form-inline-error-ok {
+        margin-top: 16px;
+        border: 0;
+        border-radius: 999px;
+        min-height: 38px;
+        min-width: 130px;
+        padding: 7px 20px;
+        background: #1d273b;
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 900;
+        box-shadow: 0 8px 18px rgba(24, 160, 136, 0.22);
+        cursor: pointer;
+    }
+
+    .form-inline-error-message.show-error {
+        display: block !important;
+    }
+
+    body.form-warning-popup-open {
+        overflow: hidden;
+    }
+
+    .create-order-confirm-message {
+        display: none;
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: min(440px, calc(100vw - 32px)) !important;
+        max-width: calc(100vw - 32px) !important;
+        margin: 0 !important;
+        padding: 22px 22px 0 !important;
+        border-radius: 18px !important;
+        background: #ffffff !important;
+        border: 1px solid #fde68a !important;
+        color: #334155 !important;
+        font-weight: 800 !important;
+        font-size: 14px !important;
+        line-height: 1.8 !important;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.26), 0 0 0 9999px rgba(15, 23, 42, 0.42) !important;
+        direction: rtl !important;
+        text-align: center !important;
+        z-index: 2147483647 !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+        overflow-wrap: anywhere !important;
+        pointer-events: auto !important;
+    }
+
+        .create-order-confirm-message.show-confirm {
+            display: block !important;
+        }
+
+        .create-order-confirm-message::before {
+            content: "⚠";
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 54px;
+            height: 54px;
+            margin: 0 auto 12px;
+            border-radius: 50%;
+            background: #f59e0b;
+            color: #ffffff;
+            font-size: 30px;
+            font-weight: 900;
+            line-height: 1;
+            box-shadow: 0 8px 20px rgba(245, 158, 11, 0.28);
+        }
+
+    .create-order-confirm-title {
+        display: block;
+        color: #111827;
+        font-size: 17px;
+        font-weight: 900;
+        margin-bottom: 8px;
+        line-height: 1.5;
+    }
+
+    .create-order-confirm-text {
+        display: block;
+        color: #475569;
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 1.8;
+        padding-bottom: 18px;
+        max-width: 100%;
+    }
+
+    .create-order-confirm-actions {
+        display: flex;
+        margin: 0 -22px;
+        border-top: 1px solid #e5e7eb;
+        background: #ffffff;
+    }
+
+        .create-order-confirm-actions button {
+            flex: 1 1 50%;
+            min-height: 42px;
+            border: 0;
+            background: #ffffff;
+            font-size: 14px;
+            font-weight: 900;
+            cursor: pointer;
+        }
+
+    .create-order-confirm-ok {
+        color: #18a088;
+        border-left: 1px solid #e5e7eb !important;
+    }
+
+    .create-order-confirm-cancel {
+        color: #64748b;
+    }
+
+        .create-order-confirm-cancel:hover {
+            color: #dc2626;
+            background: #ffe4e6 !important;
+        }
+</style>
+
+<script>
+    //# sourceURL=_CreateOrder.js
+    (function () {
+        // ============================================================
+        // STATE & CONSTANTS
+        // ============================================================
+        var $modalRoot = $('#Create');
+        function $c(id) { return $modalRoot.find('#' + id.replace(/^#/, '')); }
+
+        var showDebugQuery = false; // toggle for verbose submit-button / submit logs
+        var warehouseOptions = [];      // currently selectable warehouses (filtered)
+        var allWarehouseOptions = [];   // unfiltered copy used to restore on row delete
+        var storesData = [];            // store list with mainWarehouseId metadata
+        var selectedStoreMainWarehouseId = null;
+        var selectedStoreId = null;
+        var allCampaigns = [];          // campaigns for the currently selected country
+        var isUnrestrictedRole = @Json.Serialize(User.IsInRole("Admin") || User.IsInRole("FollowUpDepartment") || User.IsInRole("ExecutiveDirector"));
+        var citiesByCountry = @Html.Raw(Json.Serialize(lotus_blue.Models.Common.CitiesByCountry));
+        var modelState = @Html.Raw(Json.Serialize(Model?.State));
+        var $currentRowToDelete;
+        var productDropdownSelect;
+        function readFirstDefined(source, names) {
+            if (!source) return undefined;
+            for (var i = 0; i < names.length; i++) {
+                if (source[names[i]] !== undefined && source[names[i]] !== null && String(source[names[i]]).length > 0) {
+                    return source[names[i]];
+                }
+            }
+            return undefined;
+        }
+
+        function getWarehouseIdValue(warehouse) {
+            return readFirstDefined(warehouse, ['id', 'Id', 'warehouseId', 'WarehouseId', 'value', 'Value', 'productId', 'ProductId']);
+        }
+
+        function getWarehouseNameValue(warehouse) {
+            return readFirstDefined(warehouse, ['name', 'Name', 'warehouseName', 'WarehouseName', 'text', 'Text', 'productName', 'ProductName']) || '';
+        }
+
+        function getWarehouseImageValue(warehouse) {
+            return readFirstDefined(warehouse, ['productImage', 'ProductImage', 'image', 'Image', 'imageUrl', 'ImageUrl', 'logoUrl', 'LogoUrl']) || '/mainicons/fallback_product.svg';
+        }
+
+        function getWarehouseAmountValue(warehouse) {
+            return readFirstDefined(warehouse, ['amount', 'Amount', 'quantity', 'Quantity', 'stock', 'Stock']) || 0;
+        }
+
+        function getWarehouseMainWarehouseIdValue(warehouse) {
+            return readFirstDefined(warehouse, ['mainWarehouseId', 'MainWarehouseId', 'mainWarehouseID', 'MainWarehouseID']) || '';
+        }
+
+        var productMinimumSellingPriceIsValid = true;
+        var productMinimumSellingPriceMessage = '';
+        var productMinimumSellingPriceXhr;
+        var productMinimumSellingPriceTimer;
+
+        // Render the current shift's order-creation count into the two right-side digit
+        // slots of the sprite clock, as a zero-padded 2-digit number (e.g. 5 → "05").
+        // Caps at 99 since there are only two slots.
+        function setCountDigit(slotIndex, digit) {
+            var img = document.querySelector('#Create .sprite-clock-c' + slotIndex);
+            if (!img) return;
+            var src = '/clock/' + digit + '.png';
+            if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+        }
+        function renderShiftCount(n) {
+            var capped = Math.max(0, Math.min(99, n | 0));
+            setCountDigit(0, Math.floor(capped / 10));
+            setCountDigit(1, capped % 10);
+        }
+        function refreshCurrentShiftOrdersCount() {
+            $.getJSON('/Rating/CurrentShiftOrdersCount')
+                .done(function (data) {
+                    var n = (data && typeof data.count === 'number') ? data.count : 0;
+                    renderShiftCount(n);
+                });
+        }
+        refreshCurrentShiftOrdersCount();
+        $('#Create').on('show.bs.modal', refreshCurrentShiftOrdersCount);
+
+        // =========================================================================
+        // PASTE-IMAGE FIELD HARDENING (used by #OrderPhotoPaste and #PaymentReceiptPaste)
+        // =========================================================================
+        // A MutationObserver on the contenteditable is the source of truth: any new
+        // <img> child triggers reconciliation against the hidden file input; removing
+        // it clears the input. This survives the cases where paste/input events don't
+        // fire (img-only DOM mutations, embedded webviews where clipboardData.items
+        // is null, browsers whose default contenteditable paste inserts blob: <img>
+        // directly). Replaces the older `input keyup`-driven cleanup that silently
+        // nuked the file input whenever an intermediate DOM state had no <img>.
+        //
+        // rescueIfNeeded() is called at submit time to hydrate the file input
+        // synchronously from any data:-URL <img> still in the field, covering the
+        // environments where DataTransfer assignment quietly no-ops.
+        function attachPasteImageField(opts) {
+            var $field = opts.$field;
+            var fileInputId = opts.fileInputId;
+            var onCommit = opts.onCommit || function () {};
+            var onClear = opts.onClear || function () {};
+            var imgStyle = 'max-height:120px;max-width:100%;object-fit:contain;';
+
+            if (!$field || $field.length === 0) return null;
+            var fileInput = document.getElementById(fileInputId);
+            if (!fileInput) return null;
+            var fieldEl = $field[0];
+            var suppressMutation = false;
+
+            function dataUrlToFile(dataUrl, filename) {
+                try {
+                    var arr = dataUrl.split(',');
+                    var mimeMatch = arr[0].match(/:(.*?);/);
+                    if (!mimeMatch) return null;
+                    var mime = mimeMatch[1];
+                    var bstr = atob(arr[1]);
+                    var n = bstr.length;
+                    var u8 = new Uint8Array(n);
+                    while (n--) u8[n] = bstr.charCodeAt(n);
+                    return new File([u8], filename, { type: mime });
+                } catch (err) { return null; }
+            }
+            function setFileInput(file) {
+                try {
+                    var dt = new DataTransfer();
+                    dt.items.add(file);
+                    fileInput.files = dt.files;
+                } catch (err) {
+                    // Some embedded webviews block DataTransfer assignment; the File
+                    // still lives on $field.data so submit-time rescue can re-try.
+                }
+                $field.data('committedFile', file);
+            }
+            function commitFile(file) {
+                setFileInput(file);
+                var reader = new FileReader();
+                reader.onload = function (ev) {
+                    suppressMutation = true;
+                    $field.html('<img src="' + ev.target.result + '" style="' + imgStyle + '" />');
+                    $field.addClass('success').removeClass('error');
+                    setTimeout(function () { suppressMutation = false; }, 0);
+                    onCommit(file);
+                };
+                reader.readAsDataURL(file);
+            }
+            function rescueFromImg(img) {
+                var src = img.getAttribute('src') || '';
+                if (src.indexOf('data:') === 0) {
+                    var f = dataUrlToFile(src, 'pasted-image.png');
+                    if (f) commitFile(f);
+                } else if (src.indexOf('blob:') === 0) {
+                    fetch(src).then(function (r) { return r.blob(); }).then(function (blob) {
+                        var f = new File([blob], 'pasted-image.png', { type: blob.type || 'image/png' });
+                        commitFile(f);
+                    }).catch(function () {});
+                }
+                // http(s)/relative srcs are saved DB images on edit; the controller
+                // keeps them via ExistingPhotoUrl when no new file is uploaded.
+            }
+            function clearAll() {
+                try { fileInput.value = ''; } catch (e) {}
+                $field.removeData('committedFile');
+                $field.removeClass('success');
+                onClear();
+            }
+
+            var observer = new MutationObserver(function () {
+                if (suppressMutation) return;
+                var $img = $field.find('img').first();
+                if ($img.length === 0) {
+                    if ((fileInput.files && fileInput.files.length > 0) || $field.data('committedFile')) {
+                        clearAll();
+                    } else {
+                        $field.removeClass('success');
+                        onClear();
+                    }
+                    return;
+                }
+                if (fileInput.files && fileInput.files.length > 0) return;
+                rescueFromImg($img[0]);
+            });
+            observer.observe(fieldEl, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
+
+            $field.on('paste.pasteField', function (e) {
+                var orig = e.originalEvent || e;
+                var items = orig.clipboardData && orig.clipboardData.items;
+                if (!items) return; // Let browser default run; observer reconciles.
+                var hasText = false;
+                for (var i = 0; i < items.length; i++) {
+                    if (items[i].kind === 'file' && items[i].type.indexOf('image/') === 0) {
+                        e.preventDefault();
+                        var file = items[i].getAsFile();
+                        if (file) commitFile(file);
+                        return;
+                    }
+                    if (items[i].kind === 'string') hasText = true;
+                }
+                if (hasText) e.preventDefault();
+            });
+
+            return {
+                rescueIfNeeded: function () {
+                    if (fileInput.files && fileInput.files.length > 0) return;
+                    var saved = $field.data('committedFile');
+                    if (saved) {
+                        try {
+                            var dt = new DataTransfer();
+                            dt.items.add(saved);
+                            fileInput.files = dt.files;
+                            return;
+                        } catch (e) {}
+                    }
+                    var $img = $field.find('img').first();
+                    if ($img.length === 0) return;
+                    var src = $img.attr('src') || '';
+                    if (src.indexOf('data:') !== 0) return;
+                    var f = dataUrlToFile(src, 'pasted-image.png');
+                    if (!f) return;
+                    try {
+                        var dt2 = new DataTransfer();
+                        dt2.items.add(f);
+                        fileInput.files = dt2.files;
+                    } catch (e) {}
+                }
+            };
+        }
+
+        $(function () {
+            var orderPhotoField = null;
+            var paymentReceiptField = null;
+            productDropdownSelect = $c('productDropdown');
+            // Tracks whether the disclosure tree has reached the post-chatUrl step.
+            // Read by toggleCampaignVisibility() / toggleProductVisibility() to gate
+            // products + campaign gallery (both also require selectedStoreId).
+            var postChatUrlReached = false;
+
+            // ============================================================
+            // PROGRESSIVE DISCLOSURE — fields appear top-to-bottom as each
+            // prior field reaches a "valid" state. Prevents agents from being
+            // overwhelmed by the full form upfront. Order:
+            //   country -> city
+            //   city -> phone1
+            //   phone1 valid -> phone2 + customer name
+            //   customer name valid -> store name
+            //   store selected -> address
+            //   address valid -> delivery party (if 2+) + photo
+            //   photo pasted AND delivery party selected -> order source
+            //   order source -> page name (if not WhatsApp), chat url (if not WhatsApp)
+            //   chat url valid (or WhatsApp source) -> created date + products + campaign gallery
+            //   products + campaign chosen -> payment status + notes + total price (terminal — payment is optional, all three reveal together)
+            // Each `revealStep` call is idempotent — calling twice is harmless.
+            // ============================================================
+            function revealStep(stepName) {
+                switch (stepName) {
+                    case 'city':
+                        $c('cityCol').show();
+                        $c('countryCol').removeClass('col-12').addClass('col-6');
+                        break;
+                    case 'phone1':
+                        $c('phoneRow').show();
+                        break;
+                    case 'phone2':
+                        $c('secondPhoneCol').show();
+                        $c('primaryPhoneCol').removeClass('col-12').addClass('col-6');
+                        break;
+                    case 'customerName':
+                        $c('customerStoreRow').show();
+                        break;
+                    case 'store':
+                        if (applySingleAllowedStore()) {
+                            break;
+                        }
+                        $c('storeCol').show();
+                        $c('customerNameCol').removeClass('col-12').addClass('col-6');
+                        $c('manufacturingCompanyDropdown').closest('.form-group').show();
+                        $c('manufacturingCompanyDropdown').next('.select2-container').show().css('width', '100%');
+                        // Store dropdown was init'd while hidden; force select2 to recompute width.
+                        $c('manufacturingCompanyDropdown').next('.select2-container').css('width', '100%');
+                        break;
+                    case 'address':
+                        $c('addressRow').show();
+                        break;
+                    case 'deliveryAndPhoto':
+                        $c('deliveryPhotoRow').show();
+                        break;
+                    case 'orderSource':
+                        $c('orderSourceRow').show();
+                        $c('orderSourceDropdown').next('.select2-container').css('width', '100%');
+                        break;
+                    case 'postChatUrl':
+                        // Reveals: created date, products list, campaign gallery (if any campaigns).
+                        postChatUrlReached = true;
+                        $c('createdDateCol').show();
+                        syncChatUrlDateRow();
+                        toggleProductVisibility();
+                        toggleCampaignVisibility();
+                        break;
+                    case 'paymentStatus':
+                        // Payment is optional, so it does not gate anything downstream.
+                        // The whole bottom of the form (payment + notes + total price)
+                        // reveals together at this step.
+                        $c('paymentRow').show();
+                        $c('notesRow').show();
+                        // IsPaid select2 was init'd while hidden; cached width is stale.
+                        $c('IsPaid').next('.select2-container').css('width', '100%');
+                        // Bootstrap's `.d-flex` carries `display:flex !important`, which overrides
+                        // jQuery's inline display:none. Add the class only when revealing, remove
+                        // when hiding, so .hide() works as expected.
+                        $c('totalPriceWrap').addClass('d-flex').show();
+                        break;
+                }
+            }
+            // Order source has a compound gate: a photo must be pasted AND a delivery
+            // party must be selected (auto-selected for 1-party countries, or manually
+            // picked when there are 2+). Both the photo paste handler and the delivery
+            // party change handler call this; the order they fire in doesn't matter.
+            function isOrderPhotoPasted() {
+                var input = document.getElementById('OrderPhotoFile');
+                return !!(input && input.files && input.files.length > 0);
+            }
+            function maybeRevealOrderSource() {
+                if (isOrderPhotoPasted() && $c('deliveryPartyDropdown').val()) {
+                    cascadeReveal();
+                }
+            }
+            // Payment status now depends on products only.
+            // Campaign selection is validated at final approval only when the selected store has ads.
+            // If the store has no ads, the form continues normally without forcing the user to choose anything.
+            function maybeRevealPaymentStatus() {
+                var hasProduct = $c('selectedProductsList').find('.appended-warehouse-row').length > 0;
+                if (hasProduct) {
+                    revealStep('paymentStatus');
+                } else {
+                    hideFromStep('paymentStatus');
+                }
+            }
+
+            function getSingleAllowedStore() {
+                return storesData && storesData.length === 1 ? storesData[0] : null;
+            }
+
+            function applySingleAllowedStore() {
+                var store = getSingleAllowedStore();
+                if (!store) return false;
+
+                var dropdown = $c('manufacturingCompanyDropdown');
+                var storeValue = String(store.id);
+
+                if (dropdown.find('option[value="' + storeValue + '"]').length) {
+                    dropdown.val(storeValue).trigger('change.select2');
+                    var selectedOption = dropdown.find('option:selected');
+                    var mwId = selectedOption.attr('data-main-warehouse-id');
+                    selectedStoreMainWarehouseId = mwId ? parseInt(mwId) : (store.mainWarehouseId ? parseInt(store.mainWarehouseId) : null);
+                    selectedStoreId = parseInt(storeValue);
+                    productDropdownSelect.prop('disabled', false);
+                    removeErrorClassAndMessage(dropdown);
+                    populateFirstWarehouseDropdown();
+                    populateCampaignDropdown();
+                }
+
+                // Single allowed store: select it automatically, but keep it visible in the form.
+                // Do not hide the store field; the user should see the selected store standing there.
+                $c('storeCol').show();
+                $c('customerNameCol').removeClass('col-12').addClass('col-6');
+                dropdown.prop('disabled', false);
+                dropdown.closest('.form-group').show();
+                dropdown.next('.select2-container').show().css('width', '100%');
+                return true;
+            }
+            // After a field becomes valid (or a step is revealed), walk down the tree
+            // and re-reveal any subsequent step whose gate is already satisfied by the
+            // current field state. Without this, after a cascade-hide (e.g. user blanks
+            // phone1, refills it) the downstream rows stay hidden even though their
+            // values are still in the inputs from the prior session.
+            // Each entry returns true if its gate is currently satisfied; the loop
+            // stops at the first unsatisfied gate.
+            function cascadeReveal() {
+                var country = $c('countryDropdown').val();
+                if (!country) return;
+                revealStep('city');
+
+                var city = $c('cityDropdown').val();
+                if (!city) return;
+                revealStep('phone1');
+
+                var phone = $c('TelephoneNumber').val();
+                var phoneValid = phone && validatePhone(country, phone).valid;
+                if (!phoneValid) return;
+                revealStep('phone2');
+                revealStep('customerName');
+
+                var nameOk = ($c('CustomerName').val() || '').trim() !== '' && validateCustomerNameForCountry().ok;
+                if (!nameOk) return;
+                revealStep('store');
+
+                var storeId = $c('manufacturingCompanyDropdown').val();
+                if (!storeId) return;
+                revealStep('address');
+
+                var address = ($c('Address').val() || '').trim();
+                if (!address) return;
+                revealStep('deliveryAndPhoto');
+
+                if (!isOrderPhotoPasted() || !$c('deliveryPartyDropdown').val()) return;
+                revealStep('orderSource');
+
+                var src = $c('orderSourceDropdown').val();
+                if (!src) return;
+                // For non-WhatsApp sources, chatUrl must be valid before postChatUrl reveals.
+                // For WhatsApp (id=4), chatUrl is bypassed and postChatUrl reveals on source pick.
+                if (src !== '4') {
+                    var chat = $c('ChatUrl').val();
+                    if (!chat || /[^ -~]/.test(chat)) return;
+                }
+                revealStep('postChatUrl');
+
+                var hasProduct = $c('selectedProductsList').find('.appended-warehouse-row').length > 0;
+                if (!hasProduct) return;
+                // paymentStatus is the terminal step — it reveals payment + notes + total
+                // price together since payment type is optional.
+                // Campaign is checked on final approval only if the selected store has ads.
+                revealStep('paymentStatus');
+            }
+            // Hide everything from a step downward — used when an upstream field is
+            // cleared/invalidated so the user isn't left with stale visible fields.
+            function hideFromStep(stepName) {
+                // The order here matches the disclosure tree top-to-bottom.
+                var steps = [
+                    { name: 'phone1', fn: function () { $c('phoneRow').hide(); } },
+                    { name: 'phone2', fn: function () { $c('secondPhoneCol').hide(); $c('primaryPhoneCol').removeClass('col-6').addClass('col-12'); } },
+                    { name: 'customerName', fn: function () { $c('customerStoreRow').hide(); } },
+                    { name: 'store', fn: function () { $c('storeCol').hide(); $c('customerNameCol').removeClass('col-6').addClass('col-12'); } },
+                    { name: 'address', fn: function () { $c('addressRow').hide(); } },
+                    { name: 'deliveryAndPhoto', fn: function () { $c('deliveryPhotoRow').hide(); } },
+                    { name: 'orderSource', fn: function () { $c('orderSourceRow').hide(); } },
+                    { name: 'postChatUrl', fn: function () { postChatUrlReached = false; $c('createdDateCol').hide(); $c('selectedProductsList').hide(); $c('campaignGalleryWrap').hide(); syncChatUrlDateRow(); } },
+                    { name: 'paymentStatus', fn: function () { $c('paymentRow').hide(); $c('notesRow').hide(); $c('paymentReceiptCol').hide(); $c('paymentCol').removeClass('col-6').addClass('col-12'); $c('PaymentReceiptPaste').empty().removeClass('success'); var rf = document.getElementById('PaymentReceiptFile'); if (rf) rf.value = ''; $c('totalPriceWrap').removeClass('d-flex').hide(); } }
+                ];
+                var startIdx = -1;
+                for (var i = 0; i < steps.length; i++) {
+                    if (steps[i].name === stepName) { startIdx = i; break; }
+                }
+                if (startIdx === -1) return;
+                for (var j = startIdx; j < steps.length; j++) {
+                    steps[j].fn();
+                }
+            }
+            // ============================================================
+            // SELECT2 INIT & GENERIC DROPDOWN ERROR HELPERS
+            // ============================================================
+            function formatOption(option) {
+                var imageUrl = $(option.element).data('image');
+                var imageTag = imageUrl ? '<img src="' + imageUrl + '" class="img-flag" style="margin-right: 5px; width: 14px; height: 14px;" />' : '';
+                return $('<span>' + imageTag + option.text + '</span>');
+            }
+            function initAllSelect2Dropdowns() {
+                // IsPaid is intentionally NOT in this list — payment type is optional, so
+                // closing the dropdown without a selection should not flag an error.
+                $modalRoot.find('#countryDropdown, #orderSourceDropdown, #manufacturingCompanyDropdown, #cityDropdown, #deliveryPartyDropdown, #productDropdown, #GenderDropdown,#campaignDropdown').each(function () {
+                    var $dropdown = $(this);
+                    $dropdown.select2({
+                        templateResult: formatOption,
+                        templateSelection: formatOption,
+                        dropdownParent: $('#Create'),
+                        dir: "rtl",
+                        minimumResultsForSearch: 1,
+                    });
+                    $dropdown.on('select2:close', function () {
+                        // The product picker is a special case: its value is reset to the
+                        // placeholder after each pick, so emptiness doesn't mean "nothing chosen".
+                        // Treat any appended product row as a valid selection.
+                        if ($dropdown.attr('id') === 'productDropdown'
+                            && $c('selectedProductsList').find('.appended-warehouse-row').length > 0) {
+                            removeErrorClassAndMessage($dropdown);
+                            return;
+                        }
+                        if (!$dropdown.val()) {
+                            addErrorClassAndMessage($dropdown, getErrorMessage($dropdown));
+                        } else {
+                            removeErrorClassAndMessage($dropdown);
+                        }
+                    });
+                });
+                // IsPaid still needs Select2 styling (consistent look across all dropdowns),
+                // but no close-with-empty error handler since it's an optional field.
+                $c('IsPaid').select2({
+                    templateResult: formatOption,
+                    templateSelection: formatOption,
+                    dropdownParent: $('#Create'),
+                    dir: "rtl",
+                    minimumResultsForSearch: 1,
+                });
+            }
+            initAllSelect2Dropdowns();
+
+            // ============================================================
+            // PAYMENT STATUS → RECEIPT VISIBILITY
+            // ============================================================
+            // First option ("تم التحويل حوالة بنكية" = paid) reveals the
+            // receipt paste cell; paymentCol shrinks to col-6. Any other choice
+            // (or unselected) returns to col-12 and clears the receipt.
+            $c('IsPaid').on('change', function () {
+                var val = $(this).val();
+                if (val === 'true') {
+                    $c('paymentCol').removeClass('col-12').addClass('col-6');
+                    $c('paymentReceiptCol').show();
+                } else {
+                    $c('paymentCol').removeClass('col-6').addClass('col-12');
+                    $c('paymentReceiptCol').hide();
+                    $c('PaymentReceiptPaste').empty().removeClass('success');
+                    var rf = document.getElementById('PaymentReceiptFile');
+                    if (rf) rf.value = '';
+                }
+            });
+
+            // ============================================================
+            // PAYMENT RECEIPT PASTE — hardened via attachPasteImageField.
+            // ============================================================
+            paymentReceiptField = attachPasteImageField({
+                $field: $c('PaymentReceiptPaste'),
+                fileInputId: 'PaymentReceiptFile',
+                onCommit: function () { updateSubmitButtonState(); },
+                onClear: function () { updateSubmitButtonState(); }
+            });
+
+            // Campaign should be considered selected only when the user really picks an ad.
+            // Programmatic resets must not mark it as touched, otherwise stores with ads may pass without choosing an ad.
+            $c('campaignDropdown').on('select2:select', function () {
+                $(this).data('touched', true);
+            });
+
+            // Update gallery when campaign selection changes
+            $c('campaignDropdown').on('change', function () {
+                var selectedValue = $(this).val();
+                $modalRoot.find('.campaign-card').removeClass('selected');
+                // 'none' is the بدون إعلان sentinel — the card with data-campaign-id="none"
+                // should receive the selected state (and ✓ badge) just like any real campaign.
+                if (selectedValue && selectedValue !== '') {
+                    $modalRoot.find('.campaign-card[data-campaign-id="' + selectedValue + '"]').addClass('selected');
+                }
+                maybeRevealPaymentStatus();
+            });
+
+            // Render campaign gallery only when the selected store actually has ads.
+            // If the store has no ads, the gallery stays hidden and the order process continues normally.
+            function renderCampaignGallery() {
+                var filtered = getFilteredCampaigns();
+                var $gallery = $c('campaignGallery');
+                var $wrap = $c('campaignGalleryWrap');
+
+                if (!filtered || filtered.length === 0 || !postChatUrlReached) {
+                    $gallery.empty();
+                    $wrap.hide();
+                    return;
+                }
+
+                var galleryHtml = '';
+                var currentValue = $c('campaignDropdown').val();
+
+                filtered.slice().reverse().forEach(function (campaign) {
+                    var isSelected = currentValue === String(campaign.id);
+                    galleryHtml += '<div class="campaign-card' + (isSelected ? ' selected' : '') + '" data-campaign-id="' + campaign.id + '" onclick="selectCampaignFromGallery(' + campaign.id + ')">' +
+                        '<div class="campaign-card-img-wrap">' +
+                        '<img src="' + (campaign.imageUrl || '/mainicons/fallback_product.svg') + '" alt="' + campaign.name + '" onerror="this.onerror=null; this.src=\'/mainicons/fallback_product.svg\';" />' +
+                        '</div>' +
+                        '<div class="campaign-card-name">' + campaign.name + '</div>' +
+                        '<div class="campaign-card-badge">✓</div>' +
+                        '</div>';
+                });
+
+                $gallery.html(galleryHtml);
+                $wrap.show();
+            }
+
+            // Helper function to select campaign from gallery card click
+            window.selectCampaignFromGallery = function (campaignId) {
+                var $dd = $c('campaignDropdown');
+                var currentVal = $dd.val();
+                // Click the already-selected card → deselect back to the empty placeholder
+                // (and reset 'touched' so submit-validation requires a fresh choice).
+                if (currentVal === String(campaignId)) {
+                    $dd.val('').trigger('change.select2').trigger('change');
+                    $dd.data('touched', false);
+                } else {
+                    $dd.val(campaignId).trigger('change.select2').trigger('change');
+                    $dd.data('touched', true);
+                }
+                removeErrorClassAndMessage($dd);
+                maybeRevealPaymentStatus();
+                updateSubmitButtonState();
+            };
+
+            function getErrorMessage($dropdown) {
+                switch ($dropdown.attr('id')) {
+                    case 'countryDropdown':
+                        return 'يرجى إختيار دولة صحيحة.';
+                    case 'cityDropdown':
+                        return 'يرجى إختيار مدينة صحيحة.';
+                    case 'orderSourceDropdown':
+                        return 'يرجى إختيار نوع صفحة صحيح.';
+                    case 'manufacturingCompanyDropdown':
+                        return 'يرجى إختيار اسم متجر صحيح.';
+                    case 'deliveryPartyDropdown':
+                        return 'يرجى إختيار طرف توصيل صحيح.';
+                    case 'campaignDropdown':
+                        return 'يرجى إختيار اعلان  صحيح.';
+                    case 'productDropdown':
+                        return 'يرجى إختيار منتج صحيح.';
+                    case 'GenderDropdown':
+                        return 'يرجى إختيار جنس صحيح.';
+                    case 'CommentsDropdown':
+                        return 'يرجى إختيار  من التعليقات.';
+                    default:
+                        return '';
+                }
+            }
+            function addErrorClassAndMessage($dropdown, message) {
+                const $container = $dropdown.next('.select2-container');
+                $container.find('.select2-selection__rendered').addClass('error');
+                $container.next('.required-message').remove();
+                $container.after('<div class="required-message">' + message + '</div>');
+            }
+            function removeErrorClassAndMessage($dropdown) {
+                const $container = $dropdown.next('.select2-container');
+                $container.find('.select2-selection__rendered').removeClass('error').addClass('success');
+                $container.next('.required-message').remove();
+            }
+
+            // ============================================================
+            // ORDER SOURCE (page type) + SourceName cross-validation
+            // ============================================================
+            // Block picking "Instagram" when the typed page name is Arabic/capitalised
+            // (common operator mistake — an Instagram handle must be ASCII lowercase).
+            function containsCapitalOrArabicLetters(input) {
+                var regex = /[\u0600-\u06FF]/;
+                return regex.test(input) || /[A-Z]/.test(input);
+            }
+            var previousValue = $c('orderSourceDropdown').val(); // used to revert invalid picks
+            $c('orderSourceDropdown').on('select2:select', validateOrderSourceDropdown);
+            $c('SourceName').on('input', validateOrderSourceDropdown);
+            function validateOrderSourceDropdown() {
+                var sourceName = $c('SourceName').val();
+                var selectedOptionValue = $c('orderSourceDropdown').val();
+                // If source name contains capital or Arabic letters and selected option is "2" (Instagram)
+                if (containsCapitalOrArabicLetters(sourceName) && selectedOptionValue === "2") {
+                    const $container = $c('orderSourceDropdown').next('.select2-container');
+                    const $selectionRendered = $container.find('.select2-selection__rendered');
+                    const $selection = $container.find('.select2-selection.select2-selection--single');
+                    $container.find('.select2-selection__rendered').removeClass('success');
+                    $container.find('.select2-selection__rendered').addClass('error');
+                    $container.next('.required-message').remove(); // Remove existing message if any
+                    $container.after('<div class="required-message"> لايمكنك اختيار انستغرام , أدخل اسم صفحة صحيح .</div>');
+                    // Revert to previous value
+                    $c('orderSourceDropdown').val(previousValue).trigger('change');
+                } else {
+                    // Update previousValue with the current selected value
+                    previousValue = selectedOptionValue;
+                    // Clear error message
+                    $c('orderSourceError').text('');
+                }
+            }
+            $c('CustomerName').on('input', function () {
+                this.value = this.value.replace(/[0-9]/g, '');
+            });
+
+            // ============================================================
+            // GENERIC TEXT-INPUT VALIDATION (spinner + error/success classes)
+            // ============================================================
+            function updateFieldStatus(selector, successClass, errorClass, errorMessage) {
+                var $input = $(selector);
+                var value = $input.val().trim();
+                var $container = $input.closest('.form-group'); // Adjust this selector as needed
+                var $spinner = $container.find('.spinner-icon');
+                // Show spinner only if success class is not present
+                if (!$input.hasClass(successClass)) {
+                    $spinner.show();
+                }
+                // Hide spinner and update status after 2 seconds
+                setTimeout(function () {
+                    $spinner.hide();
+                    if (value !== "") {
+                        $input.addClass(successClass).removeClass(errorClass);
+                        $container.next('.required-message').remove(); // Remove existing message if any
+                    } else {
+                        $input.removeClass(successClass).addClass(errorClass);
+                        // Append error message if it doesn't already exist
+                        if ($container.next('.required-message').length === 0) {
+                            $container.after('<div class="required-message">' + errorMessage + '</div>');
+                        }
+                    }
+                }, 2000); // 2 seconds delay
+            }
+            $c('SourceName').on('input blur', function () {
+                updateFieldStatus(this, "success", "error", " يرجى إدخال اسم صفحة صحيح.");
+            });
+
+            // ============================================================
+            // CUSTOMER NAME VALIDATION (country-specific — Turkey stricter)
+            // ============================================================
+            let customerNameErrorMessageShown = false;
+            let customerNameSpinnerTimeout;
+            // Latin A–Z / a–z plus Turkish-specific letters (Ç Ğ I İ Ö Ş Ü and lowercase/dotless-i).
+            // Spaces are permitted to separate the given name from the family name.
+            const turkishNameAllowedRegex = /^[A-Za-zÇĞİIÖŞÜçğıiöşü\s]+$/;
+            function validateCustomerNameForCountry() {
+                const val = ($c('CustomerName').val() || '').trim();
+                const country = $c('countryDropdown').val();
+                if (!val) {
+                    return { ok: false, message: ' يرجى إدخال اسم عميل صحيح.' };
+                }
+                if (country === 'تركيا') {
+                    // Turkey requires a full name: at least two words (one space between non-empty tokens).
+                    const parts = val.split(/\s+/).filter(Boolean);
+                    if (parts.length < 2) {
+                        return { ok: false, message: 'يرجى إدخال الاسم الكامل (الاسم واللقب) لطلبات تركيا.' };
+                    }
+                    // Only Latin and Turkish letters are allowed — no Arabic, digits, or punctuation.
+                    if (!turkishNameAllowedRegex.test(val)) {
+                        return { ok: false, message: 'يُسمح فقط بالأحرف اللاتينية والتركية في اسم العميل لطلبات تركيا.' };
+                    }
+                }
+                return { ok: true };
+            }
+            $c('CustomerName').on('input blur', function (event) {
+                const inputElement = $(this);
+                const result = validateCustomerNameForCountry();
+                const $container = inputElement.closest('.form-group');
+                const $spinner = $container.find('.spinner-icon');
+                inputElement.removeClass('error success');
+                if (event.type === 'input') {
+                    $spinner.show();
+                    if (customerNameErrorMessageShown) {
+                        $container.next('.required-message').hide();
+                    }
+                    clearTimeout(customerNameSpinnerTimeout);
+                    customerNameSpinnerTimeout = setTimeout(function () {
+                        $spinner.hide();
+                        if (!result.ok) {
+                            inputElement.addClass('error');
+                            if (!customerNameErrorMessageShown) {
+                                $container.after('<div class="required-message">' + result.message + '</div>');
+                                customerNameErrorMessageShown = true;
+                            } else {
+                                $container.next('.required-message').text(result.message).show();
+                            }
+                        }
+                    }, 300);
+                }
+                if (result.ok) {
+                    clearTimeout(customerNameSpinnerTimeout);
+                    $spinner.show();
+                    customerNameSpinnerTimeout = setTimeout(function () {
+                        $spinner.hide();
+                        inputElement.addClass('success');
+                        if (customerNameErrorMessageShown) {
+                            $container.next('.required-message').remove();
+                            customerNameErrorMessageShown = false;
+                        }
+                        cascadeReveal();
+                    }, 300);
+                } else {
+                    hideFromStep('store');
+                }
+            });
+            // Address: any non-empty value reveals the delivery+photo row.
+            // For Turkey only, block Arabic letters in the address.
+            // Other countries keep the previous rule: any non-empty address is valid.
+            let addressErrorMessageShown = false;
+            let addressSpinnerTimeout;
+            function containsArabicLetters(value) {
+                return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(value || '');
+            }
+
+            function isAddressInvalidForTurkey(val) {
+                return $c('countryDropdown').val() === 'تركيا' && containsArabicLetters(val);
+            }
+            $c('Address').on('input blur', function (event) {
+                const inputElement = $(this);
+                const val = inputElement.val();
+                const trimmed = val.trim();
+                const hasInvalid = isAddressInvalidForTurkey(trimmed);
+                const isValid = trimmed.length > 0 && !hasInvalid;
+                const $container = inputElement.closest('.form-group');
+                const $spinner = $container.find('.spinner-icon');
+                inputElement.removeClass('error success');
+                if (event.type === 'input') {
+                    $spinner.show();
+                    if (addressErrorMessageShown) {
+                        $container.next('.required-message').hide();
+                    }
+                    clearTimeout(addressSpinnerTimeout);
+                    addressSpinnerTimeout = setTimeout(function () {
+                        $spinner.hide();
+                        if (hasInvalid) {
+                            inputElement.addClass('error');
+                            if (!addressErrorMessageShown) {
+                                $container.after('<div class="required-message">لا يُسمح بإدخال أحرف أو أرقام عربية في عنوان طلبات تركيا.</div>');
+                                addressErrorMessageShown = true;
+                            } else {
+                                $container.next('.required-message').show();
+                            }
+                        }
+                    }, 300);
+                }
+                if (isValid) {
+                    clearTimeout(addressSpinnerTimeout);
+                    $spinner.show();
+                    addressSpinnerTimeout = setTimeout(function () {
+                        $spinner.hide();
+                        inputElement.addClass('success');
+                        if (addressErrorMessageShown) {
+                            $container.next('.required-message').remove();
+                            addressErrorMessageShown = false;
+                        }
+                        cascadeReveal();
+                    }, 300);
+                } else {
+                    if (trimmed === '') {
+                        hideFromStep('deliveryAndPhoto');
+                    }
+                }
+            });
+            function validateAddressLatin() {
+                return !isAddressInvalidForTurkey($c('Address').val().trim());
+            }
+
+            // ============================================================
+            // CHAT URL VALIDATION (ASCII-only)
+            // ============================================================
+            let chaturlErrorMessageShown = false;
+            let chaturlSpinnerTimeout;
+            $c('ChatUrl').on('input blur', function (event) {
+                const inputElement = $(this);
+                const val = inputElement.val();
+                const hasInvalid = /[^\x20-\x7E]/.test(val);
+                const isValid = val.length > 0 && !hasInvalid;
+                const $container = inputElement.closest('.form-group');
+                const $spinner = $container.find('.spinner-icon');
+                inputElement.removeClass('error success');
+                if (event.type === 'input') {
+                    $spinner.show();
+                    if (chaturlErrorMessageShown) {
+                        $container.next('.required-message').hide();
+                    }
+                    clearTimeout(chaturlSpinnerTimeout);
+                    chaturlSpinnerTimeout = setTimeout(function () {
+                        $spinner.hide();
+                        if (hasInvalid) {
+                            inputElement.addClass('error');
+                            if (!chaturlErrorMessageShown) {
+                                $container.after('<div class="required-message">يحتوي الرابط على أحرف غير صالحة. يُسمح فقط بالأحرف الإنجليزية والأرقام والرموز.</div>');
+                                chaturlErrorMessageShown = true;
+                            } else {
+                                $container.next('.required-message').show();
+                            }
+                        }
+                    }, 300);
+                }
+                if (isValid) {
+                    clearTimeout(chaturlSpinnerTimeout);
+                    $spinner.show();
+                    chaturlSpinnerTimeout = setTimeout(function () {
+                        $spinner.hide();
+                        inputElement.addClass('success');
+                        if (chaturlErrorMessageShown) {
+                            $container.next('.required-message').remove();
+                            chaturlErrorMessageShown = false;
+                        }
+                        cascadeReveal();
+                    }, 300);
+                } else {
+                    hideFromStep('postChatUrl');
+                }
+            });
+            function validateChatUrlAscii() {
+                return !/[^\x20-\x7E]/.test($c('ChatUrl').val());
+            }
+
+
+            // ============================================================
+            // INLINE ERROR MESSAGE
+            // بدل الـ alert popup: تظهر رسالة خطأ داخل الفورم بخلفية Error.
+            // ============================================================
+            function ensureFormErrorBox() {
+                var $box = $modalRoot.find('.form-inline-error-message').first();
+
+                if (!$box.length) {
+                    $box = $(
+                        '<div class="form-inline-error-message" role="alertdialog" aria-live="assertive" aria-modal="true" tabindex="-1">' +
+                        '<button type="button" class="form-inline-error-close" aria-label="إغلاق">×</button>' +
+                        '<span class="form-inline-error-title">تنبيه</span>' +
+                        '<span class="form-inline-error-text"></span>' +
+                        '<button type="button" class="form-inline-error-ok">موافق</button>' +
+                        '</div>'
+                    );
+
+                    var $modalContent = $modalRoot.find('.modal-content').first();
+
+                    if ($modalContent.length) {
+                        $modalContent.append($box);
+                    } else {
+                        $modalRoot.append($box);
+                    }
+                }
+
+                return $box;
+            }
+
+            function showFormError(message) {
+                var $box = ensureFormErrorBox();
+                var safeMessage = message || 'حدث خطأ. برجاء مراجعة البيانات.';
+
+                $box.find('.form-inline-error-text').text(safeMessage);
+                $box.addClass('show-error').stop(true, true).fadeIn(120);
+                $('body').addClass('form-warning-popup-open');
+
+                setTimeout(function () {
+                    try {
+                        $box.trigger('focus');
+                    } catch (e) { }
+                }, 30);
+            }
+
+            function hideFormError() {
+                var $box = $modalRoot.find('.form-inline-error-message');
+
+                if ($box.length) {
+                    $box.removeClass('show-error').stop(true, true).fadeOut(100);
+                }
+
+                $('body').removeClass('form-warning-popup-open');
+            }
+
+            function ensureCreateConfirmBox() {
+                var $box = $modalRoot.find('.create-order-confirm-message').first();
+
+                if (!$box.length) {
+                    $box = $(
+                        '<div class="create-order-confirm-message" role="alertdialog" aria-live="assertive" aria-modal="true" tabindex="-1">' +
+                        '<span class="create-order-confirm-title">تأكيد</span>' +
+                        '<span class="create-order-confirm-text"></span>' +
+                        '<div class="create-order-confirm-actions">' +
+                        '<button type="button" class="create-order-confirm-ok">تأكيد</button>' +
+                        '<button type="button" class="create-order-confirm-cancel">إلغاء</button>' +
+                        '</div>' +
+                        '</div>'
+                    );
+
+                    var $modalContent = $modalRoot.find('.modal-content').first();
+
+                    if ($modalContent.length) {
+                        $modalContent.append($box);
+                    } else {
+                        $modalRoot.append($box);
+                    }
+                }
+
+                return $box;
+            }
+
+            function showCreateConfirm(message, onConfirm, onCancel) {
+                var $box = ensureCreateConfirmBox();
+                $box.find('.create-order-confirm-text').text(message || 'هل أنت متأكد؟');
+                $box.addClass('show-confirm').stop(true, true).fadeIn(120);
+                $('body').addClass('form-warning-popup-open');
+
+                $box.off('click.createConfirm');
+                $box.on('click.createConfirm', '.create-order-confirm-ok', function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    $box.removeClass('show-confirm').stop(true, true).fadeOut(100);
+                    $('body').removeClass('form-warning-popup-open');
+                    if (typeof onConfirm === 'function') onConfirm();
+                });
+
+                $box.on('click.createConfirm', '.create-order-confirm-cancel', function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    $box.removeClass('show-confirm').stop(true, true).fadeOut(100);
+                    $('body').removeClass('form-warning-popup-open');
+                    if (typeof onCancel === 'function') onCancel();
+                });
+
+                setTimeout(function () {
+                    try { $box.trigger('focus'); } catch (e) { }
+                }, 30);
+            }
+
+            function normalizeArabicForCompare(value) {
+                return String(value || '')
+                    .toLowerCase()
+                    .replace(/[أإآ]/g, 'ا')
+                    .replace(/ة/g, 'ه')
+                    .replace(/ى/g, 'ي')
+                    .replace(/[\s\-_\.]/g, '');
+            }
+
+            function isLibyaCountrySelected() {
+                var country = $c('countryDropdown').val();
+                return country === 'ليبيا' || country === 'Libya';
+            }
+
+            function isAmeelDeliveryOption($dropdown) {
+                var selectedText = ($dropdown.find('option:selected').text() || '');
+                var normalizedText = normalizeArabicForCompare(selectedText);
+                return normalizedText.indexOf('اميال') !== -1 || normalizedText.indexOf('amyal') !== -1 || normalizedText.indexOf('ameal') !== -1;
+            }
+
+            $modalRoot.on('click', '.form-inline-error-close, .form-inline-error-ok', function () {
+                hideFormError();
+            });
+
+            $modalRoot.on('click', '.form-inline-error-message', function (event) {
+                event.stopPropagation();
+            });
+
+            $modalRoot.on('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    hideFormError();
+                }
+            });
+
+            $modalRoot.on('input change', 'input, select, textarea', function () {
+                hideFormError();
+            });
+
+            $modalRoot.on('paste', 'input, textarea', function () {
+                setTimeout(hideFormError, 0);
+            });
+
+            // ============================================================
+            // NUMERIC INPUT NORMALIZER
+            // يحافظ على الكتابة والنسخ واللصق بشكل طبيعي بدون منع Ctrl+V.
+            // ============================================================
+            function normalizeNumberTextInput(input, allowDecimal) {
+                var $input = $(input);
+                var oldValue = $input.val() || '';
+                var value = toAsciiDigits(oldValue);
+
+                if (allowDecimal) {
+                    value = value.replace(/[^0-9.]/g, '');
+                    var firstDotIndex = value.indexOf('.');
+                    if (firstDotIndex !== -1) {
+                        value = value.substring(0, firstDotIndex + 1) + value.substring(firstDotIndex + 1).replace(/\./g, '');
+                    }
+                } else {
+                    value = value.replace(/[^0-9]/g, '');
+                }
+
+                if (value !== oldValue) {
+                    $input.val(value);
+                }
+            }
+
+            $modalRoot.on('input', '#TotalPrice, #DeliveryPrice', function () {
+                normalizeNumberTextInput(this, true);
+                $(this).removeClass('error');
+            });
+
+            $modalRoot.on('paste', '#TotalPrice, #DeliveryPrice', function () {
+                var input = this;
+                setTimeout(function () {
+                    normalizeNumberTextInput(input, true);
+                    $(input).trigger('input');
+                }, 0);
+            });
+
+            $modalRoot.on('input', '.amount, #SecondTelephoneNumber', function () {
+                normalizeNumberTextInput(this, false);
+                $(this).removeClass('error');
+            });
+
+            $modalRoot.on('paste', '.amount, #SecondTelephoneNumber', function () {
+                var input = this;
+                setTimeout(function () {
+                    normalizeNumberTextInput(input, false);
+                    $(input).trigger('input');
+                }, 0);
+            });
+
+            // ============================================================
+            // MISC INPUTS (price, optional fields)
+            // ============================================================
+            // TotalPrice validation: numeric check + AJAX min-price check against
+            // CountryMinimumPrices (per country + manufacturing company). Mirrors the
+            // server-side gate in OrderController.CreateOrder. Bypassed for
+            // Admin / FollowUpDepartment / ExecutiveDirector (isUnrestrictedRole).
+            let totalPriceErrorMessageShown = false;
+            let totalPriceSpinnerTimeout;
+            let totalPriceXhr;
+            // Reconciles the chat-url + created-date row: hide the row entirely when
+            // both cells are hidden; otherwise show the row and let each visible cell
+            // span col-12 (alone) or col-6 (paired).
+            // Note: we check inline display style directly rather than :visible because
+            // the parent #chatUrlDateRow itself may be hidden (initial state), which
+            // would make :visible report false on children that we just .show()'d.
+            function isShown($el) {
+                return $el.length > 0 && $el[0].style.display !== 'none';
+            }
+            function syncChatUrlDateRow() {
+                var $chat = $('#chatUrlCol');
+                var $date = $('#createdDateCol');
+                var chatVisible = isShown($chat);
+                var dateVisible = isShown($date);
+                if (!chatVisible && !dateVisible) {
+                    $('#chatUrlDateRow').hide();
+                    return;
+                }
+                $('#chatUrlDateRow').show();
+                if (chatVisible && dateVisible) {
+                    $chat.removeClass('col-12').addClass('col-6');
+                    $date.removeClass('col-12').addClass('col-6');
+                } else if (chatVisible) {
+                    $chat.removeClass('col-6').addClass('col-12');
+                } else {
+                    $date.removeClass('col-6').addClass('col-12');
+                }
+            }
+            function getSelectedProductMinimumItems() {
+                var items = [];
+
+                $c('selectedProductsList').find('.appended-warehouse-row').each(function () {
+                    var $row = $(this);
+                    var mainWarehouseId = parseInt($row.attr('data-main-warehouse-id'));
+                    var amount = parseInt($row.find('.amount').val());
+
+                    if (!isNaN(mainWarehouseId) && mainWarehouseId > 0) {
+                        items.push({
+                            mainWarehouseId: mainWarehouseId,
+                            amount: (!isNaN(amount) && amount > 0) ? amount : 1
+                        });
+                    }
+                });
+
+                return items;
+            }
+
+            function getSelectedProductMinimumItemsQuery(items) {
+                return {
+                    mainWarehouseIds: items.map(function (item) { return item.mainWarehouseId; }).join(','),
+                    amounts: items.map(function (item) { return item.amount; }).join(',')
+                };
+            }
+
+            function runTotalPriceValidation() {
+                const inputElement = $c('TotalPrice');
+                if (!inputElement.length) return;
+
+                const $container = inputElement.closest('.form-group');
+                const $spinner = $container.find('.spinner-icon');
+                const raw = inputElement.val().trim();
+                const numeric = parseFloat(raw);
+                const isNumeric = raw !== '' && !isNaN(numeric) && isFinite(numeric);
+
+                inputElement.removeClass('error success');
+
+                function showError(msg) {
+                    productMinimumSellingPriceIsValid = false;
+                    productMinimumSellingPriceMessage = msg || '';
+
+                    inputElement.addClass('error').removeClass('success');
+
+                    if (!totalPriceErrorMessageShown) {
+                        $container.after('<div class="required-message">' + msg + '</div>');
+                        totalPriceErrorMessageShown = true;
+                    } else {
+                        $container.next('.required-message').text(msg).show();
+                    }
+
+                    updateSubmitButtonState();
+                }
+
+                function clearError() {
+                    productMinimumSellingPriceIsValid = true;
+                    productMinimumSellingPriceMessage = '';
+
+                    if (totalPriceErrorMessageShown) {
+                        $container.next('.required-message').remove();
+                        totalPriceErrorMessageShown = false;
+                    }
+                }
+
+                function setSuccess() {
+                    $spinner.hide();
+                    clearError();
+                    inputElement.addClass('success').removeClass('error');
+                    updateSubmitButtonState();
+                }
+
+                if (!isNumeric) {
+                    $spinner.hide();
+                    productMinimumSellingPriceIsValid = raw === '';
+                    if (raw !== '') {
+                        showError(' يرجى إدخال رقم صحيح.');
+                    } else {
+                        clearError();
+                        updateSubmitButtonState();
+                    }
+                    return;
+                }
+
+                const country = $c('countryDropdown').val();
+                const mcId = $c('manufacturingCompanyDropdown').val();
+
+                if (!country || !mcId) {
+                    setSuccess();
+                    return;
+                }
+
+                function validateCountryMinimumPrice() {
+                    if (isUnrestrictedRole) {
+                        // Admin / FollowUp / ExecutiveDirector bypass the old country minimum check only.
+                        // Product minimum selling price above is still enforced for everyone.
+                        setSuccess();
+                        return;
+                    }
+
+                    if (totalPriceXhr) totalPriceXhr.abort();
+
+                    totalPriceXhr = $.ajax({
+                        url: '/Order/ValidateTotalPrice',
+                        type: 'GET',
+                        data: {
+                            country: country,
+                            manufacturingCompanyId: mcId,
+                            totalPrice: numeric
+                        },
+                        success: function (res) {
+                            $spinner.hide();
+
+                            if (res && res.valid) {
+                                setSuccess();
+                            } else {
+                                showError((res && res.message) || 'السعر غير صالح');
+                            }
+                        },
+                        error: function (jqXhr, status) {
+                            if (status === 'abort') return;
+
+                            $spinner.hide();
+                            // On network error, fall back to numeric validity only.
+                            setSuccess();
+                        }
+                    });
+                }
+
+                function validateProductMinimumSellingPrice() {
+                    var selectedItems = getSelectedProductMinimumItems();
+
+                    if (selectedItems.length === 0) {
+                        validateCountryMinimumPrice();
+                        return;
+                    }
+
+                    var productQuery = getSelectedProductMinimumItemsQuery(selectedItems);
+
+                    if (productMinimumSellingPriceXhr) {
+                        productMinimumSellingPriceXhr.abort();
+                    }
+
+                    productMinimumSellingPriceXhr = $.ajax({
+                        url: '/Order/ValidateProductMinimumSellingPrice',
+                        type: 'GET',
+                        data: {
+                            country: country,
+                            manufacturingCompanyId: mcId,
+                            totalPrice: numeric,
+                            mainWarehouseIds: productQuery.mainWarehouseIds,
+                            amounts: productQuery.amounts
+                        },
+                        success: function (res) {
+                            if (res && res.valid === false) {
+                                $spinner.hide();
+                                showError(res.message || 'السعر أقل من الحد الأدنى لسعر البيع.');
+                                return;
+                            }
+
+                            validateCountryMinimumPrice();
+                        },
+                        error: function (jqXhr, status) {
+                            if (status === 'abort') return;
+
+                            // If endpoint failed, do not block user in UI; server-side validation should still protect saving.
+                            validateCountryMinimumPrice();
+                        }
+                    });
+                }
+
+                $spinner.show();
+
+                clearTimeout(productMinimumSellingPriceTimer);
+                clearTimeout(totalPriceSpinnerTimeout);
+
+                productMinimumSellingPriceIsValid = false;
+                updateSubmitButtonState();
+
+                productMinimumSellingPriceTimer = setTimeout(function () {
+                    validateProductMinimumSellingPrice();
+                }, 250);
+            }
+
+            $c('TotalPrice').on('input paste', function () {
+                var input = this;
+                setTimeout(function () {
+                    normalizeNumberTextInput(input, true);
+
+                    const inputElement = $c('TotalPrice');
+                    const $container = inputElement.closest('.form-group');
+
+                    // أثناء الكتابة واللصق: لا error ولا AJAX ولا رعشة.
+                    inputElement.removeClass('error success');
+                    $container.next('.required-message').remove();
+                    totalPriceErrorMessageShown = false;
+                    productMinimumSellingPriceIsValid = true;
+                    productMinimumSellingPriceMessage = '';
+
+                    if (productMinimumSellingPriceXhr) productMinimumSellingPriceXhr.abort();
+                    if (totalPriceXhr) totalPriceXhr.abort();
+
+                    updateSubmitButtonState();
+                }, 0);
+            });
+
+            $c('TotalPrice').on('blur change', function () {
+                runTotalPriceValidation();
+            });
+            $modalRoot.find('#countryDropdown, #manufacturingCompanyDropdown').on('change', function () {
+                if ($c('TotalPrice').val().trim() !== '') runTotalPriceValidation();
+            });
+            function updateFieldStatussuccess(selector, successClass) {
+                var value = $(selector).val().trim();
+                var $container = $(selector).closest('.form-group'); // Assuming a common parent with class 'form-group'
+                if (value !== "") {
+                    $(selector).addClass(successClass);
+                    $container.next('.required-message').remove(); // Remove existing message if any
+                } else {
+                    $(selector).removeClass(successClass);
+                    // Append error message if it doesn't already exist
+                }
+            }
+            $modalRoot.find('#SecondTelephoneNumber').on('input', function () {
+                normalizeNumberTextInput(this, false);
+                $(this).removeClass('error');
+                updateFieldStatussuccess(this, "success");
+            });
+
+            $modalRoot.find('#Notes').on('input blur', function () {
+                updateFieldStatussuccess(this, "success");
+            });
+            // ============================================================
+            // PHONE NUMBER (per-country length & pattern rules)
+            // lengths/patterns order: [00-prefix, +-prefix, national]
+            // ============================================================
+            const COUNTRY_PHONE_CONFIG = {
+                'العراق': { code: '964', lengths: [15, 14, 11], patterns: [/^009647\d{9}$/, /^\+9647\d{9}$/, /^07\d{9}$/] },
+                'تركيا': { code: '90', lengths: [14, 13, 11], patterns: [/^00905\d{9}$/, /^\+905\d{9}$/, /^05\d{9}$/] },
+                'ليبيا': { code: '218', lengths: [14, 13, [9, 10]], patterns: [/^002189\d{8}$/, /^\+2189\d{8}$/, /^0?9\d{8}$/] },
+                'الإمارات': { code: '971', lengths: [14, 13, 10], patterns: [/^009715\d{8}$/, /^\+9715\d{8}$/, /^05\d{8}$/] },
+                'سلطنة_عمان': { code: '968', lengths: [13, 12, 8], patterns: [/^00968[97]\d{7}$/, /^\+968[97]\d{7}$/, /^[97]\d{7}$/] },
+                'البحرين': { code: '973', lengths: [13, 12, 8], patterns: [/^00973[36]\d{7}$/, /^\+973[36]\d{7}$/, /^[36]\d{7}$/] },
+                'تونس': { code: '216', lengths: [13, 12, 8], patterns: [/^00216[23459]\d{7}$/, /^\+216[23459]\d{7}$/, /^[23459]\d{7}$/] },
+                'الكويت': { code: '965', lengths: [13, 12, 8], patterns: [/^00965[4569]\d{7}$/, /^\+965[4569]\d{7}$/, /^[4569]\d{7}$/] },
+                'السعودية': { code: '966', lengths: [14, 13, 10], patterns: [/^009665\d{8}$/, /^\+9665\d{8}$/, /^05\d{8}$/] },
+                'قطر': { code: '974', lengths: [13, 12, 8], patterns: [/^00974[3567]\d{7}$/, /^\+974[3567]\d{7}$/, /^[3567]\d{7}$/] },
+                'فلسطين': { code: '970', lengths: [14, 13, 10], patterns: [/^009705\d{8}$/, /^\+9705\d{8}$/, /^05\d{8}$/] },
+                'الأردن': { code: '962', lengths: [14, 13, 10], patterns: [/^009627\d{8}$/, /^\+9627\d{8}$/, /^07\d{8}$/] },
+            };
+            function detectPhoneType(cleaned) {
+                if (cleaned.startsWith('00')) return 0;
+                if (cleaned.startsWith('+')) return 1;
+                return 2;
+            }
+            // Convert Arabic-Indic (٠-٩) and Eastern Arabic-Indic (۰-۹) digits to ASCII (0-9)
+            function toAsciiDigits(str) {
+                return String(str).replace(/[٠-٩۰-۹]/g, function (d) {
+                    const code = d.charCodeAt(0);
+                    return String.fromCharCode(code - (code >= 0x06F0 ? 0x06F0 : 0x0660) + 0x30);
+                });
+            }
+            function validatePhone(country, raw) {
+                // Whitelist: convert Arabic/Persian digits to ASCII, then strip anything that isn't
+                // a digit or '+'. This neutralizes pasted noise — invisible bidi marks, dashes, spaces,
+                // parentheses, dots, letters — without us having to enumerate every possible character.
+                const cleaned = toAsciiDigits(raw).replace(/[^0-9+]/g, '');
+                const cfg = COUNTRY_PHONE_CONFIG[country];
+                if (!cfg || cleaned.length === 0) return { valid: false, cleaned };
+                const type = detectPhoneType(cleaned);
+                const pattern = cfg.patterns[type];
+                const len = cfg.lengths[type];
+                const lenOk = Array.isArray(len) ? len.includes(cleaned.length) : cleaned.length === len;
+                const valid = lenOk && pattern.test(cleaned);
+                return { valid, cleaned, type };
+            }
+            function updatePhoneNumberValidation(country) {
+                const $phone = $c('TelephoneNumber');
+                const cfg = COUNTRY_PHONE_CONFIG[country];
+                // Allow the longest possible form (00 + code + mobile) plus room for spaces
+                const maxInputLen = cfg ? cfg.lengths[0] + 6 : 20;
+                $phone
+                    .removeAttr('pattern')
+                    .removeAttr('minlength')
+                    .attr('maxlength', maxInputLen)
+                    .data('country', country)
+                    .val('')
+                    .removeClass('error success');
+                $phone.closest('.form-group').next('.required-message').remove();
+                phoneErrorMessageShown = false;
+                $c('secondPhoneCol').hide();
+                $c('primaryPhoneCol').removeClass('col-6').addClass('col-12');
+            }
+            // Define a flag to track if the message has been shown
+            let phoneErrorMessageShown = false;
+            let spinnerTimeout;
+            $c('TelephoneNumber').on('input paste', function () {
+                const inputElement = $(this);
+
+                setTimeout(function () {
+                    const currentVal = inputElement.val() || '';
+                    const asciiVal = toAsciiDigits(currentVal).replace(/[^0-9+]/g, '');
+
+                    if (asciiVal !== currentVal) {
+                        inputElement.val(asciiVal);
+                    }
+
+                    const country = inputElement.data('country');
+                    const result = validatePhone(country, inputElement.val());
+                    const isValid = result.valid;
+                    const $container = inputElement.closest('.form-group');
+                    const $spinner = $container.find('.spinner-icon');
+
+                    clearTimeout(spinnerTimeout);
+                    $spinner.hide();
+
+                    // أثناء الكتابة لا نمنع ولا نهز ولا نخفي باقي الفورم.
+                    inputElement.removeClass('error');
+                    if (phoneErrorMessageShown) {
+                        $container.next('.required-message').remove();
+                        phoneErrorMessageShown = false;
+                    }
+
+                    if (isValid) {
+                        inputElement.addClass('success');
+                        cascadeReveal();
+                    } else {
+                        inputElement.removeClass('success');
+                    }
+
+                    updateSubmitButtonState();
+                }, 0);
+            });
+
+            $c('TelephoneNumber').on('blur', function () {
+                const inputElement = $(this);
+                const country = inputElement.data('country');
+                const result = validatePhone(country, inputElement.val());
+                const isValid = result.valid;
+                const $container = inputElement.closest('.form-group');
+                const $spinner = $container.find('.spinner-icon');
+
+                $spinner.hide();
+
+                if (inputElement.val().trim() !== '' && !isValid) {
+                    inputElement.addClass('error').removeClass('success');
+                    if (!phoneErrorMessageShown) {
+                        $container.after('<div class="required-message">يرجى إدخال رقم هاتف صحيح</div>');
+                        phoneErrorMessageShown = true;
+                    } else {
+                        $container.next('.required-message').text('يرجى إدخال رقم هاتف صحيح').show();
+                    }
+                    hideFromStep('phone2');
+                } else if (isValid) {
+                    inputElement.addClass('success').removeClass('error');
+                    if (phoneErrorMessageShown) {
+                        $container.next('.required-message').remove();
+                        phoneErrorMessageShown = false;
+                    }
+                    cascadeReveal();
+                }
+
+                updateSubmitButtonState();
+            });
+            // ============================================================
+            // SUCCESS / FAILURE MESSAGE DIALOGS
+            // ============================================================
+            $modalRoot.find('.text-danger').hide();
+            $c('closeSuccess').click(function (event) {
+                $('#successmessage').addClass('hidden');
+                event.stopPropagation();
+            });
+            $(document).click(function (event) {
+                if (!$(event.target).closest('#successmessage').length && !$(event.target).closest('#Create').length) {
+                    $('#successmessage').addClass('hidden');
+                }
+            });
+            $c('closeAndOpenOrderBtn').click(function (event) {
+                $('#successmessage').addClass('hidden');
+                $modalRoot.modal('show');
+                event.stopPropagation();
+            });
+            // ============================================================
+            // SOURCE NAME / CHAT URL VISIBILITY (driven by order source)
+            // ============================================================
+            function toggleSourceNameInput() {
+                var orderSourceDropdown = $c('orderSourceDropdown');
+                var sourceNameInput = $c('SourceName');
+                var sourceNameCol = $c('sourceNameCol');
+                var orderSourceCol = $c('orderSourceCol');
+                var selectedValue = orderSourceDropdown.val();
+                // Only show SourceName when a source other than واتساب (4) is explicitly chosen.
+                // Default state (no selection) and WhatsApp both keep the field hidden.
+                if (selectedValue && selectedValue !== "4") {
+                    sourceNameInput.prop('disabled', false);
+                    sourceNameInput.attr('required', true);
+                    sourceNameCol.show();
+                    orderSourceCol.removeClass('col-12').addClass('col-6');
+                } else {
+                    sourceNameInput.prop('disabled', true);
+                    sourceNameInput.removeAttr('required');
+                    sourceNameCol.hide();
+                    orderSourceCol.removeClass('col-6').addClass('col-12');
+                }
+                // Chat URL gate: hidden when no source is picked or for WhatsApp (no URL on
+                // those orders). Shown + required for every other source. The createdDate
+                // and the products/campaign gallery normally wait for chatUrl validity, but
+                // for WhatsApp orders there is no chatUrl so we reveal them as soon as the
+                // source is chosen.
+                var chaturlInput = $c('ChatUrl');
+                var chatUrlCol = $c('chatUrlCol');
+                if (!selectedValue) {
+                    chaturlInput.removeAttr('required').val('').removeClass('error success');
+                    chaturlInput.closest('.form-group').next('.required-message').remove();
+                    chatUrlCol.hide();
+                    hideFromStep('postChatUrl');
+                } else if (selectedValue === "4") {
+                    // WhatsApp: no chat URL needed — skip straight to date/products/campaigns.
+                    chaturlInput.removeAttr('required').val('').removeClass('error success');
+                    chaturlInput.closest('.form-group').next('.required-message').remove();
+                    chatUrlCol.hide();
+                    cascadeReveal();
+                } else {
+                    chaturlInput.attr('required', true);
+                    chatUrlCol.show();
+                    // Wait for a valid chatUrl before revealing date/products/campaigns.
+                    hideFromStep('postChatUrl');
+                }
+                syncChatUrlDateRow();
+                orderSourceDropdown.next('.select2-container').css('width', '100%');
+            }
+            function toggleCampaignVisibility() {
+                // Campaign gallery requires both: a store selected (so we have campaigns to
+                // render at all) AND the disclosure tree to have reached the postChatUrl
+                // step (revealed when chatUrl is valid, or for WhatsApp orders right after
+                // source selection). renderCampaignGallery() handles the empty-list case.
+                if (selectedStoreId && postChatUrlReached) {
+                    renderCampaignGallery();
+                } else {
+                    $c('campaignGalleryWrap').hide();
+                }
+                $c('campaignDropdown').next('.select2-container').css('width', '100%');
+            }
+            function toggleProductVisibility() {
+                if (selectedStoreId && postChatUrlReached) {
+                    $c('selectedProductsList').show();
+                } else {
+                    $c('selectedProductsList').hide();
+                }
+                $c('productDropdown').next('.select2-container').css('width', '100%');
+            }
+            // Call the function on page load and when the order source dropdown changes
+            toggleSourceNameInput();
+            toggleCampaignVisibility();
+            toggleProductVisibility();
+            $c('orderSourceDropdown').change(toggleSourceNameInput);
+            // No IsPaid change handler — payment status is optional and does not gate
+            // any downstream field. Notes and TotalPrice both reveal alongside payment
+            // at the paymentStatus step.
+
+            // ============================================================
+            // INITIAL LOAD — stores list for manufacturingCompanyDropdown
+            // ============================================================
+            $.ajax({
+                url: '/DataList/GetAllStores',
+                type: 'GET',
+                success: function (data) {
+                    storesData = data;
+                    var dropdown = $c('manufacturingCompanyDropdown');
+                    dropdown.empty(); // Clear any existing options
+                    // Append default option
+                    dropdown.append($('<option></option>')
+                        .val('')
+                        .text('Select a Manufacturing Company')
+                        .attr('disabled', 'disabled')
+                        .attr('selected', 'selected'));
+                    $.each(data, function (index, item) {
+                        dropdown.append($('<option></option>')
+                            .val(item.id)
+                            .text(item.name)
+                            .attr('data-image', item.logoUrl)
+                            .attr('data-main-warehouse-id', item.mainWarehouseId || ''));
+                    });
+                    // Enable the dropdown after data is loaded
+                    dropdown.prop('disabled', false);
+
+                    if (data && data.length === 1) {
+                        setTimeout(function () {
+                            applySingleAllowedStore();
+                            cascadeReveal();
+                        }, 0);
+                    }
+                },
+                error: function (error) {
+                    console.log(error);
+                }
+            });
+            // Hide placeholder (first option) in every Select2 when it opens.
+            $modalRoot.find('select').on('select2:open', function (e) {
+                // Immediately try to hide the first option
+                // This is placed outside setTimeout to attempt to hide the option as soon as possible
+                $('.select2-results__option:first-child').hide();
+                // Then, use a minimal timeout to ensure the operation in case of any rendering delays
+                setTimeout(function () {
+                    // Re-attempt to hide the first option to ensure it's hidden if the first attempt was too early
+                    $('.select2-results__option:first-child').hide();
+                }, 1);
+            });
+            // ============================================================
+            // CASCADING DROPDOWNS — country -> city / campaigns / delivery / warehouses
+            // ============================================================
+            $c('countryDropdown').change(function () {
+                var selectedCountry = $(this).val();
+                if (selectedCountry) removeErrorClassAndMessage($(this));
+                updatePhoneNumberValidation(selectedCountry);
+                // Reset the form but keep the selected country
+                $c('createOrderForm').trigger("reset");
+                $('#OrderPhotoPaste').empty();
+                $c('countryDropdown').val(selectedCountry).trigger('change.select2');
+                // Form reset clears values but not inline display state — re-run the
+                // source-driven toggles so leftover-visible cells collapse back.
+                $c('orderSourceDropdown').val('').trigger('change.select2');
+                selectedStoreMainWarehouseId = null;
+                selectedStoreId = null;
+                allCampaigns = [];
+                $c('campaignDropdown').data('touched', false).val('').trigger('change.select2');
+                toggleSourceNameInput();
+                // Country switch always rewinds the disclosure tree to the city step.
+                // Hide everything from phone1 onward; only the city reveals here.
+                hideFromStep('phone1');
+                if (selectedCountry) {
+                    revealStep('city');
+                } else {
+                    $c('cityCol').hide();
+                    $c('countryCol').removeClass('col-6').addClass('col-12');
+                }
+                $c('countryDropdown').next('.select2-container').css('width', '100%');
+                // Clear the city dropdown and repopulate
+                resetCityDropdown();
+                populateCities(selectedCountry);
+                updatecampagins(); // fetches the campaign pool for the selected country (unfiltered)
+                if (!applySingleAllowedStore()) {
+                    $c('manufacturingCompanyDropdown').prop('disabled', false).closest('.form-group').show();
+                    $c('manufacturingCompanyDropdown').next('.select2-container').show().css('width', '100%');
+                }
+                removeAppendedWarehouseItems();
+                // Turkey has stricter name + address rules; re-run the validators when country switches.
+                $c('CustomerName').trigger('blur');
+                $c('Address').trigger('blur');
+            });
+            $c('cityDropdown').change(function () {
+                if ($(this).val()) removeErrorClassAndMessage($(this));
+                // City no longer drives the delivery party reveal — that now waits for
+                // a valid address. We still pre-fetch the parties list here so it's
+                // ready by the time the address handler asks for it; updateDeliveryParties
+                // populates the dropdown but the row stays hidden until reveal time.
+                updateDeliveryParties();
+                confirmedAmeelDeliveryValue = '';
+                previousConfirmedDeliveryPartyValue = '';
+                $c('deliveryPartyDropdown').val('');
+                if ($(this).val()) {
+                    cascadeReveal();
+                } else {
+                    hideFromStep('phone1');
+                }
+            });
+            var confirmedAmeelDeliveryValue = '';
+            var previousConfirmedDeliveryPartyValue = '';
+            var suppressDeliveryPartyConfirm = false;
+
+            function processDeliveryPartyChange($dropdown) {
+                if ($dropdown.val()) {
+                    removeErrorClassAndMessage($dropdown);
+                    previousConfirmedDeliveryPartyValue = $dropdown.val();
+                }
+                updateWarehouses();
+                removeAppendedWarehouseItems();
+                productDropdownSelect.prop('disabled', false);
+                // Order source reveal requires both: a photo pasted AND a delivery party selected
+                // (auto-selected for single-party countries, or manually picked for multi-party).
+                maybeRevealOrderSource();
+            }
+
+            $c('deliveryPartyDropdown').change(function () {
+                var $dropdown = $(this);
+                var selectedValue = $dropdown.val();
+
+                if (suppressDeliveryPartyConfirm) {
+                    suppressDeliveryPartyConfirm = false;
+                    return;
+                }
+
+                if (selectedValue && isLibyaCountrySelected() && isAmeelDeliveryOption($dropdown) && confirmedAmeelDeliveryValue !== selectedValue) {
+                    showCreateConfirm(
+                        'هذه الشركة تابعة لتحويلات بنكية، هل أنت متأكد من اختيارها؟',
+                        function () {
+                            confirmedAmeelDeliveryValue = selectedValue;
+                            processDeliveryPartyChange($dropdown);
+                        },
+                        function () {
+                            suppressDeliveryPartyConfirm = true;
+                            $dropdown.val(previousConfirmedDeliveryPartyValue || '').trigger('change.select2');
+                            if (!previousConfirmedDeliveryPartyValue) {
+                                hideFromStep('orderSource');
+                                removeAppendedWarehouseItems();
+                            }
+                        }
+                    );
+                    return;
+                }
+
+                processDeliveryPartyChange($dropdown);
+            });
+            // Store change reveals address. Products/campaigns visibility is no longer
+            // driven by store selection — they wait for a valid chat URL (or WhatsApp
+            // source) further down the disclosure tree.
+            $c('manufacturingCompanyDropdown').change(function () {
+                if ($(this).val()) removeErrorClassAndMessage($(this));
+                // Clear any previously selected warehouses/products since they may not belong to the new store
+                removeAppendedWarehouseItems();
+                if ($(this).val() === "") {
+                    productDropdownSelect.prop('disabled', true);
+                    selectedStoreMainWarehouseId = null;
+                    selectedStoreId = null;
+                    hideFromStep('address');
+                } else {
+                    productDropdownSelect.prop('disabled', false);
+                    var selectedOption = $(this).find('option:selected');
+                    var mwId = selectedOption.attr('data-main-warehouse-id');
+                    selectedStoreMainWarehouseId = mwId ? parseInt(mwId) : null;
+                    selectedStoreId = parseInt($(this).val());
+                    populateFirstWarehouseDropdown();
+                    cascadeReveal();
+                }
+                populateCampaignDropdown(); // filters the country campaign pool down to this store's campaigns
+            });
+            // ============================================================
+            // CITY DROPDOWN (populated from the static CitiesByCountry map)
+            // ============================================================
+            function resetCityDropdown() {
+                var cityDropdown = $c('cityDropdown');
+                cityDropdown.empty();
+                cityDropdown.append($('<option>', {
+                    value: '',
+                    text: 'المدينة',
+                    "data-image": "/static/city-regular.svg", // Static image for the placeholder
+                    disabled: true,
+                    selected: true
+                })).val('').trigger('change'); // Clear any existing options and reset value
+                // Re-initialize Select2 for cityDropdown
+                cityDropdown.select2({
+                    placeholder: 'المدينة',
+                    allowClear: true,
+                    templateResult: formatOption,
+                    templateSelection: formatOption,
+                    dropdownParent: $('#Create'),
+                    dir: "rtl",
+                    width: '100%'
+                });
+            }
+            // Function to populate cities dropdown based on the selected country
+            function populateCities(selectedCountry) {
+                var cityDropdown = $c('cityDropdown');
+                cityDropdown.empty();
+                cityDropdown.append($('<option>', {
+                    value: '',
+                    text: 'المدينة',
+                    "data-image": "/static/city-regular.svg", // Static image for the placeholder
+                    disabled: true,
+                    selected: true
+                }));
+                if (selectedCountry && citiesByCountry[selectedCountry]) {
+                    var cities = citiesByCountry[selectedCountry];
+                    var modelStateExists = cities.some(city => city === modelState);
+                    // Loop through cities and append each as an option
+                    cities.forEach(function (city) {
+                        cityDropdown.append($('<option>', {
+                            value: city,
+                            text: city,
+                            "data-image": "/static/city-regular.svg" // Use the static image URL for all city options
+                        }));
+                    });
+                    // Set the selected value
+                    cityDropdown.val(modelStateExists ? modelState : '').trigger('change');
+                } else {
+                    // No cities available for the selected country
+                    cityDropdown.append($('<option>', {
+                        value: '',
+                        text: 'المدينة',
+                        "data-image": "/static/city-regular.svg" // Static image for the placeholder
+                    })).val('').trigger('change');
+                }
+                // Re-initialize Select2 for cityDropdown
+                cityDropdown.select2({
+                    templateResult: formatOption,
+                    templateSelection: formatOption,
+                    dropdownParent: $('#Create'),
+                    dir: "rtl",
+                    width: '100%'
+                });
+            }
+            // ============================================================
+            // CAMPAIGNS (ads) — fetched by country, filtered by store
+            // ============================================================
+            function updatecampagins() {
+                var country = $c('countryDropdown').val();
+                $.ajax({
+                    type: 'GET',
+                    url: '@Url.Action("GetCampaignsByCountry", "DataList")',
+                    data: { countryId: country },
+                    success: function (data) {
+                        allCampaigns = data || [];
+                        populateCampaignDropdown();
+                        toggleCampaignVisibility();
+                    },
+                    error: function (xhr, textStatus, errorThrown) {
+                        console.error('Error: ' + textStatus, errorThrown);
+                    }
+                });
+            }
+            function getFilteredCampaigns() {
+                // Only campaigns explicitly linked to the currently selected store.
+                if (!selectedStoreId) {
+                    return [];
+                }
+                return allCampaigns.filter(function (c) {
+                    return c.manufacturingCompanyId === selectedStoreId;
+                });
+            }
+            function populateCampaignDropdown() {
+                var campaignDropdown = $c('campaignDropdown');
+                var previousValue = campaignDropdown.val();
+                var wasTouched = campaignDropdown.data('touched') === true;
+                var filtered = getFilteredCampaigns();
+
+                campaignDropdown.empty();
+                campaignDropdown.append($('<option>', {
+                    value: '',
+                    text: 'اختر الإعلان',
+                    disabled: true,
+                    selected: true,
+                    hidden: true
+                }));
+
+                if (!filtered || filtered.length === 0) {
+                    // No ads for this store: do not stop the flow and submit as null CampaignId.
+                    campaignDropdown.append($('<option>', {
+                        value: 'none',
+                        text: 'بدون إعلان',
+                        "data-image": "/static/truck-regular.svg"
+                    }));
+                    campaignDropdown.val('none');
+                    campaignDropdown.data('touched', true);
+                } else {
+                    $.each(filtered, function (index, ad) {
+                        campaignDropdown.append($('<option>', {
+                            value: ad.id,
+                            text: ad.name,
+                            'data-image': ad.imageUrl
+                        }));
+                    });
+
+                    // Preserve prior real campaign only if it still belongs to the selected store.
+                    if (previousValue && previousValue !== 'none' && filtered.some(function (c) { return c.id == previousValue; })) {
+                        campaignDropdown.val(previousValue);
+                        campaignDropdown.data('touched', wasTouched);
+                    } else {
+                        campaignDropdown.val('');
+                        campaignDropdown.data('touched', false);
+                    }
+                }
+
+                campaignDropdown.select2({
+                    templateResult: formatOption,
+                    templateSelection: formatOption,
+                    dropdownParent: $('#Create'),
+                    dir: "rtl"
+                });
+                campaignDropdown.trigger('change.select2');
+
+                renderCampaignGallery();
+                maybeRevealPaymentStatus();
+                updateSubmitButtonState();
+            }
+            // ============================================================
+            // DELIVERY COMPANIES & REPRESENTATIVES
+            // ============================================================
+            function updateDeliveryParties() {
+                var country = $c('countryDropdown').val();
+                var city = $c('cityDropdown').val();
+                if (!country || !city) return;
+                $.ajax({
+                    type: 'GET',
+                    url: '@Url.Action("GetAllDeliveryCompaniesAndRepresentatives", "DataList")',
+                    data: { countryId: country, cityId: city },
+                    success: function (data) {
+                        var dd = $c('deliveryPartyDropdown');
+                        dd.empty();
+                        dd.append($('<option>', {
+                            value: '',
+                            text: 'اختر طرف التوصيل',
+                            'data-image': '/static/truck-regular.svg',
+                            disabled: true,
+                            selected: true
+                        }));
+                        $.each(data || [], function (index, p) {
+                            dd.append($('<option>', {
+                                value: p.id,
+                                text: p.name,
+                                'data-image': p.logoUrl,
+                                'data-is-delivery-rep': p.isRepresentative ? 'true' : 'false'
+                            }));
+                        });
+                        dd.select2({
+                            templateResult: formatOption,
+                            templateSelection: formatOption,
+                            dropdownParent: $('#Create'),
+                            dir: 'rtl',
+                            width: '100%'
+                        });
+                        // Only reveal the delivery column when there's more than one party.
+                        // With 0 or 1, auto-select (when present) and keep it hidden so the
+                        // order-screenshot cell spans the full row. With >1 they share col-6.
+                        var $deliveryCol = $c('deliveryCompanyCol');
+                        var $photoCol = $c('orderPhotoCol');
+                        if (data && data.length > 1) {
+                            $deliveryCol.show();
+                            $photoCol.removeClass('col-12').addClass('col-6');
+                        } else {
+                            if (data && data.length === 1) {
+                                dd.val(data[0].id).trigger('change');
+                                removeErrorClassAndMessage(dd);
+                            }
+                            $deliveryCol.hide();
+                            $photoCol.removeClass('col-6').addClass('col-12');
+                        }
+                        $c('manufacturingCompanyDropdown').next('.select2-container').css('width', '100%');
+                    },
+                    error: function (xhr, textStatus, errorThrown) {
+                        console.error('Error: ' + textStatus, errorThrown);
+                    }
+                });
+            }
+            // ============================================================
+            // WAREHOUSES & PRODUCT ROWS
+            // ============================================================
+            function updateWarehouses() {
+                var companyIdToSend = $c('deliveryPartyDropdown').val();
+                $.ajax({
+                    type: 'GET',
+                    url: '@Url.Action("GetFilteredWarehouses", "DataList")',
+                    data: { deliveryCompanyId: companyIdToSend },
+                    success: function (data) {
+                        allWarehouseOptions = data;
+                        warehouseOptions = data;
+                        populateFirstWarehouseDropdown();
+                    },
+                    error: function (xhr, textStatus, errorThrown) {
+                        console.error('Error: ' + textStatus, errorThrown);
+                    }
+                });
+            }
+            function hasMainWarehouseProduct() {
+                if (!selectedStoreMainWarehouseId) return true;
+                var found = false;
+                $c('selectedProductsList').find('.appended-warehouse-row').each(function () {
+                    if (parseInt($(this).attr('data-main-warehouse-id')) === selectedStoreMainWarehouseId) {
+                        found = true;
+                        return false;
+                    }
+                });
+                return found;
+            }
+            function getFilteredWarehouseOptions() {
+                if (isUnrestrictedRole || !selectedStoreMainWarehouseId || hasMainWarehouseProduct()) {
+                    return warehouseOptions;
+                }
+                return warehouseOptions.filter(function (w) {
+                    var mw = parseInt(getWarehouseMainWarehouseIdValue(w) || 0);
+                    return mw === parseInt(selectedStoreMainWarehouseId || 0);
+                });
+            }
+            function populateFirstWarehouseDropdown() {
+                var warehouseDropdown = $c('productDropdown');
+                warehouseDropdown.find('option').not('[value=""]').remove();
+                var displayOptions = getFilteredWarehouseOptions();
+                $.each(displayOptions, function (index, warehouse) {
+                    var warehouseId = getWarehouseIdValue(warehouse);
+                    if (warehouseId === undefined || warehouseId === null || String(warehouseId).length === 0) {
+                        return;
+                    }
+
+                    var warehouseName = getWarehouseNameValue(warehouse);
+                    var warehouseImage = getWarehouseImageValue(warehouse);
+                    var warehouseAmount = getWarehouseAmountValue(warehouse);
+                    var warehouseMainId = getWarehouseMainWarehouseIdValue(warehouse) || selectedStoreMainWarehouseId || '';
+
+                    warehouseDropdown.append($('<option>', {
+                        value: warehouseId,
+                        text: warehouseName,
+                        'data-image': warehouseImage,
+                        'data-amount': warehouseAmount,
+                        'data-main-warehouse-id': warehouseMainId
+                    }));
+                });
+                warehouseDropdown.prop('disabled', false);
+                warehouseDropdown.val('').trigger('change.select2');
+                warehouseDropdown.next('.select2-container').css('width', '100%');
+            }
+            // ---- Appended warehouse rows: add / delete / quantity controls ----
+            function addNewWarehouseItem(forcedWarehouseId, forcedWarehouseText, forcedOptionElement) {
+                var selectedWarehouseId = forcedWarehouseId || $c('productDropdown').val();
+                var selectedOption = forcedOptionElement ? $(forcedOptionElement) : $c('productDropdown').find('option:selected');
+
+                if (!selectedWarehouseId || selectedWarehouseId === 'undefined' || selectedWarehouseId === 'null') {
+                    selectedWarehouseId = selectedOption.val();
+                }
+
+                if (!selectedWarehouseId || selectedWarehouseId === 'undefined' || selectedWarehouseId === 'null') {
+                    return;
+                }
+
+                var alreadyExists = $c('selectedProductsList').find('.appended-warehouse-row').filter(function () {
+                    return String($(this).attr('data-warehouse-id')) === String(selectedWarehouseId);
+                }).length > 0;
+                if (alreadyExists) {
+                    populateFirstWarehouseDropdown();
+                    return;
+                }
+
+                var selectedWarehouse = (warehouseOptions || []).find(function (warehouse) {
+                    var wid = getWarehouseIdValue(warehouse);
+                    return String(wid) === String(selectedWarehouseId);
+                }) || (allWarehouseOptions || []).find(function (warehouse) {
+                    var wid = getWarehouseIdValue(warehouse);
+                    return String(wid) === String(selectedWarehouseId);
+                });
+
+                // في حالة المتجر الواحد أو اختلاف أسماء الخصائص الراجعة من الـ API،
+                // نبني المنتج من الـ option نفسه عشان الاختيار يتحول لصف منتج فعلي.
+                if (!selectedWarehouse) {
+                    selectedWarehouse = {
+                        id: selectedWarehouseId,
+                        name: forcedWarehouseText || selectedOption.text() || '',
+                        productImage: selectedOption.attr('data-image') || '/mainicons/fallback_product.svg',
+                        amount: selectedOption.attr('data-amount') || 999,
+                        mainWarehouseId: selectedOption.attr('data-main-warehouse-id') || selectedStoreMainWarehouseId || ''
+                    };
+                }
+
+                selectedWarehouse.id = getWarehouseIdValue(selectedWarehouse) || selectedWarehouseId;
+                selectedWarehouse.name = getWarehouseNameValue(selectedWarehouse) || forcedWarehouseText || selectedOption.text() || '';
+                selectedWarehouse.productImage = getWarehouseImageValue(selectedWarehouse) || selectedOption.attr('data-image') || '/mainicons/fallback_product.svg';
+                selectedWarehouse.amount = getWarehouseAmountValue(selectedWarehouse) || selectedOption.attr('data-amount') || 999;
+                selectedWarehouse.mainWarehouseId = getWarehouseMainWarehouseIdValue(selectedWarehouse) || selectedOption.attr('data-main-warehouse-id') || selectedStoreMainWarehouseId || '';
+
+                var warehouseIndex = $c('selectedProductsList').find('.appended-warehouse-row').length;
+                var warehouseHtml = `
+                                                <div class="appended-warehouse-row row ms-0 mt-3" data-warehouse-id="${selectedWarehouse.id}" data-warehouse-name="${selectedWarehouse.name}" data-warehouse-amount="${selectedWarehouse.amount}" data-main-warehouse-id="${selectedWarehouse.mainWarehouseId}">
+                                                    <div class="col-lg-6">
+                                                        <div class="form-group appenddiv gold-warehouse">
+                                                            <div class="warehouse-item">
+                                                                <span><img width="25" height="23" src="${selectedWarehouse.productImage}"></span>
+                                                                <span class="selected-warehouse">${selectedWarehouse.name}</span>
+                                                                <input type="hidden" name="SelectedWarehouses[${warehouseIndex}].WarehouseId" value="${selectedWarehouse.id}">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-lg-6 pe-4 ps-0">
+                                                        <div class="form-group">
+                                                            <div class="input-group my-input-group" style="width: 105%!important">
+                                                                    <button type="button" id="decrease" class="btn f-s-1-50rem decrease rounded-btn">-</button>
+                                                                <input min="1" type="text" inputmode="numeric" autocomplete="off" required value="1" placeholder="الكمية" class="form-control amount numeric-no-shake" name="SelectedWarehouses[${warehouseIndex}].Amount" />
+                                                                    <button type="button" id="increase" class="btn f-s-1-50rem increase rounded-btn">+</button>
+                                                            </div>
+                                                            <span class="text-danger"></span> <!-- Placeholder for validation message -->
+                                                        </div>
+                                                    </div>
+                                                </div>`;
+                $c('selectedProductsList').append(warehouseHtml);
+                // Update warehouse dropdown
+                warehouseOptions = warehouseOptions.filter(function (warehouse) {
+                    var wid = getWarehouseIdValue(warehouse);
+                    return String(wid) !== String(selectedWarehouseId);
+                });
+                populateFirstWarehouseDropdown();
+                updateSubmitButtonState(); // Update the submit button state
+                // Remove the required message and add success class
+                const $container = $c('productDropdown').next('.select2-container');
+                const $selection = $container.find('.select2-selection.select2-selection--single');
+                $container.next('.required-message').remove();
+                $selection.addClass('success');
+                maybeRevealPaymentStatus();
+                runTotalPriceValidation();
+            }
+            // sho الكمية المتاحة
+            $c('selectedProductsList').on('input', '.amount', function () {
+                var $amountInput = $(this);
+                var enteredValue = parseInt($amountInput.val());
+                var maxAmount = parseInt($amountInput.closest('.row').data('warehouse-amount'));
+                // Check if the entered value exceeds the maximum available amount
+                if (!isNaN(enteredValue) && enteredValue > maxAmount) {
+                    showFormError(`الكمية المتاحة ${maxAmount}`);
+                    $amountInput.val(maxAmount); // Optionally reset the value to the max amount
+                }
+
+                runTotalPriceValidation();
+                updateSubmitButtonState();
+            });
+            $c('selectedProductsList').on('click', '.increase', function () {
+                var $amountInput = $(this).closest('.my-input-group').find('.amount');
+                var value = parseInt($amountInput.val());
+                var maxAmount = parseInt($amountInput.attr('max')); // Get the maximum value allowed from the max attribute
+                var minAmount = parseInt($amountInput.attr('min')); // Get the minimum value allowed from the min attribute
+                // Check if the current value is less than the maximum allowed value
+                if (!isNaN(value) && (isNaN(maxAmount) || value < maxAmount)) {
+                    $amountInput.val(value + 1); // Increment the value by 1
+                    runTotalPriceValidation();
+                    updateSubmitButtonState();
+                }
+            });
+            $c('selectedProductsList').on('click', '.decrease', function () {
+                var $amountInput = $(this).closest('.my-input-group').find('.amount');
+                var value = parseInt($amountInput.val());
+                if (!isNaN(value) && value > 1) {
+                    $amountInput.val(value - 1);
+                    runTotalPriceValidation();
+                    updateSubmitButtonState();
+                } else {
+                    // If value is 1 or less, show confirmation dialog before removing the row
+                    $currentRowToDelete = $(this).closest('.row');
+                    $c('deleteProductConfirm').css('display', 'flex');
+                }
+            });
+            $c('confirm-remove').on('click', function () {
+                if ($currentRowToDelete) {
+                    var warehouseId = $currentRowToDelete.data('warehouse-id');
+                    var warehouseName = $currentRowToDelete.data('warehouse-name');
+                    var warehouseAmount = $currentRowToDelete.data('warehouse-amount');
+                    var warehouseToAddBack = allWarehouseOptions.find(function (w) {
+                        return String(getWarehouseIdValue(w)) === String(warehouseId);
+                    });
+                    if (!warehouseToAddBack) {
+                        warehouseToAddBack = { id: warehouseId, name: warehouseName, amount: warehouseAmount, mainWarehouseId: $currentRowToDelete.data('main-warehouse-id') || '' };
+                    }
+                    warehouseOptions.push(warehouseToAddBack);
+                    populateFirstWarehouseDropdown();
+                    $currentRowToDelete.remove();
+                    $currentRowToDelete = null;
+                    $c('deleteProductConfirm').css('display', 'none');
+                    maybeRevealPaymentStatus();
+                    runTotalPriceValidation();
+                    updateSubmitButtonState();
+                }
+            });
+            $c('cancel-remove').on('click', function () {
+                $c('deleteProductConfirm').css('display', 'none');
+            });
+            // add warehouse item when selecting product.
+            // Use the Select2 event data directly because in the single-store auto-select case
+            // the normal .val() can be reset/cleared before the change handler reads it.
+            $c('productDropdown').on('select2:select', function (e) {
+                var item = e && e.params && e.params.data ? e.params.data : null;
+                var pickedId = item ? item.id : $(this).val();
+                var pickedText = item ? item.text : '';
+                var pickedElement = item ? item.element : null;
+
+                if (pickedId) {
+                    addNewWarehouseItem(pickedId, pickedText, pickedElement);
+                }
+            });
+
+            $c('productDropdown').on('change', function () {
+                var pickedId = $(this).val();
+                if (pickedId) {
+                    addNewWarehouseItem(pickedId, '', null);
+                }
+            });
+            function removeAppendedWarehouseItems() {
+                $modalRoot.find('.appended-warehouse-row').remove();
+            }
+
+            // ============================================================
+            // SUBMIT BUTTON STATE + FINAL FORM VALIDATION / SUBMIT
+            // ============================================================
+            function areInputsValid() {
+                var isWhatsApp = $c('orderSourceDropdown').val() === "4";
+                // List of input field IDs for non-numeric checks
+                const inputIDs = [
+                    'countryDropdown',
+                    'cityDropdown',
+                    'orderSourceDropdown',
+                    'manufacturingCompanyDropdown',
+                    'deliveryPartyDropdown',
+                    'TelephoneNumber',
+                    'CustomerName',
+                    'Address',
+                ];
+                // WhatsApp orders have no chat URL — only validate it for other sources
+                if (!isWhatsApp) {
+                    inputIDs.push('ChatUrl');
+                }
+                // Check if standard inputs are non-empty
+                const areStandardInputsValid = inputIDs.every(id => {
+                    const value = $c(id).val();
+                    return value !== '' && value != null;
+                });
+                // Check for TotalPrice to ensure it's a valid, non-empty number
+                const totalPriceValue = $c('TotalPrice').val().trim();
+                const isTotalPriceValid = totalPriceValue !== '' && !isNaN(parseFloat(totalPriceValue)) && isFinite(totalPriceValue);
+                // Order screenshot must be pasted.
+                var photoInput = document.getElementById('OrderPhotoFile');
+                const isPhotoPasted = !!(photoInput && photoInput.files && photoInput.files.length > 0);
+                // At least one warehouse/product row must be appended.
+                const hasProduct = $c('selectedProductsList').find('.appended-warehouse-row').length > 0;
+                // Campaign is not required for stores with no ads.
+                // Stores with ads are checked on final submit so the user gets a clear message.
+                // Payment receipt is required only when payment status is "paid".
+                var receiptOk = true;
+                if ($c('IsPaid').val() === 'true') {
+                    var receiptInput = document.getElementById('PaymentReceiptFile');
+                    receiptOk = !!(receiptInput && receiptInput.files && receiptInput.files.length > 0);
+                }
+                return areStandardInputsValid
+                    && isTotalPriceValid
+                    && isPhotoPasted
+                    && hasProduct
+                    && receiptOk;
+            }
+            function updateSubmitButtonState() {
+                if (typeof createOrderSubmitInProgress !== 'undefined' && createOrderSubmitInProgress) {
+                    $c('submitButton').prop('disabled', true).text('جارٍ الإنشاء...');
+                    return;
+                }
+
+                // المطلوب: زر موافقة يفضل قابل للضغط دائمًا.
+                // التحقق النهائي يتم عند الضغط نفسه، والسيرفر ما زال يحمي الحد الأدنى والأسعار.
+                // هذا يمنع إن أول ضغطة تضيع بسبب انتظار Ajax validation أو تحديث حالة الزر.
+                if (showDebugQuery) {
+                    console.log('[DEBUG] updateSubmitButtonState() - submit button kept enabled until final submit validation');
+                }
+                $c('submitButton').prop('disabled', false).text('موافقة');
+            }
+            $modalRoot.find('#TotalPrice,#TelephoneNumber,#deliveryPartyDropdown,#CustomerName,#Address,#ChatUrl,#campaignDropdown,#countryDropdown,#cityDropdown,#orderSourceDropdown,#manufacturingCompanyDropdown,#IsPaid').on('input change', function () {
+                updateSubmitButtonState();
+            });
+
+            $modalRoot.on('input paste', '.appended-warehouse-row .amount', function () {
+                var input = this;
+                setTimeout(function () {
+                    normalizeNumberTextInput(input, false);
+                    $(input).removeClass('error');
+                    updateSubmitButtonState();
+                }, 0);
+            });
+
+            $modalRoot.on('change blur', '.appended-warehouse-row .amount', function () {
+                normalizeNumberTextInput(this, false);
+                runTotalPriceValidation();
+                updateSubmitButtonState();
+            });
+            // The paste-image fields now drive their own validity updates via
+            // attachPasteImageField onCommit/onClear callbacks; no global delegate
+            // or polling watchdog is needed.
+            $modalRoot.on('change', function () {
+                updateSubmitButtonState();
+                maybeRevealOrderSource();
+            });
+            // Initial update for submit button state
+            updateSubmitButtonState();
+            $modalRoot.on('click', '.closeFailedMessage', function () {
+                $('#failedmessage').addClass('hidden').css('display', 'none');
+                $c('overlay').hide(); // Also hide the overlay
+            });
+            // ---- Order photo: hardened via attachPasteImageField. Paste, drag-and-drop,
+            // ---- and a MutationObserver all funnel into the same commit-File path,
+            // ---- so the hidden #OrderPhotoFile is reliably populated regardless of
+            // ---- which mechanism actually delivered the image.
+            orderPhotoField = attachPasteImageField({
+                $field: $c('OrderPhotoPaste'),
+                fileInputId: 'OrderPhotoFile',
+                onCommit: function () {
+                    updateSubmitButtonState();
+                    maybeRevealOrderSource();
+                },
+                onClear: function () {
+                    hideFromStep('orderSource');
+                    updateSubmitButtonState();
+                }
+            });
+
+            // ---- Form submit handler: validate, then lock once, AJAX POST ----
+            var createOrderSubmitInProgress = false;
+
+            function resetCreateOrderSubmitButton() {
+                createOrderSubmitInProgress = false;
+                $c('submitButton')
+                    .prop('disabled', false)
+                    .text('موافقة');
+            }
+
+            function lockCreateOrderSubmitButton() {
+                createOrderSubmitInProgress = true;
+                $c('submitButton')
+                    .prop('disabled', true)
+                    .text('جارٍ الإنشاء...');
+            }
+
+            $c('createOrderForm').submit(function (event) {
+                event.preventDefault();
+
+                if (createOrderSubmitInProgress) {
+                    return false;
+                }
+                const country = $c('countryDropdown').val();
+                const phoneNumber = $c('TelephoneNumber').val();
+                const phoneCheck = validatePhone(country, phoneNumber);
+                var deliveryPartyValue = $c('deliveryPartyDropdown').val();
+                var cityDropdown = $c('cityDropdown'); // Assuming this element exists
+                var sourceName = $c('SourceName').val(); // Get the value of SourceName input
+                var customerName = $c('CustomerName').val();
+                var address = $c('Address').val();
+                var chaturl = $c('ChatUrl').val();
+                // Validate each field and apply error class accordingly
+                if (!sourceName) {
+                    $c('SourceName').addClass('error');
+                } else {
+                    $c('SourceName').removeClass('error');
+                }
+                if (!customerName) {
+                    $c('CustomerName').addClass('error');
+                } else {
+                    $c('CustomerName').removeClass('error');
+                }
+                if (!address) {
+                    $c('Address').addClass('error');
+                } else {
+                    $c('Address').removeClass('error');
+                }
+                if (!chaturl) {
+                    $c('ChatUrl').addClass('error');
+                } else {
+                    $c('ChatUrl').removeClass('error');
+                }
+                // لا نقفل زر الموافقة إلا بعد نجاح كل الفحوصات؛
+                // عشان لو في حقل ناقص الزر يفضل شغال ومايحتاجش المستخدم يدوس أكثر من مرة.
+                if (!deliveryPartyValue) {
+                    showFormError("الرجاء اختيار طرف التوصيل.");
+                    event.preventDefault();
+                    return false;
+                }
+                // Instagram is allowed for any page name/store.
+                if (!phoneCheck.valid) {
+                    showFormError('يرجى إدخال رقم هاتف صحيح.');
+                    event.preventDefault();
+                    return false;
+                }
+                if (cityDropdown.val() === "" || cityDropdown.val() === "المدينة") {
+                    showFormError("الرجاء اختيار المدينة.");
+                    event.preventDefault();
+                    return false;
+                }
+                if ($c('selectedProductsList').find('.appended-warehouse-row').length === 0) {
+                    showFormError("يجب إختيار مستودع واحد على الأقل.");
+                    event.preventDefault();
+                    return false;
+                }
+                // Order screenshot is required on create. The hidden #OrderPhotoFile is
+                // populated by attachPasteImageField; rescueIfNeeded handles the rare case
+                // where DataTransfer assignment silently no-op'd by re-hydrating from a
+                // data:-URL <img> still in the field.
+                if (orderPhotoField) orderPhotoField.rescueIfNeeded();
+                if (paymentReceiptField) paymentReceiptField.rescueIfNeeded();
+                var photoInput = document.getElementById('OrderPhotoFile');
+                if (!photoInput || !photoInput.files || photoInput.files.length === 0) {
+                    showFormError('يرجى لصق صورة الطلب.');
+                    $('#OrderPhotoPaste').addClass('error');
+                    event.preventDefault();
+                    return false;
+                }
+                $('#OrderPhotoPaste').removeClass('error');
+                // Payment receipt is required only when payment status is "paid".
+                if ($c('IsPaid').val() === 'true') {
+                    var receiptInput = document.getElementById('PaymentReceiptFile');
+                    if (!receiptInput || !receiptInput.files || receiptInput.files.length === 0) {
+                        showFormError('يرجى لصق صورة إيصال الحوالة بنكية.');
+                        $('#PaymentReceiptPaste').addClass('error');
+                        event.preventDefault();
+                        return false;
+                    }
+                    $('#PaymentReceiptPaste').removeClass('error');
+                }
+                const customerNameResult = validateCustomerNameForCountry();
+                if (!customerNameResult.ok) {
+                    showFormError(customerNameResult.message);
+                    event.preventDefault();
+                    return false;
+                }
+                if (!validateAddressLatin()) {
+                    showFormError('لا يُسمح بإدخال أحرف عربية في عنوان طلبات تركيا.');
+                    event.preventDefault();
+                    return false;
+                }
+                if (!validateChatUrlAscii()) {
+                    event.preventDefault();
+                    return false;
+                }
+                // Campaign is required only if the selected store actually has ads.
+                // If the store has no ads, the order continues normally and CampaignId is submitted as null.
+                var $campaign = $c('campaignDropdown');
+                var selectedStoreCampaigns = getFilteredCampaigns();
+                if (selectedStoreCampaigns && selectedStoreCampaigns.length > 0) {
+                    var selectedCampaignValue = $campaign.val();
+                    if ($campaign.data('touched') !== true || !selectedCampaignValue || selectedCampaignValue === 'none') {
+                        addErrorClassAndMessage($campaign, 'يرجى اختيار الإعلان لهذا المتجر.');
+                        showFormError('يرجى اختيار الإعلان لهذا المتجر.');
+                        renderCampaignGallery();
+                        event.preventDefault();
+                        return false;
+                    }
+                }
+                // لا نوقف أول ضغطة بسبب فحص السعر الحي؛ الفحص الحاسم موجود في السيرفر أثناء الحفظ.
+                // لو السعر أقل من الحد الأدنى، السيرفر سيرجع رسالة واضحة ونرجع الزر يشتغل فورًا.
+
+                // Sentinel "none" → submit as empty so server stores null CampaignId
+                if ($campaign.val() === 'none') {
+                    $campaign.find('option[value="none"]').val('');
+                    $campaign.val('');
+                }
+                // Disable the productDropdown picker so its SelectedWarehouses[0].WarehouseId
+                // does not collide with the appended row's hidden input during model binding
+                $c('productDropdown').prop('disabled', true);
+                $modalRoot.find('.closeFailedMessage').click(function () {
+                    $('#failedmessage').addClass('hidden').css('display', 'none');
+                });
+                lockCreateOrderSubmitButton();
+
+                // Proceed with AJAX request
+                var formData = new FormData(this);
+                // Capture how long the timer ran so the server can persist it on the order.
+                if (typeof window.lotusCreateOrderElapsedSec === 'number') {
+                    formData.set('CreationDurationSeconds', window.lotusCreateOrderElapsedSec);
+                }
+                // Normalize phone to local 0-prefix form using the exact country dial code
+                var cfg = COUNTRY_PHONE_CONFIG[country];
+                var normalizedPhone = phoneCheck.cleaned;
+                if (cfg) {
+                    var code = cfg.code;
+                    if (normalizedPhone.startsWith('00' + code)) {
+                        normalizedPhone = '0' + normalizedPhone.slice(('00' + code).length);
+                    } else if (normalizedPhone.startsWith('+' + code)) {
+                        normalizedPhone = '0' + normalizedPhone.slice(('+' + code).length);
+                    } else if (country === 'ليبيا' && /^9\d{8}$/.test(normalizedPhone)) {
+                        // Libya accepts local form with or without leading 0; canonicalize to "09…" on submit.
+                        normalizedPhone = '0' + normalizedPhone;
+                    }
+                }
+                formData.set('TelephoneNumber', normalizedPhone);
+                $.ajax({
+                    type: "POST",
+                    url: '@Url.Action("Create", "Order")', // Correctly formatted controller action
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (response) {
+                        if (response && response.message) {
+                            var errorMessage = response.message;
+
+                            // تظهر رسالة الخطأ فوق زر موافقة بدل بوب أب خطأ التنزيل.
+                            showFormError(errorMessage);
+
+                            // Server rejected the order — restore the form so the user can fix and resubmit.
+                            $c('productDropdown').prop('disabled', false);
+                            resetCreateOrderSubmitButton();
+                            $c('overlay').hide();
+                            $('#failedmessage').addClass('hidden').hide();
+                        } else {
+                            var orderId = response.orderId;
+                            $modalRoot.modal('hide');
+                            $c('printOrderLink').attr('href', '/pdf/printorder?ids=' + orderId);
+                            $('#successmessage').removeClass('hidden').css('display', 'block');
+                            $c('orderIDPlaceholder').text(orderId);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("AJAX Error:", status, error);
+
+                        var errorMessage = "حدث خطأ أثناء إرسال الطلب. الرجاء المحاولة مرة أخرى.";
+
+                        try {
+                            var response = xhr.responseJSON || JSON.parse(xhr.responseText || "{}");
+                            errorMessage = response.message || errorMessage;
+                        } catch (e) {
+                            if (xhr.responseText) {
+                                errorMessage = xhr.responseText;
+                            }
+                        }
+
+                        // تظهر الرسالة داخل الفورم فوق زر التأكيد بدل الـ popup/overlay.
+                        showFormError(errorMessage);
+
+                        // Server rejected the order — restore the form so the user can fix and resubmit.
+                        $c('productDropdown').prop('disabled', false);
+                        resetCreateOrderSubmitButton();
+                        $c('overlay').hide();
+                        $('#failedmessage').addClass('hidden').hide();
+                    }
+                });
+                event.preventDefault();
+            });
+
+            // ============================================================
+            // SPRITE CLOCK — counts up from 00:00, swapping digit images each tick.
+            //
+            // Architecture:
+            //   - Visual update runs on requestAnimationFrame so it stays smooth
+            //     and timestamp-driven (no drift if the tab is throttled).
+            //   - Audio ticks run on a self-rescheduling setTimeout chain. setTimeout
+            //     keeps firing in background tabs (clamped to ~1s by the browser, but
+            //     audio still plays). After 30s the tick rate becomes 2.5x (400ms) — the
+            //     audible cue we're in the "fast" zone. We exposed the elapsed seconds
+            //     as window.lotusCreateOrderElapsedSec so the form submit can capture
+            //     CreationDurationSeconds.
+            // ============================================================
+            // timerStart is a Unix timestamp in ms (Date.now()). Elapsed time is the
+            // wall-clock delta — independent of frame rate, animation throttling, or
+            // tab focus. The visible digits advance on a 1000ms setInterval; the audio
+            // ticks run on a self-rescheduling setTimeout chain (still wall-clock-based).
+            var timerStart = 0;
+            var displayIntervalId = null;
+            var tickTimeoutId = null;
+            var nextTickAt = 0;
+            var FAST_THRESHOLD_MS = 30000;
+            var BASE_TICK_MS = 1000;
+            var FAST_TICK_MS = 400; // x2.5 of base 1000ms
+            var lastDigitsKey = '';
+            // Pre-cache <audio> elements for each digit src so swapping is just a src
+            // change with the browser already having the bytes.
+            var tickAudio = new Audio('/clock/beep555.mp3');
+            tickAudio.preload = 'auto';
+
+            function playTick() {
+                try {
+                    // Cloning lets overlapping ticks play (matters in the fast zone).
+                    var a = tickAudio.cloneNode(true);
+                    a.volume = 1.0;
+                    a.play().catch(function () { /* autoplay blocked — silent until first interaction */ });
+                } catch (e) { /* ignore */ }
+            }
+            function setDigit(slotIndex, digit) {
+                var img = document.querySelector('#Create .sprite-clock-d' + slotIndex);
+                if (!img) return;
+                var src = '/clock/' + digit + '.png';
+                if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+            }
+            function renderDigits(totalSec) {
+                // Cap at 99:59 — the sprite has 4 digit slots only.
+                var capped = Math.min(totalSec, 99 * 60 + 59);
+                var m = Math.floor(capped / 60);
+                var s = capped % 60;
+                var d0 = Math.floor(m / 10);
+                var d1 = m % 10;
+                var d2 = Math.floor(s / 10);
+                var d3 = s % 10;
+                var key = '' + d0 + d1 + d2 + d3;
+                if (key === lastDigitsKey) return;
+                lastDigitsKey = key;
+                setDigit(0, d0);
+                setDigit(1, d1);
+                setDigit(2, d2);
+                setDigit(3, d3);
+            }
+            function updateDisplay() {
+                var elapsedMs = Date.now() - timerStart;
+                if (elapsedMs < 0) elapsedMs = 0;
+                var totalSec = Math.floor(elapsedMs / 1000);
+                window.lotusCreateOrderElapsedSec = totalSec;
+                var $timer = $c('createOrderTimer');
+                renderDigits(totalSec);
+                $timer.toggleClass('fast', elapsedMs >= FAST_THRESHOLD_MS);
+            }
+            function scheduleNextTick() {
+                var elapsedMs = Date.now() - timerStart;
+                var inFast = elapsedMs >= FAST_THRESHOLD_MS;
+                var step = inFast ? FAST_TICK_MS : BASE_TICK_MS;
+                // Absolute wall-clock scheduling: if a tab was throttled and we fell
+                // behind, snap forward instead of firing a backlog of ticks.
+                var now = Date.now();
+                if (nextTickAt < now) nextTickAt = now;
+                nextTickAt += step;
+                var delay = Math.max(0, nextTickAt - now);
+                tickTimeoutId = setTimeout(function () {
+                    playTick();
+                    scheduleNextTick();
+                }, delay);
+            }
+            function startCreateOrderTimer() {
+                stopCreateOrderTimer();
+                timerStart = Date.now();
+                nextTickAt = timerStart;
+                lastDigitsKey = '';
+                window.lotusCreateOrderElapsedSec = 0;
+                $c('createOrderTimer').removeClass('fast');
+                renderDigits(0);
+                updateDisplay();
+                displayIntervalId = setInterval(updateDisplay, 1000);
+                scheduleNextTick();
+            }
+            function stopCreateOrderTimer() {
+                if (displayIntervalId) { clearInterval(displayIntervalId); displayIntervalId = null; }
+                if (tickTimeoutId) { clearTimeout(tickTimeoutId); tickTimeoutId = null; }
+            }
+            $modalRoot.on('shown.bs.modal', startCreateOrderTimer);
+            $modalRoot.on('hidden.bs.modal', stopCreateOrderTimer);
+            // Reset the disclosure tree on close so the next open starts gated, regardless
+            // of leftover `.success` class state from the previous session.
+            $modalRoot.on('hidden.bs.modal', function () {
+                hideFromStep('phone1');
+            });
+            // If modal is already visible when this script loads (AJAX-injected open), start now
+            if ($modalRoot.hasClass('show') || $modalRoot.is(':visible')) {
+                startCreateOrderTimer();
+            }
+        });
+    })();
+</script>
+
+
+<style>
+    /* تعطيل البوب أب القديم نهائيًا عشان مايغطيش المدخلات ولا يمنع Ctrl+V */
+    .legacy-popup-error-disabled,
+    #failedmessage.legacy-popup-error-disabled,
+    #failedmessageEdit.legacy-popup-error-disabled {
+        display: none !important;
+        pointer-events: none !important;
+        visibility: hidden !important;
+    }
+
+    /* رسالة الخطأ الجديدة تظهر فوق زر التأكيد مباشرة */
+    .form-inline-error-message {
+        margin: 12px auto 14px auto !important;
+        max-width: 92% !important;
+    }
+</style>
+
+
+<style>
+    /* تعطيل بوب أب خطأ التنزيل القديم نهائيًا */
+    #failedmessage.legacy-popup-error-disabled,
+    #failedmessage {
+        display: none !important;
+        pointer-events: none !important;
+        visibility: hidden !important;
+    }
+
+    /* رسالة الخطأ الجديدة فوق زر الموافقة */
+    .form-inline-error-message {
+        display: none;
+        width: 92%;
+        margin: 12px auto 14px auto !important;
+        padding: 12px 16px;
+        border-radius: 14px;
+        background: #fee2e2;
+        border: 1px solid #fecaca;
+        color: #991b1b;
+        font-weight: 900;
+        font-size: 14px;
+        line-height: 1.8;
+        box-shadow: 0 8px 18px rgba(153, 27, 27, 0.12);
+        direction: rtl;
+        text-align: right;
+        position: relative;
+    }
+
+        .form-inline-error-message::before {
+            content: "⚠";
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            margin-left: 8px;
+            border-radius: 50%;
+            background: #dc2626;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 900;
+            vertical-align: middle;
+        }
+
+        .form-inline-error-message.show-error {
+            display: block;
+        }
+
+    .form-inline-error-close {
+        position: absolute;
+        top: 8px;
+        left: 10px;
+        border: 0;
+        background: transparent;
+        color: #991b1b;
+        font-size: 18px;
+        font-weight: 900;
+        cursor: pointer;
+        line-height: 1;
+    }
+</style>

@@ -1,0 +1,3760 @@
+﻿@model lotus_blue.Models.ViewModel.HomeViewModel;
+@using lotus_blue.Models;
+@using lotus_blue.OrderStatus;
+@using static lotus_blue.Models.Common
+@inject lotus_blue.Services.DeliveryCompanyService DeliveryCompanyService
+
+@functions {
+    // Normalize a stored phone number to local-dialing form "0<national>"
+    // (e.g. Iraq 07xxxxxxxx, Turkey 05xxxxxxxxx, UAE 05xxxxxxxx).
+    // Used for countries whose local format INCLUDES a leading 0.
+    // For countries without a leading 0 (Qatar, Oman, Bahrain, Kuwait, Tunisia)
+    // use StripCountryCodeAndLeadingZero instead.
+    static string NormalizePhoneForDisplay(string raw, string countryName)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return raw ?? string.Empty;
+        var cleaned = new string(raw.Where(c => c != '-' && !char.IsWhiteSpace(c)).ToArray());
+        if (string.IsNullOrEmpty(cleaned)) return string.Empty;
+
+        string code = Common.GetPhoneNumberCodeByCountryStatus(countryName);
+        if (string.IsNullOrEmpty(code) || code == "Country not found" || code == "Invalid country name")
+            return cleaned;
+
+        string digits = code.TrimStart('+');
+
+        // Strip international prefixes so we're left with national digits.
+        if (cleaned.StartsWith("00" + digits))
+            cleaned = cleaned.Substring(2 + digits.Length);
+        else if (cleaned.StartsWith("+" + digits))
+            cleaned = cleaned.Substring(1 + digits.Length);
+
+        // Local-dialing form: single leading 0.
+        if (!cleaned.StartsWith("0"))
+            cleaned = "0" + cleaned;
+
+        return cleaned;
+    }
+
+    // Phone form stripped for a copy action that should not include the country code.
+    // Libya uses this: clicking the phone copies the subscriber number only (no +218, no leading 0).
+    static string StripCountryCodeAndLeadingZero(string raw, string countryName)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return raw ?? string.Empty;
+        var cleaned = new string(raw.Where(c => c != '⁦' && c != '⁧' && c != '⁨' && c != '⁩' && c != '-' && !char.IsWhiteSpace(c)).ToArray());
+        if (string.IsNullOrEmpty(cleaned)) return string.Empty;
+
+        string code = Common.GetPhoneNumberCodeByCountryStatus(countryName);
+        string digits = string.IsNullOrEmpty(code) ? string.Empty : code.TrimStart('+');
+
+        if (!string.IsNullOrEmpty(digits))
+        {
+            if (cleaned.StartsWith("00" + digits)) cleaned = cleaned.Substring(2 + digits.Length);
+            else if (cleaned.StartsWith("+" + digits)) cleaned = cleaned.Substring(1 + digits.Length);
+        }
+        if (cleaned.StartsWith("0")) cleaned = cleaned.Substring(1);
+        return cleaned;
+    }
+}
+
+@{
+    Layout = "AllOrdersLayout";
+    ViewData["Title"] = "الطلبات";
+}
+
+<meta name="format-detection" content="telephone=no" />
+<link rel="stylesheet" href="/css/toastify.css" />
+<script src="/js/toastify-js.js"></script>
+
+
+<style id="order-index-pagination-style">
+    #pagination-link .nav-nav {
+    width: auto !important;
+    }
+
+    #pagination-link .pagination {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    }
+
+    #pagination-link .page-item {
+    margin: 0 !important;
+    }
+
+    #pagination-link .page-link {
+    min-width: 39px !important;
+    height: 36px !important;
+    padding: 0 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    border: 1px solid #e5e7eb !important;
+    background: #ffffff !important;
+    color: #64748b !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08) !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    transition: background .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease !important;
+    }
+
+    #pagination-link .pagination-arrow-svg {
+    width: 17px !important;
+    height: 17px !important;
+    display: block !important;
+    fill: none !important;
+    stroke: #18a088 !important;
+    stroke-width: 2.4 !important;
+    stroke-linecap: round !important;
+    stroke-linejoin: round !important;
+    }
+
+    #pagination-link .page-item:not(.active):not(.disabled) .page-link:hover,
+    #pagination-link .page-item:not(.active):not(.disabled) .page-link:focus {
+    background: #e9fbe9 !important;
+    border-color: #bff0bf !important;
+    color: #159447 !important;
+    box-shadow: 0 2px 7px rgba(21, 148, 71, 0.14) !important;
+    }
+
+    #pagination-link .page-item.active .page-link {
+    background: #18a088 !important;
+    border-color: #18a088 !important;
+    color: #ffffff !important;
+    box-shadow: 0 3px 9px rgba(24, 160, 136, 0.22) !important;
+    }
+
+    #pagination-link .page-item.disabled .page-link {
+    opacity: .55 !important;
+    cursor: default !important;
+    pointer-events: none !important;
+    background: #ffffff !important;
+    color: #94a3b8 !important;
+    }
+
+    #pagination-link .pagination-ellipsis .page-link {
+    cursor: default !important;
+    pointer-events: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #64748b !important;
+    }
+
+    @@media (max-width: 576px) {
+    #pagination-link .pagination {
+    gap: 5px !important;
+    }
+
+    #pagination-link .page-link {
+    min-width: 34px !important;
+    height: 33px !important;
+    padding: 0 7px !important;
+    font-size: 12px !important;
+    }
+    }
+</style>
+
+
+<style id="order-index-status-badge-style">
+    .delivery-assign-wrapper {
+    display: none !important;
+    }
+
+    .order-status-cell {
+    overflow: visible !important;
+    text-align: center !important;
+    }
+
+    .order-status-badge-wrapper {
+    position: relative !important;
+    display: inline-block !important;
+    overflow: visible !important;
+    max-width: 100% !important;
+    padding-top: 2px !important;
+    }
+
+    .order-status-badge {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0.32rem 0.55rem;
+    border-radius: 29px;
+    font-size: clamp(12px, 0.72vw, 13px);
+    font-weight: 700;
+    line-height: 1.35;
+    }
+
+    .order-status--green-v2 {
+    background: rgba(48, 203, 82, 0.18);
+    color: #30cb52;
+    }
+
+    .order-status--red {
+    background: rgba(254, 0, 23, 0.15);
+    color: #fe0017;
+    }
+
+    .order-status--blue {
+    background: rgba(25, 112, 241, 0.15);
+    color: #1970f1;
+    }
+
+    .order-status--yellow-v2 {
+    background: rgba(233, 205, 84, 0.28);
+    color: #b8983a;
+    }
+</style>
+
+
+<style id="employee-filter-select2-icon-style">
+    .employee-filter-option {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 7px !important;
+    direction: rtl !important;
+    color: #111827 !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    }
+
+    .employee-filter-option svg {
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px !important;
+    display: inline-block !important;
+    fill: #18a088 !important;
+    }
+
+    #select2-EmployeeId-container .employee-filter-option {
+    width: 100% !important;
+    }
+</style>
+
+<div class=" d-flex justify-content-start mt-3>
+
+    <a class="btn  my-2 me-4  shadow" href="/Order/OrdersInvoice">
+    فواتير التجهيز
+</a>
+
+@if (!User.IsInRole("DeliveryCompany") && !User.IsInRole("DeliveryRepresentative"))
+{
+    <a id="printButton" class="btn print-hide  my-2 me-4  shadow">
+
+        سحب فاتورة حسابات
+    </a>
+}
+
+@if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector"))
+{
+    <a class="btn  my-2 me-4  shadow" href="order/HiddenOrders">
+        الطلبات المخفية
+    </a>
+}
+
+@if (User.IsInRole("DeliveryCompany") || User.IsInRole("DeliveryRepresentative") || User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+{
+    <a id="printButtonDelivery" class="btn print-hide my-2 me-4 shadow">سحب فاتورة عميل</a>
+}
+
+@if (User.IsInRole("DeliveryCompany") || User.IsInRole("DeliveryRepresentative") || User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+{
+    <a id="printButtonDelivery2" class="btn print-hide  my-2 me-4  shadow">
+        سحب فاتورة توصيل
+    </a>
+}
+
+@if (User.IsInRole("Admin"))
+{
+    <a id="DeleteOrderStatuses" class="btn print-hide  my-2 me-4  shadow">
+        حذف الحالات
+    </a>
+}
+
+
+
+</div>
+
+
+
+<div class="container-fluid mt-3">
+
+    <div class="row g-2">
+
+        <div class="col-12 col-md-3">
+            <select id="OrderStatusId" name="OrderStatus" class="form-control drop-down-design">
+            </select>
+        </div>
+
+        @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+        {
+            <div class="col-12 col-md-3">
+                <select id="CountryId" name="Country" class="form-control drop-down-design">
+                </select>
+            </div>
+        }
+
+        @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+        {
+            <div class="col-12 col-md-3">
+                <select id="CityId" name="City" class="form-control drop-down-design">
+                </select>
+            </div>
+        }
+
+        <div class="col-12 col-md-3">
+            <select id="ManufacturingCompanyId" name="ManufacturingCompany" class="form-control drop-down-design">
+            </select>
+        </div>
+
+        @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+        {
+            <div class="col-12 col-md-3">
+                <select id="DeliveryCompanyId" name="DeliveryCompany" class="form-control drop-down-design">
+                </select>
+            </div>
+        }
+
+        @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+        {
+            <div class="col-12 col-md-3">
+                <select id="DeliveryRepresentativeId" name="DeliveryRepresentative" class="form-control drop-down-design">
+                </select>
+            </div>
+        }
+
+        <div class="col-12 col-md-3">
+            <select id="OrderSourceId" name="OrderSource" class="form-control drop-down-design">
+            </select>
+        </div>
+
+        @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+        {
+            <div class="col-12 col-md-3">
+                <select id="EmployeeId" name="EmployeeId" class="form-control drop-down-design">
+                    <option value="">فلترة حسب الموظف</option>
+                </select>
+            </div>
+        }
+
+        <div class="col-12 col-md-3" id="failureReasonFilterRow" style="display: none;">
+            <select id="FailureReasonId" name="FailureReason" class="form-control drop-down-design filter-btn">
+            </select>
+        </div>
+
+    </div>
+
+</div>
+
+
+<div class="d-flex mb-3   mt-3 justify-content-center align-items-center ">
+    <div class="custom-width-search-input pb-5 w-sm-100">
+        <div class="input-group flex-grow-1 input_with_icon">
+            <input type="text" id="searchInput" name="search" style="unicode-bidi: plaintext;" class="pe-5 w-100 text-dark custom-box-shadow
+            Search search-input" placeholder="ابحث عن الطلبات...">
+
+            <span class="icon search-icon">
+                <i class="fa-solid text-green fa-magnifying-glass fa-rotate-90"></i>
+            </span>
+            <span id="searchingshow" class="icon clear-search-icon cursor-pointer">
+                <i class="fa-solid text-green text-green fa-circle-xmark "></i>
+            </span>
+        </div>
+    </div>
+</div>
+
+<div id="multiOrderSplitWrapper" class="multi-order-split-wrapper d-none">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+        <div id="multiOrderSplitMessage" class="text-muted fw-bold"></div>
+        <button type="button" id="multiOrderSplitClose" class="btn btn-sm btn-outline-secondary">
+            عرض الجدول
+        </button>
+    </div>
+    <div id="multiOrderSplitGrid" class="multi-order-split-grid"></div>
+</div>
+
+@if (Model.DebugQuery != null)
+{
+    <div id="debugQueryWrapper" class="mb-2 mt-1 px-2">
+        <pre style="background:#1e1e1e;color:#d4d4d4;padding:12px;border-radius:6px;font-size:0.78em;overflow-x:auto;white-space:pre-wrap;word-break:break-all;max-height:400px;overflow-y:auto;">@Model.DebugQuery</pre>
+    </div>
+}
+
+<div id="ordersListToolbar">
+    <div class="d-flex flex-wrap justify-content-between">
+        <div class="d-flex align-items-center">
+            @if (User.IsInRole("Admin") || User.IsInRole("ExecutiveDirector") || User.IsInRole("FollowUpDepartment"))
+            {
+
+
+                <div class="text-nowrap delivery-assign-wrapper" style="display: none !important;">
+                    <select id="FilteredDeliveryCompanyId" name="FilteredDeliveryCompany" class="form-control drop-down-design" style="display: none !important;">
+                        <option value="">تعيين الطلبات للتوصيل </option>
+                    </select>
+
+                </div>
+
+                <div class=" text-nowrap " id="assignDelegateWrapper" style="display: none;">
+                    <select id="AssignDelegateEmployeeId" name="AssignDelegateEmployee" class="form-control drop-down-design" style="display: none;">
+                        <option value="-1" disabled selected>تعيين الموظف بالنيابة</option>
+                    </select>
+                </div>
+            }
+
+        </div>
+        <div class="form-group d-flex align-items-center">
+            <label for="pageSize" class="me-2">أظهر:</label>
+            <select id="pageSize" name="pageSize" class="form-control me-2">
+                @foreach (var size in new int?[] { 10, 20, 35, 50, 100, 200, 300, 500, 1000, 2000 })
+                {
+                    if (Model.PaginationViewModel.PageSize == size)
+                    {
+                        <option value="@size" selected>@size</option>
+                    }
+                    else
+                    {
+                        <option value="@size">@size</option>
+                    }
+                }
+            </select>
+            <label for="pageSize">مدخلات</label>
+        </div>
+    </div>
+</div>
+
+
+
+<div id="OrderStatus">
+    <div class="btn btn-outline-primary status status-0 my-2 me-4 shadow" role="button" data-status="طلب_جديد" style="display: none;">
+        طلب جديد
+    </div>
+    <div class="btn btn-outline-primary status status-1 my-2 me-4 shadow" role="button" data-status="تم_التجهيز" style="display: none;">
+        تم التجهيز
+    </div>
+    <div class="btn btn-outline-warning status status-2 my-2 me-4 shadow" role="button" data-status="قيد_التوصيل" style="display: none;">
+        قيد التوصيل
+    </div>
+    <div class="btn my-2 btn-outline-success status status-3 me-4 shadow" role="button" data-status="تم_التسليم" style="display: none;">
+        تم التسليم
+    </div>
+    <div class="btn my-2 status btn-outline-danger status-4 me-4 shadow" role="button" data-status="فشل_التسليم" style="display: none;">
+        فشل التسليم
+    </div>
+    <div class="btn my-2 btn-outline-danger  me-4 shadow" id="advanceFailureStatusBtn" style="display: none;">
+        <span id="advanceFailureStatusBtnText">التقدم للحالة التالية</span>
+    </div>
+    <div class="btn my-2 status btn-outline-danger status-5 me-4 shadow" role="button" data-status="انتظار_المعالجة" style="display: none;">
+        انتظار المعالجة
+    </div>
+    <div class="btn my-2 status btn-outline-danger status-16 me-4 shadow" role="button" data-status="الطلبات_المعلقة" style="display: none;">
+        الطلبات المعلقة
+    </div>
+    <div class="btn my-2 status btn-outline-danger status-6 me-4 shadow" role="button" data-status="الطلبات_المرجعة" style="display: none;">
+        الطلبات المرجعة
+    </div>
+    <div class="btn my-2 status btn-outline-danger status-8 me-4 shadow" role="button" data-status="الطلبات_الغير_معرفة" style="display: none;">
+        الطلبات الغير معرفة
+    </div>
+
+    <div class="btn my-2 status status-18 me-4 shadow" role="button" data-status="الطلبات_الغير_مكتملة" style="display: none; background-color: #45BBE9; color: white;">
+        الطلبات الغير مكتلمة
+    </div>
+
+    <div class="btn my-2 status btn-outline-danger status-9 me-4 shadow" role="button" data-status="أرشيف_المرجع" style="display: none;">
+        أرشيف المرجع
+    </div>
+
+    @if (User.IsInRole("Admin"))
+    {
+        <div class="btn my-2 status btn-outline-success status-7 me-4 shadow" role="button" data-status="تم_تحديث_الرصيد" style="display: none;">
+            تم تحديث الرصيد
+        </div>
+    }
+</div>
+
+
+
+@if (Model != null)
+{
+    <table id="ordersTable" class="table  mt-2 mb-0 mb-lg-2 mx-auto width-99">
+        <thead>
+            <tr>
+                <th class="order-select-col">
+                    <input type="checkbox" id="selectAll" />
+                </th>
+                <th>رقم الوصل</th>
+                <th class="d-none d-md-table-cell order-customer-name-col">الاسم</th>
+                <th>رقم الهاتف</th>
+                <th class="d-none d-md-table-cell">التاريخ</th>
+                <th class="d-none d-md-table-cell">الدولة</th>
+                <th class="d-none d-md-table-cell">المدينة</th>
+                <th class="d-none d-md-table-cell">الشركة المصنعة</th>
+                <th class="d-none d-md-table-cell">شركة التوصيل</th>
+                <th class="d-none d-md-table-cell">اخر تحديث</th>
+                <th class="d-none d-md-table-cell"> حالة الطلب </th>
+
+                <th>قيمة المبلغ</th>
+                <th class="d-none d-md-table-cell order-message-col">  مراسلة </th>
+                <th class="d-none d-lg-table-cell products-tooltip-header">المنتجات</th>
+                @if (Model.ShowFailureReasonColumn)
+                {
+                    <th class="d-none d-md-table-cell">أسباب الفشل</th>
+                }
+
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var order in Model.PaginationViewModel.Items)
+            {
+                var statusClass = Common.GetOrderStatusClass(order.OrderStatus);
+                var orderCountry = order.Country.ToString();
+                var stripCountryCodeForDisplay = order.Country == Countries.البحرين
+                    || order.Country == Countries.الكويت
+                    || order.Country == Countries.سلطنة_عمان
+                    || order.Country == Countries.قطر
+                    || order.Country == Countries.تونس;
+                var phoneDisplay = stripCountryCodeForDisplay
+                    ? StripCountryCodeAndLeadingZero(order.TelephoneNumber, orderCountry)
+                    : NormalizePhoneForDisplay(order.TelephoneNumber, orderCountry);
+                var phoneCopy = (order.Country == Countries.ليبيا || stripCountryCodeForDisplay)
+                    ? StripCountryCodeAndLeadingZero(order.TelephoneNumber, orderCountry)
+                    : phoneDisplay;
+
+                <tr class="order-row background-white-green pointer" data-url="@Url.Action("details", "order", new { id = order.Id })" data-order-id="@order.Id" data-order-status="@order.OrderStatus" data-failure-reason="@order.FailureReasonDisplay">
+
+                    <td class="order-select-col">
+                        <input type="checkbox" name="selectedOrders" value="@order.Id" class="order-checkbox" />
+                    </td>
+                    <td class="text-green text-nowrap copyable" data-copy-text="*@order.Id" data-copy-label="رقم الوصل">
+                        <i class="fa-solid f-s-14 text-green fa-cube me-1"></i> @order.Id
+                    </td>
+
+                    <td class="text-nowrap d-none d-md-table-cell order-customer-name-col copyable" data-copy-text="@order.CustomerName" data-copy-label="اسم العميل">@order.CustomerName</td>
+                    <td class="phone-cell copyable" data-copy-text="@phoneDisplay" data-copy-label="رقم الهاتف">@phoneDisplay</td>
+                    @if (order.OrderStatus == OrderStatusEnum.تم_المعالجة)
+                    {
+                        <td class="d-none d-md-table-cell copyable" data-copy-text="@(order.FixedOrderDate?.ToString("yyyy-MM-dd"))" data-copy-label="التاريخ">@order.FixedOrderDate?.ToString("yyyy-MM-dd ")</td>
+                    }
+                    else
+                    {
+                        <td class="d-none d-md-table-cell copyable" data-copy-text="@order.CreatedDate.ToString("yyyy-MM-dd")" data-copy-label="التاريخ">@order.CreatedDate.ToString("yyyy-MM-dd ")</td>
+                    }
+                    <td class="text-end d-none d-md-table-cell text-nowrap copyable" data-copy-text="@order.Country" data-copy-label="الدولة">
+                        <img loading="lazy" class="pb-1  icon-size-standard" src="@Model.CountryImageUrls[(order.Country.ToString())]" />
+                        @order.Country
+                    </td>
+                    <td class="d-none d-md-table-cell copyable" data-copy-text="@order.State" data-copy-label="المدينة">@order.State</td>
+
+                    <td class="text-end d-none d-md-table-cell pe-5 copyable" data-copy-text="@(order.ManufacturingCompany != null && !string.IsNullOrEmpty(order.ManufacturingCompany.Name) ? order.ManufacturingCompany.Name : Model.StoreNameFromSbS)" data-copy-label="الشركة المصنعة">
+                        @if (order.ManufacturingCompany != null && !string.IsNullOrEmpty(order.ManufacturingCompany.Name))
+                        {
+                            <img loading="lazy" class="pb-1 icon-size-standard" src="@order.ManufacturingCompany.Logo" />
+                            @order.ManufacturingCompany.Name
+                        }
+                        else
+                        {
+                            <span>@Model.StoreNameFromSbS</span>
+                        }
+                    </td>
+                    <td class="text-end d-none d-md-table-cell copyable" data-copy-text="@order.DeliveryCompany.Name" data-copy-label="شركة التوصيل">
+                        <img loading="lazy" class="pb-1 icon-size-standard" src="@order.DeliveryCompany.Logo" />
+                        @order.DeliveryCompany.Name
+                    </td>
+                    <td class="d-none d-md-table-cell copyable" data-copy-text="@(order.LastEditedDate?.ToString("yyyy-MM-dd"))" data-copy-label="اخر تحديث">@order.LastEditedDate?.ToString("yyyy-MM-dd")</td>
+                    <td class="text-end text-nowrap copyable order-status-cell" data-copy-text="@(order.OrderStatus.ToString().Replace("_", " "))" data-copy-label="حالة الطلب">
+                        <span class="order-status-badge-wrapper">
+                            <span class="order-status-badge order-status--@(statusClass.Replace("text-", ""))">
+                                @order.OrderStatus.ToString().Replace("_", " ")
+                            </span>
+                        </span>
+                    </td>
+
+                    <td class="text-start text-nowrap copyable @statusClass ltr" data-copy-text="@order.TotalPrice.ToString("N0")" data-copy-label="قيمة المبلغ">
+                        @if (order.IsPaid)
+                        {
+                            <img src="/static/documentgreen.svg" class="fatura" width="15" style="padding-top:7px !important" />
+                        }
+                        else
+                        {
+                            <img src="/static/document.svg" class="fatura" width="15" style="padding-top:7px !important" />
+                        }
+                        @order.TotalPrice.ToString("N0")
+                        <span>@Model.CurrencySymbols[(order.Country.ToString())]</span>
+                    </td>
+
+                    @{
+                        string country = orderCountry;
+                        string phoneNumberCode = Common.GetPhoneNumberCodeByCountryStatus(country);
+                        string phoneNumber = order.TelephoneNumber; // raw value used for external-link hrefs
+                        string phoneNumberUrl = $"https://wa.me/{phoneNumberCode}{phoneNumber}";
+                        string telephoneUrl = $"tel:{phoneNumberCode}{phoneNumber}";
+
+                    }
+                    <td class="order-message-col">
+                        <div class="d-flex">
+                            @if (!string.IsNullOrEmpty(order.chatUrl))
+                            {
+                                <a target="_blank" href="@order.chatUrl" class="btn text-white background-whiteblue me-2 text-nowrap">
+                                    <span>
+                                        <i class="fa-light fa-comment"></i>
+                                    </span>
+                                    مسنجر
+                                </a>
+                            }
+                            <a target="_blank" href="@phoneNumberUrl" class="btn text-white me-3  text-nowrap" style="background-color:#2ab149;">
+                                <span>
+                                    <i class="fa-light fa-comment "></i>
+                                </span>
+                                واتساب
+                            </a>
+                        </div>
+                    </td>
+                    <td class="d-none d-lg-table-cell products-tooltip-cell text-center" onclick="event.stopPropagation();" onmousedown="event.stopPropagation();">
+                        <div class="products-tooltip-wrap" data-order-id="@order.Id" data-products-loaded="false">
+                            <span class="products-store-trigger" aria-label="المنتجات" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;overflow:hidden;">
+                                <svg class="products-store-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="width:17px;height:17px;display:block;fill:currentColor;color:#129838;">
+                                    <path d="M4 9.5 5.2 4h13.6L20 9.5v1.2c0 .9-.55 1.7-1.35 2.05V20h-3.9v-4.2h-5.5V20h-3.9v-7.25A2.25 2.25 0 0 1 4 10.7V9.5Zm2.8-3.7-.75 3.4h11.9l-.75-3.4H6.8Zm.25 7.35V18.2h1.55V14h6.8v4.2h1.55v-5.05c-.65-.05-1.25-.35-1.65-.82-.42.5-1.05.83-1.77.83-.7 0-1.32-.31-1.73-.8-.42.49-1.04.8-1.74.8-.72 0-1.35-.33-1.77-.83-.31.36-.75.64-1.24.77Z" />
+                                </svg>
+                            </span>
+                            <div class="products-tooltip-cloud" hidden style="display:none !important;">
+                                <div class="products-tooltip-title">المنتجات داخل الطلب</div>
+                                <div class="products-tooltip-items">
+                                    <div class="products-tooltip-loading">مرري هنا لتحميل المنتجات...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+
+                    @if (Model.ShowFailureReasonColumn)
+                    {
+                        var needsFailureReason = OrderStatusHelper.IsFailureStatus(order.OrderStatus)
+                            || order.OrderStatus == OrderStatusEnum.انتظار_المعالجة
+                            || order.OrderStatus == OrderStatusEnum.الطلبات_المرجعة
+                            || order.OrderStatus == OrderStatusEnum.أرشيف_المرجع
+                            || order.OrderStatus == OrderStatusEnum.قيد_التوصيل;
+
+                        if (needsFailureReason)
+                        {
+                            var existingReason = order.FailureReasonDisplay;
+                            bool reasonMatchesOption = OrderStatusHelper.IsValidFailureReason(existingReason);
+
+                            <td class="d-none d-md-table-cell text-nowrap" onclick="event.stopPropagation()">
+                                <div style="display: flex; flex-direction: row; gap: 16px; height: 100%; align-items: center;">
+                                    <select class="inline-failure-select form-control drop-down-design filter-btn"
+                                            data-order-id="@order.Id"
+                                            data-order-status="@((int)order.OrderStatus)"
+                                            data-preselect="@(reasonMatchesOption ? existingReason : "")">
+                                    </select>
+                                    @if (!string.IsNullOrEmpty(existingReason))
+                                    {
+                                        <div class="text-danger fw-bold copyable" style="font-size:0.85em;cursor:pointer;" data-copy-text="@existingReason" data-copy-label="سبب الفشل">@existingReason</div>
+                                    }
+                                    <button class="clear-reason-btn" style="display:none;" title="مسح سبب الفشل" onclick="return clearPendingReason(this, event);">
+                                        <img class="cr-default" src="/mainicons/hide order.svg" alt="clear" width="11" height="11" />
+                                        <img class="cr-hover" src="/mainicons/hide order hover.svg" alt="clear" width="11" height="11" />
+                                    </button>
+                                </div>
+                            </td>
+                        }
+                        else
+                        {
+                            <td class="d-none d-md-table-cell"></td>
+                        }
+                    }
+
+                </tr>
+            }
+        </tbody>
+    </table>
+
+}
+
+<div id="modal-container"></div>
+
+<div id="pagination-link" class="mt-0 container-fluid">
+    <div class="d-flex justify-content-center align-items-center flex-wrap">
+
+        <p class="text-start pt-2 total-items-display">@Model.PaginationViewModel.TotalItems عدد الطلبات</p>
+
+        <nav aria-label="Page navigation" class="mx-auto nav-nav">
+            <div class="d-flex justify-content-center">
+                <ul class="pagination p-0">
+                    @{
+                        int currentPage = Model.PaginationViewModel.CurrentPage;
+                        int totalPages = Model.PaginationViewModel.TotalPages;
+                        int previousPage = currentPage > 1 ? currentPage - 1 : 1;
+                        int nextPage = currentPage < totalPages ? currentPage + 1 : totalPages;
+                        var pagesToShow = new System.Collections.Generic.SortedSet<int>();
+
+                        if (totalPages <= 7)
+                        {
+                            for (int i = 1; i <= totalPages; i++)
+                            {
+                                pagesToShow.Add(i);
+                            }
+                        }
+                        else
+                        {
+                            int windowStart;
+                            int windowEnd;
+
+                            if (currentPage <= 2)
+                            {
+                                windowStart = 1;
+                                windowEnd = 3;
+                            }
+                            else if (currentPage >= totalPages - 1)
+                            {
+                                windowStart = totalPages - 2;
+                                windowEnd = totalPages;
+                            }
+                            else
+                            {
+                                windowStart = currentPage - 1;
+                                windowEnd = currentPage + 1;
+                            }
+
+                            for (int i = Math.Max(1, windowStart); i <= Math.Min(totalPages, windowEnd); i++)
+                            {
+                                pagesToShow.Add(i);
+                            }
+
+                            if (currentPage >= totalPages - 1)
+                            {
+                                for (int i = 1; i <= Math.Min(3, totalPages); i++)
+                                {
+                                    pagesToShow.Add(i);
+                                }
+                            }
+                            else
+                            {
+                                for (int i = Math.Max(1, totalPages - 2); i <= totalPages; i++)
+                                {
+                                    pagesToShow.Add(i);
+                                }
+                            }
+                        }
+
+                        int lastRenderedPage = 0;
+                    }
+
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <a class="page-link pointer" data-page="1" title="أول صفحة" aria-label="أول صفحة">
+                            <svg class="pagination-arrow-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path d="M13 6 L19 12 L13 18"></path>
+                                <path d="M5 6 L11 12 L5 18"></path>
+                            </svg>
+                        </a>
+                    </li>
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" data-page="@previousPage" title="الصفحة السابقة" aria-label="الصفحة السابقة">
+                            <svg class="pagination-arrow-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path d="M9 6 L15 12 L9 18"></path>
+                            </svg>
+                        </a>
+                    </li>
+
+                    @foreach (var pageNumber in pagesToShow)
+                    {
+                        if (lastRenderedPage > 0 && pageNumber - lastRenderedPage > 1)
+                        {
+                            <li class="page-item pagination-ellipsis disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        }
+
+                        <li class="numbers page-item @(currentPage == pageNumber ? "active" : "")">
+                            <a class="page-link" data-page="@pageNumber">@pageNumber</a>
+                        </li>
+
+                        lastRenderedPage = pageNumber;
+                    }
+
+                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <a class="page-link" data-page="@nextPage" title="الصفحة التالية" aria-label="الصفحة التالية">
+                            <svg class="pagination-arrow-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path d="M15 6 L9 12 L15 18"></path>
+                            </svg>
+                        </a>
+                    </li>
+                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <a class="page-link" data-page="@totalPages" title="آخر صفحة" aria-label="آخر صفحة">
+                            <svg class="pagination-arrow-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path d="M11 6 L5 12 L11 18"></path>
+                                <path d="M19 6 L13 12 L19 18"></path>
+                            </svg>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+
+
+        @if (User.IsInRole("Admin"))
+        {
+            @if (Model.TotalOrderPriceTRY != "0")
+            {
+                <div class="price-container-wrapper d-flex justify-content-end mt-2 mt-lg-0" id="priceContainer">
+                    @if (@Model.TotalOrderPrice != null)
+                    {
+                        <div class="custom-shadow ms-3 TotalOrderPrice" style="display:none;">
+                            <span class="total-price-display text-green">
+                                @Model.TotalOrderPrice
+                                @if (Model.SelectedCoutnry != null)
+                                {
+                                    @Common.GetCurrencyByCountryName(Model.SelectedCoutnry)
+                                }
+                            </span>
+                        </div>
+                    }
+
+                    <div class="custom-shadow ms-3">
+                        <span class="total-price-display-try text-green">
+                            @(Model.TotalOrderPriceTRY)
+                            TRY
+                        </span>
+                    </div>
+
+
+
+                    <div class="custom-shadow">
+                        <span class="total-price-display-usd text-green">
+                            @(Model.TotalOrderPriceDollar)
+                            USD
+                        </span>
+                    </div>
+
+
+                </div>
+            }
+        }
+
+
+
+    </div>
+</div>
+
+
+
+@await Html.PartialAsync("_Notification")
+
+
+<style>
+    .custom-shadow {
+    color: black;
+    box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2); /* Box shadow */
+    border-radius: 8px !important; /* Border radius for the entire <thead> */
+    padding-right: 1rem;
+    padding-left: 1rem;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    }
+
+
+    .input-group {
+    position: relative;
+    }
+
+    .search-input {
+    height: 2rem !important;
+    }
+
+    .icon {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    }
+
+    .search {
+    font-size: 18px;
+    font-weight: bold;
+    }
+
+    .p-relative {
+    position: relative;
+    }
+
+    .clear-search-icon {
+    left: 10px;
+    cursor: pointer;
+    }
+
+    .search-icon {
+    right: 15px;
+    z-index: 1;
+    }
+
+    .icon.search-icon {
+    z-index: 10 !important; /* Set a high z-index value */
+    }
+
+    #searchingshow {
+    visibility: hidden;
+    z-index: 9; /* Use a lower z-index value to ensure it's below the search-icon */
+    }
+
+    .clear-reason-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 0 4px rgba(255,0,0,.5);
+    flex-shrink: 0;
+    padding: 0;
+    }
+
+    .clear-reason-btn .cr-default {
+    display: block;
+    }
+
+    .clear-reason-btn .cr-hover {
+    display: none;
+    }
+
+    .clear-reason-btn:hover {
+    background: #ff0000;
+    box-shadow: 0 0 4px rgba(255,0,0,.5);
+    }
+
+    .clear-reason-btn:hover .cr-default {
+    display: none;
+    }
+
+    .clear-reason-btn:hover .cr-hover {
+    display: block;
+    }
+
+    /* Click-to-copy cells */
+    .copyable {
+    cursor: pointer;
+    transition: background 0.15s;
+    }
+
+    .copyable:hover {
+    background: #f0f0f0;
+    }
+
+    /* Phone column: force green and block iOS Safari's auto-detection styling */
+    .phone-cell,
+    .phone-cell a,
+    .phone-cell a:link,
+    .phone-cell a:visited,
+    .phone-cell a:hover,
+    .phone-cell a:active {
+    color: #2fcb51 !important;
+    direction: ltr !important;
+    text-decoration: none !important;
+    -webkit-text-decoration-color: transparent !important;
+    }
+
+
+    /* عند اختيار/فلترة سبب الفشل نخفي الاسم والمراسلة وعمود اختيار الصف الدائري فقط بدون تغيير أي منطق آخر */
+    #ordersTable.failure-reason-filter-active th.order-select-col,
+    #ordersTable.failure-reason-filter-active td.order-select-col,
+    #ordersTable.failure-reason-filter-active th.order-customer-name-col,
+    #ordersTable.failure-reason-filter-active td.order-customer-name-col,
+    #ordersTable.failure-reason-filter-active th.order-message-col,
+    #ordersTable.failure-reason-filter-active td.order-message-col {
+    display: none !important;
+    }
+
+    #ordersTable.failure-reason-filter-active #selectAll,
+    #ordersTable.failure-reason-filter-active input[type="checkbox"][name="selectedOrders"],
+    #ordersTable.failure-reason-filter-active .order-message-col a,
+    #ordersTable.failure-reason-filter-active .order-message-col button {
+    display: none !important;
+    }
+
+
+    #ordersTable tbody tr.failure-reason-selected-row .clear-reason-btn,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .clear-reason-btn {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    }
+
+    #ordersTable .products-tooltip-cell {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    position: relative !important;
+    z-index: 3;
+    }
+
+    #ordersTable tbody tr:hover,
+    #ordersTable tbody tr:hover .products-tooltip-cell {
+    position: relative !important;
+    z-index: 2147483000 !important;
+    }
+
+    .products-tooltip-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+    }
+
+    .products-store-trigger {
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(18, 152, 56, 0.12);
+    border: 1px solid rgba(18, 152, 56, 0.34);
+    color: #129838;
+    cursor: default;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.10);
+    position: relative;
+    overflow: hidden;
+    }
+
+    .products-store-svg {
+    width: 17px !important;
+    height: 17px !important;
+    display: block !important;
+    fill: currentColor !important;
+    color: #129838 !important;
+    position: relative !important;
+    z-index: 1 !important;
+    }
+
+    .products-store-trigger::before {
+    content: "";
+    position: absolute;
+    top: 4px;
+    left: 7px;
+    right: 7px;
+    height: 9px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.08));
+    pointer-events: none;
+    }
+
+    .products-tooltip-wrap.no-products .products-store-trigger {
+    opacity: .75;
+    background: #f3f4f6;
+    border-color: #e5e7eb;
+    color: #9ca3af;
+    }
+
+    .products-tooltip-wrap.no-products .products-store-svg {
+    color: #9ca3af !important;
+    }
+
+    .products-tooltip-cloud {
+    display: none !important;
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%) translateY(5px);
+    min-width: 265px;
+    max-width: 360px;
+    background: #ffffff;
+    border: 1px solid rgba(17, 24, 39, 0.12);
+    border-radius: 14px;
+    padding: 10px;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.18);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .15s ease, transform .15s ease, visibility .15s ease;
+    z-index: 2147483647 !important;
+    direction: rtl;
+    text-align: right;
+    white-space: normal;
+    }
+
+
+
+    .products-tooltip-cloud[hidden] {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    }
+
+    .products-tooltip-cloud::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -7px;
+    transform: translateX(-50%) rotate(45deg);
+    width: 14px;
+    height: 14px;
+    background: #ffffff;
+    border-right: 1px solid rgba(17, 24, 39, 0.12);
+    border-bottom: 1px solid rgba(17, 24, 39, 0.12);
+    }
+
+    .products-tooltip-wrap.is-tooltip-active .products-tooltip-cloud {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateX(-50%) translateY(0);
+    }
+
+    #ordersTable tbody tr:first-child .products-tooltip-cloud,
+    .products-tooltip-wrap.tooltip-open-down .products-tooltip-cloud {
+    bottom: auto !important;
+    top: calc(100% + 12px) !important;
+    transform: translateX(-50%) translateY(-5px) !important;
+    }
+
+    #ordersTable tbody tr:first-child .products-tooltip-cloud::after,
+    .products-tooltip-wrap.tooltip-open-down .products-tooltip-cloud::after {
+    bottom: auto !important;
+    top: -7px !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-left: 1px solid rgba(17, 24, 39, 0.12) !important;
+    border-top: 1px solid rgba(17, 24, 39, 0.12) !important;
+    }
+
+    #ordersTable tbody tr:first-child .products-tooltip-wrap.is-tooltip-active .products-tooltip-cloud,
+    .products-tooltip-wrap.tooltip-open-down.is-tooltip-active .products-tooltip-cloud {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateX(-50%) translateY(0) !important;
+    }
+
+    .products-tooltip-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #18a088;
+    padding: 0 2px 7px;
+    border-bottom: 1px solid #eef2f7;
+    margin-bottom: 8px;
+    }
+
+    .product-tooltip-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 4px;
+    border-radius: 10px;
+    }
+
+    .product-tooltip-row + .product-tooltip-row {
+    border-top: 1px solid #f1f5f9;
+    }
+
+    .product-tooltip-image,
+    .product-tooltip-image-placeholder {
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid #e5e7eb;
+    background: #f8fafc;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    }
+
+    .product-tooltip-name {
+    color: #111827;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.35;
+    max-width: 245px;
+    white-space: normal;
+    }
+
+    .product-tooltip-qty {
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 400;
+    margin-top: 3px;
+    }
+
+    .products-tooltip-empty,
+    .products-tooltip-loading {
+    color: #6b7280;
+    font-size: 12px;
+    padding: 6px 4px;
+    text-align: center;
+    }
+
+
+
+    /* Multi-order split search results */
+    .multi-order-split-wrapper {
+    width: 100%;
+    padding: 0 10px 18px;
+    position: relative;
+    z-index: 20;
+    background: #f8fbfa;
+    }
+
+    .multi-order-split-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    direction: rtl;
+    align-items: stretch;
+    }
+
+    .multi-order-card {
+    background: #fff;
+    border: 2px solid #e60012;
+    border-radius: 8px;
+    overflow: hidden;
+    min-height: 360px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.14);
+    display: flex;
+    flex-direction: column;
+    }
+
+    .multi-order-card-header {
+    min-height: 34px;
+    padding: 6px 10px;
+    background: #fff;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #6c757d;
+    }
+
+    .multi-order-card-header a {
+    color: #18a088;
+    text-decoration: none;
+    white-space: nowrap;
+    }
+
+    .multi-order-frame {
+    width: 100%;
+    flex: 1;
+    border: 0;
+    display: block;
+    background: #fff;
+    }
+
+    .multi-order-split-grid.count-2 .multi-order-card {
+    height: calc(100vh - 235px);
+    min-height: 520px;
+    }
+
+    .multi-order-split-grid.count-3 .multi-order-card {
+    height: 430px;
+    }
+
+    .multi-order-split-grid.count-3 .multi-order-card:nth-child(3) {
+    grid-column: 1 / -1;
+    height: 520px;
+    }
+
+    .multi-order-split-grid.count-4 .multi-order-card {
+    height: calc((100vh - 270px) / 2);
+    min-height: 380px;
+    }
+
+    .multi-order-split-grid.has-scroll {
+    max-height: calc(100vh - 215px);
+    overflow-y: auto;
+    padding-inline-end: 8px;
+    }
+
+    .multi-order-split-grid.has-scroll .multi-order-card {
+    height: 430px;
+    }
+
+    .multi-order-split-grid.has-scroll::-webkit-scrollbar {
+    width: 8px;
+    }
+
+    .multi-order-split-grid.has-scroll::-webkit-scrollbar-thumb {
+    background: #18a088;
+    border-radius: 10px;
+    }
+
+    body.multi-order-split-active #ordersListToolbar,
+    body.multi-order-split-active #OrderStatus,
+    body.multi-order-split-active #ordersTable,
+    body.multi-order-split-active #pagination-link,
+    body.multi-order-split-active .pagination,
+    body.multi-order-split-active .price-container-wrapper {
+    display: none !important;
+    }
+
+    
+
+    .multi-order-split-grid.count-3 .multi-order-card:nth-child(3) {
+    grid-column: auto;
+    }
+
+    .multi-order-split-grid.count-2 .multi-order-card,
+    .multi-order-split-grid.count-3 .multi-order-card,
+    .multi-order-split-grid.count-3 .multi-order-card:nth-child(3),
+    .multi-order-split-grid.count-4 .multi-order-card,
+    .multi-order-split-grid.has-scroll .multi-order-card {
+    height: 540px;
+    }
+
+    }
+
+
+    /* عند وجود سبب فشل: لون الصف أحمر #ff0000 والكلام أبيض */
+    #ordersTable tbody tr.order-row.failure-reason-row-active,
+    #ordersTable tbody tr.order-row.failure-reason-row-active td {
+    background: #ff0000 !important;
+    background-color: #ff0000 !important;
+    color: #ffffff !important;
+    }
+
+    #ordersTable tbody tr.order-row.failure-reason-row-active td *,
+    #ordersTable tbody tr.order-row.failure-reason-row-active td a,
+    #ordersTable tbody tr.order-row.failure-reason-row-active td span,
+    #ordersTable tbody tr.order-row.failure-reason-row-active td div,
+    #ordersTable tbody tr.order-row.failure-reason-row-active td i {
+    color: #ffffff !important;
+    }
+
+
+
+    /* خلي نص اختيار سبب الفشل أسود حتى لو الصف أحمر */
+    #ordersTable tbody tr.order-row.failure-reason-row-active .inline-failure-select,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .inline-failure-select *,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .select2-container,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .select2-container *,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .select2-selection,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .select2-selection *,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .select2-selection__rendered {
+    color: #000000 !important;
+    }
+
+    #ordersTable tbody tr.order-row.failure-reason-row-active .select2-selection,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .select2-selection__rendered,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .inline-failure-select {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    }
+
+
+    /* FINAL: صف سبب الفشل أحمر #ff0000 والكلام أبيض، ما عدا سيلكت اختيار سبب الفشل أسود */
+    #ordersTable tbody tr.order-row.failure,
+    #ordersTable tbody tr.order-row.failure > td,
+    #ordersTable tbody tr.order-row.failure-reason-row-active,
+    #ordersTable tbody tr.order-row.failure-reason-row-active > td {
+    background: #ff0000 !important;
+    background-color: #ff0000 !important;
+    color: #ffffff !important;
+    }
+
+    #ordersTable tbody tr.order-row.failure td *,
+    #ordersTable tbody tr.order-row.failure td a,
+    #ordersTable tbody tr.order-row.failure td span,
+    #ordersTable tbody tr.order-row.failure td div,
+    #ordersTable tbody tr.order-row.failure td i,
+    #ordersTable tbody tr.order-row.failure-reason-row-active td *,
+    #ordersTable tbody tr.order-row.failure-reason-row-active td a,
+    #ordersTable tbody tr.order-row.failure-reason-row-active td span,
+    #ordersTable tbody tr.order-row.failure-reason-row-active td div,
+    #ordersTable tbody tr.order-row.failure-reason-row-active td i {
+    color: #ffffff !important;
+    }
+
+    #ordersTable tbody tr.order-row.failure .inline-failure-select,
+    #ordersTable tbody tr.order-row.failure .inline-failure-select *,
+    #ordersTable tbody tr.order-row.failure .select2-container,
+    #ordersTable tbody tr.order-row.failure .select2-container *,
+    #ordersTable tbody tr.order-row.failure .select2-selection,
+    #ordersTable tbody tr.order-row.failure .select2-selection *,
+    #ordersTable tbody tr.order-row.failure .select2-selection__rendered,
+    #ordersTable tbody tr.order-row.failure .select2-selection__placeholder,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .inline-failure-select,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .inline-failure-select *,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .select2-container,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .select2-container *,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .select2-selection,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .select2-selection *,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .select2-selection__rendered,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .select2-selection__placeholder {
+    color: #000000 !important;
+    }
+
+    #ordersTable tbody tr.order-row.failure .select2-selection,
+    #ordersTable tbody tr.order-row.failure .select2-selection__rendered,
+    #ordersTable tbody tr.order-row.failure .inline-failure-select,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .select2-selection,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .select2-selection__rendered,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .inline-failure-select {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    }
+
+    #ordersTable tbody tr.order-row.failure .select2-selection__arrow b,
+    #ordersTable tbody tr.order-row.failure-reason-row-active .select2-selection__arrow b {
+    border-color: #000000 transparent transparent transparent !important;
+    }
+
+</style>
+
+
+
+
+<script>
+    var globalOrderId = null;
+    var globalOrderStatus = null;
+    var globalAdvanceMode = false;
+
+    // ── Click-to-copy: toast + clipboard helper (ported from PrepareForDelivery/Index.cshtml) ──
+    function copyToClipboard(text, fieldName) {
+    if (text === undefined || text === null) return;
+    text = String(text);
+    if (!text || text === 'null') return;
+    var showSuccess = function () {
+    Toastify({
+    text: "تم نسخ " + fieldName,
+    duration: 2000,
+    gravity: "bottom",
+    position: "center",
+    style: { background: "#2ab149", borderRadius: "8px", fontWeight: "bold" }
+    }).showToast();
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(showSuccess);
+    } else {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showSuccess();
+    }
+    }
+
+    // Delegate click on any .copyable element using capture phase so ancestor
+    // inline onclick="event.stopPropagation()" (e.g. on the failure-reason td)
+    // cannot block this handler — capture fires top-down before bubble handlers.
+    document.addEventListener('click', function (e) {
+    var el = e.target.closest('.copyable');
+    if (!el) return;
+    e.stopPropagation();
+    var text = el.dataset.copyText;
+    var label = el.dataset.copyLabel || '';
+    if (text !== undefined && text !== null && String(text).length > 0) {
+    copyToClipboard(text, label);
+    }
+    }, true);
+
+    // Store original button text for checked-count badge
+    function initOriginalTexts() {
+    $('#OrderStatus .btn[role="button"], #advanceFailureStatusBtn, #printButton, #printButtonDelivery, #printButtonDelivery2, #DeleteOrderStatuses').each(function () {
+    if (!$(this).data('original-text')) {
+    var text = $(this).attr('id') === 'advanceFailureStatusBtn'
+    ? $('#advanceFailureStatusBtnText').text().trim()
+    : $(this).clone().children('span').remove().end().text().trim() || $(this).text().trim();
+    $(this).data('original-text', text);
+    }
+    });
+    }
+
+    function updateCheckedCount() {
+    var count = $('input[type="checkbox"][name="selectedOrders"]:checked').length;
+    var badge = count > 0 ? ' (' + count + ')' : '';
+
+    $('#OrderStatus .btn[role="button"]').each(function () {
+    var orig = $(this).data('original-text');
+    if (orig) $(this).text(orig + badge);
+    });
+
+    var $advBtn = $('#advanceFailureStatusBtn');
+    var advOrig = $advBtn.data('original-text');
+    if (advOrig) $('#advanceFailureStatusBtnText').text(advOrig + badge);
+
+    $('#printButton, #printButtonDelivery, #printButtonDelivery2, #DeleteOrderStatuses').each(function () {
+    var orig = $(this).data('original-text');
+    if (orig) $(this).text(orig + badge);
+    });
+    }
+    function getPendingFailureReasons() {
+    return JSON.parse(localStorage.getItem('pendingFailureReasons') || '{}');
+    }
+    function setPendingFailureReasons(obj) {
+    localStorage.setItem('pendingFailureReasons', JSON.stringify(obj));
+    }
+    var pendingFailureReasons = getPendingFailureReasons();
+    var pendingFailureReasonImageFiles = {};
+
+    function isInDeliveryFilter() {
+    return parseInt($('#OrderStatusId').val()) === 4;
+    }
+
+    function clearPendingReason(btn, evt) {
+    if (evt) {
+    evt.preventDefault();
+    evt.stopPropagation();
+    }
+
+    var $btn = $(btn);
+    var $tr = $btn.closest('tr');
+    var $select = $tr.find('.inline-failure-select');
+    var orderId = $select.data('order-id');
+    var $checkbox = $tr.find('input[type="checkbox"][name="selectedOrders"]');
+
+    if (orderId !== undefined && orderId !== null) {
+    delete pendingFailureReasons[orderId];
+    delete pendingFailureReasonImageFiles[String(orderId)];
+    setPendingFailureReasons(pendingFailureReasons);
+    }
+
+    var selectedOrderIds = [];
+    try {
+    selectedOrderIds = JSON.parse(localStorage.getItem('selectedOrderIds') || '[]');
+    } catch (e) {
+    selectedOrderIds = [];
+    }
+
+    var orderIdText = orderId !== undefined && orderId !== null
+    ? String(orderId)
+    : String($checkbox.val() || '');
+
+    selectedOrderIds = selectedOrderIds.filter(function (id) {
+    return String(id) !== orderIdText;
+    });
+
+    localStorage.setItem('selectedOrderIds', JSON.stringify(selectedOrderIds));
+
+    $tr.data('failure-reason', '');
+    $tr.attr('data-failure-reason', '');
+    $tr.removeAttr('data-inline-failure-active');
+    $tr.removeClass('failure failure-reason-selected-row failure-reason-row-active');
+    $tr.find('.text-danger').remove();
+    $btn.hide();
+
+    if ($select.length) {
+    if ($select.data('select2')) {
+    $select.val(null).trigger('change.select2');
+    } else {
+    $select.val('');
+    }
+    }
+
+    $checkbox
+    .prop('checked', false)
+    .removeClass('needs-failure-reason')
+    .css('cursor', '');
+
+    $('#selectAll').prop('checked', false);
+
+    var hasFailureReasonFilter = false;
+    var $failureReasonFilter = $('#FailureReasonId');
+    if ($failureReasonFilter.length) {
+    var filterValue = $failureReasonFilter.val();
+    hasFailureReasonFilter = filterValue !== undefined
+    && filterValue !== null
+    && String(filterValue).trim() !== ''
+    && String(filterValue).trim() !== '-1';
+    }
+
+    var hasPendingFailureReason = false;
+    try {
+    hasPendingFailureReason = Object.keys(pendingFailureReasons || {}).some(function (key) {
+    return String(pendingFailureReasons[key] || '').trim().length > 0;
+    });
+    } catch (e) {
+    hasPendingFailureReason = false;
+    }
+
+    var hasInlineFailureReason = $('#ordersTable tbody tr.order-row[data-inline-failure-active="true"]').length > 0;
+    var hasVisibleFailureReason = $('#ordersTable tbody tr.order-row .text-danger').filter(function () {
+    return String($(this).text() || '').trim().length > 0;
+    }).length > 0;
+
+    if (!hasFailureReasonFilter && !hasPendingFailureReason && !hasInlineFailureReason && !hasVisibleFailureReason) {
+    $('#ordersTable').removeClass('failure-reason-filter-active');
+    }
+
+    if (typeof updateCheckedCount === 'function') updateCheckedCount();
+    if (typeof updateFailStatusBtnState === 'function') updateFailStatusBtnState();
+    if (typeof highlightFailureReasonCells === 'function') highlightFailureReasonCells();
+    if (typeof applyFailureReasonFilteredTableView === 'function') applyFailureReasonFilteredTableView();
+
+    return false;
+    }
+    var legalFailureReasons = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
+                            Enum.GetValues(typeof(lotus_blue.Models.FailureReasonEnum))
+                                .Cast<lotus_blue.Models.FailureReasonEnum>()
+                                .Select(r => typeof(lotus_blue.Models.FailureReasonEnum)
+                                    .GetMember(r.ToString())[0]
+                                    .GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.DisplayAttribute), false)
+                                    .Cast<System.ComponentModel.DataAnnotations.DisplayAttribute>()
+                                    .FirstOrDefault()?.Name ?? r.ToString())
+                                .ToList()
+                        ));
+
+    function submitStatusChange() {
+    var reason = $('#statusChangeReason').val();
+    // Capture globals before modal('hide') resets them via hidden.bs.modal callback
+    var isAdvanceMode = globalAdvanceMode;
+    var orderId = globalOrderId;
+    var orderStatus = globalOrderStatus;
+    console.log("submitStatusChange called. reason:", reason, "orderId:", orderId, "status:", orderStatus, "advanceMode:", isAdvanceMode);
+
+    if (!reason || reason.trim() === '') {
+    showNotification(
+    "الرجاء اختيار سبب الفشل من القائمة.",
+    null,
+    "/static/trash-can-regular.svg"
+    );
+    return;
+    }
+
+    $('#reasonModal').modal('hide');
+
+    var url = isAdvanceMode
+    ? '/Order/AdvanceFailureStatus'
+    : '/Order/UpdateStatus';
+
+    var data = isAdvanceMode
+    ? { ids: [orderId], reason: reason }
+    : { id: orderId, orderStatus: orderStatus, reason: reason };
+
+    console.log("submitStatusChange AJAX url:", url, "data:", JSON.stringify(data));
+    $('#loadingIndicator').show();
+
+    $.ajax({
+    url: url,
+    type: 'POST',
+    data: data,
+    success: function (result) {
+    console.log("AJAX response:", result);
+    if (result.success) {
+    localStorage.removeItem('selectedOrderIds');
+    localStorage.removeItem('pendingFailureReasons');
+    location.reload();
+    } else {
+    showNotification(
+    result.message || 'فشل في تعديل حالة الطلب',
+    null,
+    "/static/trash-can-regular.svg"
+    );
+    }
+    },
+    error: function (xhr, status, error) {
+    console.error("AJAX error:", status, error);
+    showNotification(
+    "فشل في تعديل حالة الطلب",
+    null,
+    "/static/trash-can-regular.svg"
+    );
+    },
+    complete: function () {
+    $('#loadingIndicator').hide();
+    globalAdvanceMode = false;
+    }
+    });
+    }
+
+    $(document).ready(function () {
+
+
+
+    localStorage.removeItem('selectedOrderIds');
+    localStorage.removeItem('pendingFailureReasons');
+    pendingFailureReasons = {};
+
+    initOriginalTexts();
+
+    // Initial count load — deferred so dropdowns are populated first
+    @if (!User.IsInRole("CallCenter"))
+    {
+        @:setTimeout(function () {
+        @:    if (typeof refreshAllOrderIndexCounts === 'function') refreshAllOrderIndexCounts();
+        @:}, 800);
+    }
+
+    // Function to get selected order IDs from localStorage
+    function getSelectedOrderIds() {
+    var storedSelectedOrderIds = JSON.parse(localStorage.getItem('selectedOrderIds')) || [];
+    return storedSelectedOrderIds;
+    }
+
+    // Function to set selected order IDs to localStorage
+    function setSelectedOrderIds(orderIds) {
+    localStorage.setItem('selectedOrderIds', JSON.stringify(orderIds));
+    }
+
+    // Handle individual checkbox clicks
+    $(document).on('change', 'input[type="checkbox"][name="selectedOrders"]', function () {
+    var storedSelectedOrderIds = getSelectedOrderIds();
+    var orderId = $(this).val();
+
+    if ($(this).is(':checked')) {
+    if (!storedSelectedOrderIds.includes(orderId)) {
+    storedSelectedOrderIds.push(orderId);
+    }
+    } else {
+    var index = storedSelectedOrderIds.indexOf(orderId);
+    if (index > -1) {
+    storedSelectedOrderIds.splice(index, 1);
+    }
+    }
+
+    setSelectedOrderIds(storedSelectedOrderIds);
+    $('#selectAll').prop('checked', $('input[type="checkbox"][name="selectedOrders"]').length === $('input[type="checkbox"][name="selectedOrders"]:checked').length);
+    updateFailStatusBtnState();
+    updateCheckedCount();
+    });
+
+    // Handle "Select All" functionality
+    $(document).on('change', '#selectAll', function () {
+    var isChecked = $(this).is(':checked');
+    var storedSelectedOrderIds = getSelectedOrderIds();
+
+    $('input[type="checkbox"][name="selectedOrders"]').not('.needs-failure-reason').each(function () {
+    var orderId = $(this).val();
+    $(this).prop('checked', isChecked);
+
+    if (isChecked) {
+    if (!storedSelectedOrderIds.includes(orderId)) {
+    storedSelectedOrderIds.push(orderId);
+    }
+    } else {
+    var index = storedSelectedOrderIds.indexOf(orderId);
+    if (index > -1) {
+    storedSelectedOrderIds.splice(index, 1);
+    }
+    }
+    });
+
+    setSelectedOrderIds(storedSelectedOrderIds);
+    updateFailStatusBtnState();
+    updateCheckedCount();
+
+    if (isChecked && $('input[type="checkbox"][name="selectedOrders"].needs-failure-reason').length > 0) {
+    showAutoNotification('بعض الطلبات لم يتم تحديدها بسبب عدم وجود سبب فشل صحيح', '/mainicons/exclamation mark.svg', '#f5c518', 7);
+    }
+    });
+
+    // Restore selected checkboxes
+    function restoreSelectedOrderIds() {
+    var storedSelectedOrderIds = getSelectedOrderIds();
+    $('input[type="checkbox"][name="selectedOrders"]').each(function () {
+    if (storedSelectedOrderIds.includes($(this).val())) {
+    $(this).prop('checked', true);
+    }
+    });
+    $('#selectAll').prop('checked', $('input[type="checkbox"][name="selectedOrders"]').length === $('input[type="checkbox"][name="selectedOrders"]:checked').length);
+    updateFailStatusBtnState();
+    updateCheckedCount();
+    }
+
+    // Disable checkboxes for orders requiring failure reason but missing one
+    var statusesRequiringFailureReason = [
+    'فشل_التسليم', 'فشل_التسليم_2', 'فشل_التسليم_3',
+    'فشل_التسليم_4', 'فشل_التسليم_5', 'فشل_التسليم_6',
+    'فشل_التسليم_7', 'انتظار_المعالجة', 'الطلبات_المرجعة',
+    'أرشيف_المرجع'
+    ];
+
+    function applyCheckboxRestrictions() {
+    $('tr.order-row').each(function () {
+    var status = $(this).data('order-status');
+    var failureReason = $(this).data('failure-reason');
+    var hasLegalReason = failureReason && legalFailureReasons.indexOf(failureReason) !== -1;
+    if (status && statusesRequiringFailureReason.includes(String(status)) && !hasLegalReason) {
+    $(this).find('input[type="checkbox"]').addClass('needs-failure-reason').css('cursor', 'not-allowed');
+    }
+    });
+    }
+
+    $(document).on('change', 'input[type="checkbox"].needs-failure-reason', function () {
+    if ($(this).is(':checked')) {
+    $(this).prop('checked', false);
+    showAutoNotification('يجب اختيار سبب فشل صحيح لتحديد هذا الطلب', '/mainicons/exclamation mark.svg', '#f5c518', 7);
+    }
+    });
+
+    restoreSelectedOrderIds();
+    applyCheckboxRestrictions();
+
+    var failureClassStatusValues = [7, 8, 9, 19, 20, 21, 22, 23, 24, 18, 25, 26, 27, 28, 29, 30, 31];
+    var previousOrderStatusValue = parseInt($('#OrderStatusId').val());
+
+    $("#OrderStatusId").on("change", function () {
+    var selectedValue = parseInt($(this).val());
+    console.log(selectedValue);
+
+    // Deselect all orders when switching into a failure-class filter from a non-failure-class filter
+    var wasFailureClass = failureClassStatusValues.includes(previousOrderStatusValue);
+    var isFailureClass = failureClassStatusValues.includes(selectedValue);
+    if (!wasFailureClass && isFailureClass) {
+    localStorage.removeItem('selectedOrderIds');
+    }
+    previousOrderStatusValue = selectedValue;
+    pendingFailureReasons = {};
+    setPendingFailureReasons({});
+
+    // Hide all status buttons
+    $(".status").hide();
+    $("#advanceFailureStatusBtn").hide().css({ color: '', 'border-color': '' }).addClass("btn-outline-danger");
+
+    switch (selectedValue) {
+    case 0:
+    $(".status-1").show(); // "تم التجهيز"
+    $(".status-6").show(); // "الطلبات المرجعة "
+    $(".status-16").show(); // "الطلبات المعلقة "
+    $(".status-18").show(); // "الطلبات المعلقة "
+
+    break;
+    case 2:
+    case 3:
+    $(".status-2").show(); // "قيد التوصيل"
+    break;
+    case 4:
+    case 5:
+    $(".status-3, .status-4").show(); // "تم التسليم" and "فشل التسليم"
+    $(".status-16").show(); // "الطلبات المعلقة "
+
+    break;
+    case 6:
+    $(".status-7").show(); // "تم تحديث الرصيد" (Admin only)
+    break;
+    case 7:
+    $(".status-5, .status-6 , .status-8").show();
+    $(".status-16").show();
+    $("#advanceFailureStatusBtnText").text("فشل التسليم 1");
+    $("#advanceFailureStatusBtn").show();
+    break;
+    case 30:
+    $(".status-5, .status-6 , .status-8").show();
+    $(".status-16").show();
+    $("#advanceFailureStatusBtnText").text("فشل التسليم 2");
+    $("#advanceFailureStatusBtn").show();
+    break;
+    case 19:
+    $(".status-5, .status-6 , .status-8").show();
+    $(".status-16").show();
+    $("#advanceFailureStatusBtnText").text("فشل التسليم 3");
+    $("#advanceFailureStatusBtn").show();
+    break;
+    case 20:
+    $(".status-5, .status-6 , .status-8").show();
+    $(".status-16").show();
+    $("#advanceFailureStatusBtnText").text("فشل التسليم 4");
+    $("#advanceFailureStatusBtn").show();
+    break;
+    case 21:
+    $(".status-5, .status-6 , .status-8").show();
+    $(".status-16").show();
+    $("#advanceFailureStatusBtnText").text("فشل التسليم 5");
+    $("#advanceFailureStatusBtn").show();
+    break;
+    case 22:
+    $(".status-5, .status-6 , .status-8").show();
+    $(".status-16").show();
+    $("#advanceFailureStatusBtnText").text("فشل التسليم 6");
+    $("#advanceFailureStatusBtn").show();
+    break;
+    case 23:
+    $(".status-5, .status-6 , .status-8").show();
+    $(".status-16").show();
+    $("#advanceFailureStatusBtnText").text("فشل التسليم 7");
+    $("#advanceFailureStatusBtn").show();
+    break;
+    case 24:
+    $(".status-5, .status-6 , .status-8").show();
+    $(".status-16").show();
+    $("#advanceFailureStatusBtnText").text("انتظار المعالجة");
+    $("#advanceFailureStatusBtn").show();
+    break;
+    case 8:
+    $(".status-6").show();
+    $("#advanceFailureStatusBtnText").text("الطلبات المرجعة");
+    $("#advanceFailureStatusBtn").show();
+    break;
+    case 9:
+    $(".status-9").show();
+    $("#advanceFailureStatusBtnText").text("أرشيف المرجع");
+    $("#advanceFailureStatusBtn").show();
+    break;
+    case 16:
+    $(".status-0").show(); // " طلب جديد"
+    break;
+    case 18:
+    $(".status-0").show(); // " طلب جديد"
+    $("#advanceFailureStatusBtnText").text("الطلبات الغير مكتملة 1");
+    $("#advanceFailureStatusBtn").removeClass("btn-outline-danger").css({ color: '#45BBE9', 'border-color': '#45BBE9' }).show();
+    break;
+    case 31:
+    $(".status-0").show();
+    $("#advanceFailureStatusBtnText").text("الطلبات الغير مكتملة 2");
+    $("#advanceFailureStatusBtn").removeClass("btn-outline-danger").css({ color: '#45BBE9', 'border-color': '#45BBE9' }).show();
+    break;
+    case 25:
+    $(".status-0").show();
+    $("#advanceFailureStatusBtnText").text("الطلبات الغير مكتملة 3");
+    $("#advanceFailureStatusBtn").removeClass("btn-outline-danger").css({ color: '#45BBE9', 'border-color': '#45BBE9' }).show();
+    break;
+    case 26:
+    $(".status-0").show();
+    $("#advanceFailureStatusBtnText").text("الطلبات الغير مكتملة 4");
+    $("#advanceFailureStatusBtn").removeClass("btn-outline-danger").css({ color: '#45BBE9', 'border-color': '#45BBE9' }).show();
+    break;
+    case 27:
+    $(".status-0").show();
+    $("#advanceFailureStatusBtnText").text("الطلبات الغير مكتملة 5");
+    $("#advanceFailureStatusBtn").removeClass("btn-outline-danger").css({ color: '#45BBE9', 'border-color': '#45BBE9' }).show();
+    break;
+    case 28:
+    $(".status-0").show();
+    $("#advanceFailureStatusBtnText").text("الطلبات الغير مكتملة 6");
+    $("#advanceFailureStatusBtn").removeClass("btn-outline-danger").css({ color: '#45BBE9', 'border-color': '#45BBE9' }).show();
+    break;
+    case 29:
+    $(".status-0").show();
+    $("#advanceFailureStatusBtnText").text("طلب جديد");
+    $("#advanceFailureStatusBtn").removeClass("btn-outline-danger").css({ color: '#45BBE9', 'border-color': '#45BBE9' }).show();
+    break;
+
+    default:
+    // Optional: Handle other cases or show a default status
+    break;
+    }
+
+    // Re-capture original text after switch updated button labels
+    $('#advanceFailureStatusBtn').data('original-text', $('#advanceFailureStatusBtnText').text().trim());
+    updateFailStatusBtnState();
+    updateCheckedCount();
+    });
+
+
+    // Handle the "سحب فاتورة" button click
+    $('#printButtonDelivery').click(function () {
+    const selectedOrderIds = getSelectedOrderIds();
+    if (selectedOrderIds.length > 0) {
+    // Construct the URL to print orders, passing selected IDs
+    var ids = selectedOrderIds.join(',');
+    var url = '/order/PrintOrder?ids=' + ids;
+    window.open(url, '_blank'); // Open the print page in a new tab
+    } else {
+    alert("Please select at least one order to print.");
+    }
+    });
+
+    // Handle the "سحب فاتورة" button click
+    $('#printButtonDelivery2').click(function () {
+    const selectedOrderIds = getSelectedOrderIds();
+    if (selectedOrderIds.length > 0) {
+    // Construct the URL to print orders, passing selected IDs
+    var ids = selectedOrderIds.join(',');
+    var url = '/Pdf/PrintOrdersForDeliveryDetails?ids=' + ids;
+    window.open(url, '_blank'); // Open the print page in a new tab
+    } else {
+    alert("Please select at least one order to print.");
+    }
+    });
+
+    // Handle the "حذف الحالات" button click
+    $('#DeleteOrderStatuses').click(function () {
+    const selectedStatusHistoryIds = getSelectedOrderIds();
+
+    if (selectedStatusHistoryIds.length > 0) {
+    showNotification(
+    'هل أنت متأكد من حذف حالات الطلب المحددة؟',
+    function () {
+    // Construct the URL with comma-separated IDs
+    var ids = selectedStatusHistoryIds.join(',');
+
+    // Show loading indicator
+    $('#loadingIndicator').show();
+
+    // Call the API to delete status histories
+    $.ajax({
+    url: '/Order/DeleteOrdersStatusHistoryAsync',
+    type: 'POST',
+    data: { ids: ids },
+    success: function (response) {
+    if (response.success) {
+
+    location.reload(); // Refresh after user acknowledges
+
+
+    } else {
+    showNotification(
+    'خطأ: ' + (response.message || 'فشل في حذف الحالات'),
+    null, // No confirm action needed for error
+    '/static/error-icon.svg'
+    );
+    }
+    },
+    error: function (xhr, status, error) {
+    showNotification(
+    'خطأ في الاتصال: ' + error,
+    null, // No confirm action needed for error
+    '/static/error-icon.svg'
+    );
+    },
+    complete: function () {
+    // Hide loading indicator
+    $('#loadingIndicator').hide();
+    }
+    });
+    },
+    '/static/trash-can-regular.svg' // Trash icon for delete confirmation
+    );
+    } else {
+    showNotification(
+    "الرجاء تحديد حالة طلب واحدة على الأقل للحذف",
+    null, // No confirm action needed
+    '/static/info-icon.svg' // Info icon
+    );
+    }
+    });
+
+    // Apply initial visibility based on the current value of the dropdown
+    $("#OrderStatusId").trigger("change");
+
+    // Handle the dropdown item click event
+    function updateFailStatusBtnState() {
+    var $failBtn = $(".status-4");
+    var $deliverBtn = $(".status-3");
+
+    if (!isInDeliveryFilter()) {
+    // Outside قيد_التوصيل filter: original dim/undim logic
+    if ($failBtn.is(':hidden')) return;
+
+    var $checkedBoxes = $('input[type="checkbox"][name="selectedOrders"]:checked');
+    var hasSelection = $checkedBoxes.length > 0;
+    var missingReason = $checkedBoxes.toArray().some(function (cb) {
+    var failureReason = $(cb).closest('tr').data('failure-reason');
+    return !failureReason || legalFailureReasons.indexOf(failureReason) === -1;
+    });
+    var shouldBlock = hasSelection && missingReason;
+
+    if (shouldBlock) {
+    $failBtn.css({ opacity: '0.3', cursor: 'not-allowed' }).addClass('fail-btn-blocked');
+    } else {
+    $failBtn.css({ opacity: '', cursor: '' }).removeClass('fail-btn-blocked');
+    }
+    return;
+    }
+
+    // قيد_التوصيل filter: hide/show logic
+    var $checkedBoxes = $('input[type="checkbox"][name="selectedOrders"]:checked');
+    var hasSelection = $checkedBoxes.length > 0;
+
+    // فشل التسليم: hidden unless every selected order has a valid pending reason
+    var allHaveReason = hasSelection && $checkedBoxes.toArray().every(function (cb) {
+    var orderId = $(cb).val();
+    return pendingFailureReasons[orderId] && legalFailureReasons.indexOf(pendingFailureReasons[orderId]) !== -1;
+    });
+
+    if (allHaveReason) {
+    $failBtn.show().css({ opacity: '', cursor: '' }).removeClass('fail-btn-blocked');
+    } else {
+    $failBtn.hide().removeClass('fail-btn-blocked');
+    }
+
+    // تم التسليم: hide if any selected order has a pending failure reason
+    var anyHasReason = $checkedBoxes.toArray().some(function (cb) {
+    var orderId = $(cb).val();
+    return !!pendingFailureReasons[orderId];
+    });
+
+    if (anyHasReason) {
+    $deliverBtn.hide();
+    } else {
+    // restore original visibility (it's shown by the status switch)
+    $deliverBtn.show();
+    }
+    }
+
+    $(".btn[role='button']").click(function () {
+    var $btn = $(this);
+
+    if ($btn.hasClass('fail-btn-blocked')) {
+    showAutoNotification('لا يمكن تغيير الحالة — بعض الطلبات المحددة لا تزال بدون سبب فشل', '/mainicons/exclamation mark.svg', '#f5c518', 7);
+    return;
+    }
+
+    var status = $btn.data("status");
+
+    // Disable the button immediately
+    $btn.prop('disabled', true);
+
+    // Add a class to visually indicate it's disabled
+    $btn.addClass('disabled');
+
+    // Handle the status click
+    handleStatusClick(status, $btn);
+    });
+
+    function handleStatusClick(newStatus, $clickedButton) {
+    const selectedOrderIds = getSelectedOrderIds();
+
+    // Show notification with trash icon (though consider if this is semantically correct)
+    showNotification(
+    "تم تحديد الحالة: " + newStatus,
+    function () {
+    let url;
+    if (newStatus === "تم_التجهيز") {
+    url = '@Url.Action("MarkAsPrepared", "Order")';
+    } else {
+    url = '@Url.Action("UpdateStatusForMultiple", "Order")';
+    }
+
+    $('#loadingIndicator').show();
+
+    var requestData = {
+    ids: selectedOrderIds,
+    orderStatus: newStatus
+    };
+
+    if (isInDeliveryFilter() && Object.keys(pendingFailureReasons).length > 0) {
+    requestData.orderReasons = JSON.stringify(pendingFailureReasons);
+    }
+
+    var ajaxRequestOptions = {
+    url: url,
+    type: 'POST',
+    data: requestData,
+    success: function (result) {
+    if (result.success) {
+    pendingFailureReasons = {};
+    pendingFailureReasonImageFiles = {};
+    localStorage.removeItem('selectedOrderIds');
+    localStorage.removeItem('pendingFailureReasons');
+
+    showNotification(
+    "تم تعديل حالة الطلبات بنجاح",
+    function () {
+    setTimeout(function () {
+    $clickedButton.prop('disabled', false);
+    $clickedButton.removeClass('disabled');
+    }, 5000);
+
+    if (newStatus === "تم_التجهيز") {
+    location.reload();
+    const printUrl = '@Url.Action("PrintOrdersForDelivery", "Pdf")' + '/' + result.orderReportId;
+    window.open(printUrl, '_blank');
+    } else {
+    location.reload();
+    const printUrl = '@Url.Action("PrintSelectedOrders", "Order")' + '?ids=' + selectedOrderIds.join(',');
+    window.open(printUrl, '_blank');
+    }
+    },
+    '/static/trash-can-regular.svg' // Using trash icon here
+    );
+    } else {
+    $clickedButton.prop('disabled', false);
+    $clickedButton.removeClass('disabled');
+
+    showNotification(
+    "خطأ: " + (result.message || "فشل في تعديل حالة الطلبات"),
+    null,
+    '/static/trash-can-regular.svg' // Using trash icon for errors
+    );
+    }
+    },
+    error: function (xhr, status, error) {
+    $clickedButton.prop('disabled', false);
+    $clickedButton.removeClass('disabled');
+
+    var response = JSON.parse(xhr.responseText);
+    showNotification(
+    "خطأ في الاتصال: " + (response.message || error),
+    null,
+    '/static/trash-can-regular.svg' // Using trash icon for errors
+    );
+    },
+    complete: function () {
+    $('#loadingIndicator').hide();
+    }
+    };
+
+    var pendingImageOrderIds = selectedOrderIds.filter(function (orderId) {
+    return pendingFailureReasonImageFiles[String(orderId)];
+    });
+
+    if (pendingImageOrderIds.length > 0) {
+    var multiFormData = new FormData();
+
+    selectedOrderIds.forEach(function (orderId) {
+    multiFormData.append('ids', orderId);
+    multiFormData.append('ids[]', orderId);
+    });
+
+    multiFormData.append('orderStatus', newStatus);
+
+    if (isInDeliveryFilter() && Object.keys(pendingFailureReasons).length > 0) {
+    multiFormData.append('orderReasons', JSON.stringify(pendingFailureReasons));
+    }
+
+    multiFormData.append('failureReasonImageOrderIds', JSON.stringify(pendingImageOrderIds));
+
+    pendingImageOrderIds.forEach(function (orderId) {
+    var file = pendingFailureReasonImageFiles[String(orderId)];
+    multiFormData.append('failureReasonImageFiles', file);
+    multiFormData.append('failedReasonImageFiles', file);
+    multiFormData.append('failureImageFiles', file);
+    multiFormData.append('reasonImageFiles', file);
+    multiFormData.append('imageFiles', file);
+    });
+
+    ajaxRequestOptions.data = multiFormData;
+    ajaxRequestOptions.processData = false;
+    ajaxRequestOptions.contentType = false;
+    }
+
+    $.ajax(ajaxRequestOptions);
+    },
+    '/static/trash-can-regular.svg' // Using trash icon for initial confirmation
+    );
+    }
+
+    // Handle print button click
+    $('#printButton').click(function (event) {
+    const selectedOrderIds = getSelectedOrderIds();
+    console.log("Selected IDs: ", selectedOrderIds);
+    if (selectedOrderIds.length > 0) {
+    var ids = selectedOrderIds.join(',');
+    var url = '@Url.Action("PrintSelectedOrders", "Order")?ids=' + ids;
+    window.open(url, '_blank');
+    } else {
+    alert("Please select an order to print.");
+    }
+    });
+
+    // for search input
+    const searchInput = $("#searchInput");
+    const clearSearchIcon = $("#searchingshow");
+    const splitWrapper = $("#multiOrderSplitWrapper");
+    const splitGrid = $("#multiOrderSplitGrid");
+    const splitMessage = $("#multiOrderSplitMessage");
+    const splitClose = $("#multiOrderSplitClose");
+    const splitViewMinOrders = 2;
+
+    function clearSplitGridClasses() {
+    splitGrid.removeClass(function (_, className) {
+    return (className.match(/count-\d+|has-scroll/g) || []).join(' ');
+    });
+    }
+
+    function closeAnyOpenDetailsModal() {
+    try {
+    $('.modal.show').modal('hide');
+    } catch (e) { }
+
+    $('#modal-container').empty();
+    $('#orderDetails-modal-container').empty();
+    $('.modal-backdrop').remove();
+    $('body').removeClass('modal-open');
+    $('body').css('padding-right', '');
+    }
+
+    function hideMultiOrderSplitView() {
+    splitGrid.empty();
+    clearSplitGridClasses();
+    splitWrapper.addClass('d-none');
+    $('body').removeClass('multi-order-split-active');
+    }
+
+    function getCurrentSearchValue() {
+    return $.trim(searchInput.val() || '');
+    }
+
+    function getOrderIdsFromCurrentTable() {
+    var ids = [];
+    var seen = {};
+    $('table#ordersTable tbody tr.order-row, table tbody tr.order-row').each(function () {
+    var id = $(this).data('order-id');
+    if (id === undefined || id === null || id === '') return;
+    id = String(id);
+    if (seen[id]) return;
+    seen[id] = true;
+    ids.push(id);
+    });
+    return ids;
+    }
+
+    function buildSplitDetailsUrl(orderId) {
+    return '/Order/Details?id=' + encodeURIComponent(orderId) + '&embed=true&splitView=true';
+    }
+
+    function applySplitGridClass(count) {
+    clearSplitGridClasses();
+    if (count <= 4) {
+    splitGrid.addClass('count-' + count);
+    } else {
+    splitGrid.addClass('has-scroll');
+    }
+    }
+
+    function renderMultiOrderSplitView(orderIds) {
+    closeAnyOpenDetailsModal();
+    splitGrid.empty();
+    applySplitGridClass(orderIds.length);
+
+    orderIds.forEach(function (orderId, index) {
+    var detailsUrl = buildSplitDetailsUrl(orderId);
+    var $card = $('<div/>', {
+    class: 'multi-order-card',
+    'data-order-id': orderId
+    });
+
+    var $header = $('<div/>', { class: 'multi-order-card-header' });
+    $header.append($('<span/>').text('طلب رقم: ' + orderId));
+    $header.append($('<a/>', {
+    href: detailsUrl,
+    target: '_blank',
+    text: 'فتح في صفحة مستقلة'
+    }));
+
+    var $iframe = $('<iframe/>', {
+    class: 'multi-order-frame',
+    src: detailsUrl,
+    title: 'تفاصيل الطلب ' + orderId,
+    loading: index > 1 ? 'lazy' : 'eager'
+    });
+
+    $card.append($header).append($iframe);
+    splitGrid.append($card);
+    });
+
+    splitMessage.text('تم العثور على ' + orderIds.length + ' طلبات لنفس البحث. يتم عرض التفاصيل مقسّمة على الشاشة.');
+    splitWrapper.removeClass('d-none');
+    $('body').addClass('multi-order-split-active');
+    }
+
+    function handleSplitSearchResults() {
+    var searchValue = getCurrentSearchValue();
+    var orderIds = getOrderIdsFromCurrentTable();
+
+    if (searchValue.length === 0 || orderIds.length < splitViewMinOrders) {
+    hideMultiOrderSplitView();
+    return;
+    }
+
+    renderMultiOrderSplitView(orderIds);
+    }
+
+    splitClose.on('click', function () {
+    hideMultiOrderSplitView();
+    });
+
+    // لو التقسيم شغال، امنع فتح المودال القديم من صفوف الجدول.
+    document.addEventListener('click', function (e) {
+    if (!$('body').hasClass('multi-order-split-active')) return;
+    if (e.target.closest('tr.order-row')) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    }
+    }, true);
+
+    // Function to toggle the visibility of the clear-search icon
+    function toggleClearIconVisibility() {
+    clearSearchIcon.css('visibility', searchInput.val().length > 0 ? 'visible' : 'hidden');
+    }
+
+    function getSelectedOptionText($select) {
+    if (!$select || !$select.length) return '';
+    var text = ($select.find('option:selected').text() || '').trim();
+
+    if (!text && $select.next('.select2').length) {
+    text = ($select.next('.select2').find('.select2-selection__rendered').text() || '').trim();
+    }
+
+    return text;
+    }
+
+    function isLibyaCountrySelected() {
+    var $country = $('#CountryId');
+
+    if (!$country.length) {
+    return false;
+    }
+
+    var selectedCountryText = getSelectedOptionText($country)
+    .replace(/\s+/g, '')
+    .replace(/-/g, '');
+
+    return selectedCountryText.indexOf('ليبيا') !== -1;
+    }
+
+    function normalizeLibyaSearchValue(value) {
+    value = String(value || '');
+
+    if (!isLibyaCountrySelected()) {
+    return value;
+    }
+
+    var trimmed = value.trim();
+
+    if (/^0\d+$/.test(trimmed)) {
+    return trimmed.replace(/^0+/, '');
+    }
+
+    return value;
+    }
+
+    function applyLibyaSearchNormalization() {
+    if (!isLibyaCountrySelected()) {
+    return;
+    }
+
+    var currentValue = searchInput.val();
+    var normalizedValue = normalizeLibyaSearchValue(currentValue);
+
+    if (currentValue !== normalizedValue) {
+    searchInput.val(normalizedValue);
+    }
+    }
+
+    function getSearchValueForRequest() {
+    return normalizeLibyaSearchValue($('#searchInput').val());
+    }
+
+    function hasRealSelectedValue(selector) {
+    var $element = $(selector);
+
+    if (!$element.length) {
+    return true;
+    }
+
+    var value = $element.val();
+
+    return value !== undefined
+    && value !== null
+    && String(value).trim() !== ''
+    && String(value).trim() !== '-1';
+    }
+
+    function hasCountryAndDeliveryCompanySelected() {
+    return hasRealSelectedValue('#CountryId') && hasRealSelectedValue('#DeliveryCompanyId');
+    }
+
+    function showCountryDeliveryRequiredNotification() {
+    var message = 'يجب اختيار الدولة وشركة التوصيل أولاً';
+
+    if (typeof showNotification === 'function') {
+    showNotification(message, null, '/static/trash-can-regular.svg');
+    return;
+    }
+
+    if (typeof Toastify === 'function') {
+    Toastify({
+    text: message,
+    duration: 2500,
+    gravity: 'bottom',
+    position: 'center',
+    style: { background: '#dc3545', borderRadius: '8px', fontWeight: 'bold' }
+    }).showToast();
+    return;
+    }
+
+    alert(message);
+    }
+
+    function resetInlineFailureSelect($select) {
+    if (!$select || !$select.length) return;
+
+    if ($select.data('select2')) {
+    $select.val(null).trigger('change.select2');
+    } else {
+    $select.val('');
+    }
+    }
+
+    function applyFailureReasonFilteredTableView() {
+    var hasFailureReasonFilter = hasRealSelectedValue('#FailureReasonId');
+    var hasPendingFailureReason = false;
+
+    try {
+    hasPendingFailureReason = Object.keys(pendingFailureReasons || {}).some(function (key) {
+    return String(pendingFailureReasons[key] || '').trim().length > 0;
+    });
+    } catch (e) {
+    hasPendingFailureReason = false;
+    }
+
+    var hasVisibleFailureReason = $('#ordersTable tbody tr.order-row .text-danger').filter(function () {
+    return String($(this).text() || '').trim().length > 0;
+    }).length > 0;
+
+    $('#ordersTable').toggleClass(
+    'failure-reason-filter-active',
+    hasFailureReasonFilter || hasPendingFailureReason || hasVisibleFailureReason
+    );
+    }
+
+    function getSelectableDeliveryCompanyOptions() {
+    return $('#DeliveryCompanyId option').filter(function () {
+    var value = $(this).val();
+    var text = ($(this).text() || '').trim();
+
+    return value !== undefined
+    && value !== null
+    && String(value).trim() !== ''
+    && String(value).trim() !== '-1'
+    && text !== ''
+    && !$(this).is(':disabled');
+    });
+    }
+
+    var autoSelectingSingleDeliveryCompany = false;
+
+    function autoSelectSingleDeliveryCompanyIfOnlyOne() {
+    var $deliveryCompany = $('#DeliveryCompanyId');
+
+    if (!$deliveryCompany.length || autoSelectingSingleDeliveryCompany) {
+    return;
+    }
+
+    var countrySelected = hasRealSelectedValue('#CountryId');
+
+    if (!countrySelected) {
+    return;
+    }
+
+    var $options = getSelectableDeliveryCompanyOptions();
+
+    if ($options.length !== 1) {
+    return;
+    }
+
+    var onlyValue = String($options.first().val());
+
+    if (String($deliveryCompany.val() || '') === onlyValue) {
+    return;
+    }
+
+    autoSelectingSingleDeliveryCompany = true;
+    $deliveryCompany.val(onlyValue);
+
+    if ($deliveryCompany.data('select2')) {
+    $deliveryCompany.trigger('change.select2');
+    }
+
+    $deliveryCompany.trigger('change');
+
+    setTimeout(function () {
+    autoSelectingSingleDeliveryCompany = false;
+    }, 0);
+    }
+
+    function scheduleAutoSelectSingleDeliveryCompany() {
+    setTimeout(autoSelectSingleDeliveryCompanyIfOnlyOne, 100);
+    setTimeout(autoSelectSingleDeliveryCompanyIfOnlyOne, 350);
+    setTimeout(autoSelectSingleDeliveryCompanyIfOnlyOne, 800);
+    }
+
+    function watchDeliveryCompanyOptionsForAutoSelect() {
+    var deliveryCompany = document.getElementById('DeliveryCompanyId');
+
+    if (!deliveryCompany || !window.MutationObserver) {
+    return;
+    }
+
+    var observer = new MutationObserver(function () {
+    scheduleAutoSelectSingleDeliveryCompany();
+    });
+
+    observer.observe(deliveryCompany, {
+    childList: true,
+    subtree: true
+    });
+    }
+
+    // Event listener for input changes, including typing and pasting
+    searchInput.on("input", function (e) {
+    console.log("Event type:", e.type, "Value:", $(this).val());
+
+    applyLibyaSearchNormalization();
+    toggleClearIconVisibility();
+    loadData(1); // Assuming loadData takes a 'page' argument, use 1 or adjust as necessary
+    });
+
+    // Event listener for clearing the search term
+    clearSearchIcon.on("click", function () {
+    searchInput.val(""); // Clear the input field
+    toggleClearIconVisibility();
+    hideMultiOrderSplitView();
+    loadData(1);
+    });
+
+    // Initial check for clear icon visibility
+    applyLibyaSearchNormalization();
+    toggleClearIconVisibility();
+    applyFailureReasonFilteredTableView();
+    handleSplitSearchResults();
+    watchDeliveryCompanyOptionsForAutoSelect();
+    scheduleAutoSelectSingleDeliveryCompany();
+
+    function initEmployeeFilterDropdown() {
+    var $employeeFilter = $('#EmployeeId');
+
+    if (!$employeeFilter.length) {
+    return;
+    }
+
+    function formatEmployeeFilterOption(option) {
+    var text = option && option.text ? option.text : 'فلترة حسب الموظف';
+
+    if (text === undefined || text === null) {
+    text = 'فلترة حسب الموظف';
+    }
+
+    var $wrapper = $('<span/>', { class: 'employee-filter-option' });
+
+    $wrapper.append(
+    '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+    '<path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5Zm0 2c-3.34 0-10 1.68-10 5v1.25c0 .41.34.75.75.75h18.5c.41 0 .75-.34.75-.75V19c0-3.32-6.66-5-10-5Z"></path>' +
+    '</svg>'
+    );
+
+    $wrapper.append($('<span/>').text(text));
+
+    return $wrapper;
+    }
+
+    $.ajax({
+    url: '@Url.Action("GetAssignableUsers", "DataList")',
+    method: 'GET',
+    dataType: 'json',
+    success: function (data) {
+    $employeeFilter.empty().append('<option value=""></option>');
+
+    (data || []).forEach(function (employee) {
+    var employeeId = employee.id || employee.Id || '';
+    var employeeName = employee.name || employee.displayName || employee.Name || employee.DisplayName || '';
+
+    if (!employeeId || !employeeName) {
+    return;
+    }
+
+    $employeeFilter.append('<option value="' + employeeId + '">' + employeeName + '</option>');
+    });
+
+    if ($employeeFilter.data('select2')) {
+    $employeeFilter.select2('destroy');
+    }
+
+    $employeeFilter.select2({
+    placeholder: {
+    id: '',
+    text: 'فلترة حسب الموظف'
+    },
+    allowClear: true,
+    templateResult: formatEmployeeFilterOption,
+    templateSelection: formatEmployeeFilterOption,
+    escapeMarkup: function (markup) { return markup; },
+    dir: 'rtl',
+    minimumResultsForSearch: 1,
+    width: '100%'
+    });
+    }
+    });
+    }
+
+    initEmployeeFilterDropdown();
+
+    // Call loadData on change of the dropdowns
+    $('#OrderStatusId, #CountryId, #CityId, #DeliveryCompanyId, #DeliveryRepresentativeId,#pageSize ,#ManufacturingCompanyId, #FailureReasonId, #OrderSourceId, #EmployeeId').change(function () {
+    if (this.id === 'CountryId') {
+    applyLibyaSearchNormalization();
+    scheduleAutoSelectSingleDeliveryCompany();
+    }
+
+    if (this.id === 'FailureReasonId') {
+    applyFailureReasonFilteredTableView();
+    }
+
+    loadData(1); // Load first page when filters change
+    });
+
+
+
+    // Show/hide failure reason filter based on selected order status
+    $('#OrderStatusId').change(function () {
+    const statusesWithFailureReasonFilter = [
+    '7', '19', '20', '21', '22', '23', '24',
+    '8', '9', '15'
+    ];
+    const selected = $(this).val();
+    if (statusesWithFailureReasonFilter.includes(selected)) {
+    $('#failureReasonFilterRow').show();
+    fetchFailureReasons('#FailureReasonId');
+    } else {
+    $('#failureReasonFilterRow').hide();
+    $('#FailureReasonId').val('');
+    }
+    });
+
+
+    function loadData(page) {
+    var data = {
+    page: page,
+    pageSize: $('#pageSize').val(),
+    search: getSearchValueForRequest(),
+    countryId: $('#CountryId').val(),
+    storeId: $('#ManufacturingCompanyId').val(),
+    deliveryCompanyId: $('#DeliveryCompanyId').val(),
+    cityId: $('#CityId').val(),
+    deliveryRepresentativeId: $('#DeliveryRepresentativeId').val(),
+    orderStatusId: $('#OrderStatusId').val(),
+    ordersourceId: $('#OrderSourceId').val(),
+    employeeId: $('#EmployeeId').val(),
+    failureReason: $('#FailureReasonId').val()
+    };
+
+    $.ajax({
+    url: '/Order/Index',
+    type: 'GET',
+    data: data,
+    success: function (result) {
+    var $result = $('<div>').html(result);
+
+    // 1. Update table
+    var $newTable = $result.find('#ordersTable');
+    if ($newTable.length === 0) {
+    $newTable = $result.find('.table').first();
+    }
+    if ($newTable.length) {
+    if ($('#ordersTable').length) {
+    $('#ordersTable').replaceWith($newTable);
+    } else {
+    $('.table').first().replaceWith($newTable);
+    }
+    }
+
+    // 2. Update pagination and items count
+    $('.pagination').replaceWith($result.find('.pagination'));
+    $('.total-items-display').text($result.find('.total-items-display').text());
+
+    // 3. Handle price container
+    const tryPriceText = $result.find('.total-price-display-try').text().trim();
+    const tryPriceValue = tryPriceText.replace('TRY', '').trim();
+
+    // Remove ALL existing price containers first
+    $('.price-container-wrapper').remove();
+
+    if (tryPriceValue !== "0") {
+    // Create new container in correct position
+    const priceContainer = `
+    <div class="price-container-wrapper d-flex justify-content-end mt-2 mt-lg-0">
+    ${$result.find('#priceContainer').html()}
+    </div>
+    `;
+
+    // Insert after the nav element
+    $('.nav-nav').after(priceContainer);
+    }
+
+    restoreSelectedOrderIds();
+    applyCheckboxRestrictions();
+    initInlineFailureSelects();
+    applyFailureReasonFilteredTableView();
+    @if (!User.IsInRole("CallCenter"))
+    {
+        @:if (typeof refreshAllOrderIndexCounts === 'function') refreshAllOrderIndexCounts();
+    }
+    if (isInDeliveryFilter()) {
+    pendingFailureReasons = getPendingFailureReasons();
+    restorePendingFailureReasonUI();
+    } else {
+    pendingFailureReasons = {};
+    setPendingFailureReasons({});
+    }
+
+    // Update debug panel if present
+    var $newDebug = $result.find('#debugQueryPanel');
+    var $newDebugWrapper = $result.find('#debugQueryWrapper');
+    if ($('#debugQueryWrapper').length) {
+    if ($newDebugWrapper.length) {
+    $('#debugQueryWrapper').replaceWith($newDebugWrapper);
+    } else {
+    $('#debugQueryWrapper').remove();
+    }
+    }
+
+    handleSplitSearchResults();
+    },
+    error: function (xhr, status, error) {
+    console.error("AJAX error:", status, error);
+    }
+    });
+    }
+
+    $(document).on('click', '.pagination a.page-link', function (event) {
+    event.preventDefault();
+    if ($(this).closest('.page-item').hasClass('disabled') || $(this).closest('.page-item').hasClass('active')) {
+    return;
+    }
+    const page = parseInt($(this).data('page'));
+    if (!page || page < 1) {
+    return;
+    }
+    loadData(page);
+    });
+
+
+
+
+    // Load delivery companies when the country or city changes
+    $('#CountryId, #CityId').change(function () {
+    loadDeliveryCompanies();
+    scheduleAutoSelectSingleDeliveryCompany();
+
+    });
+
+    // Keep the bulk delivery-assignment dropdown hidden
+    $('#FilteredDeliveryCompanyId').hide();
+    $('#FilteredDeliveryCompanyId').closest('.delivery-assign-wrapper').hide();
+
+    function loadDeliveryCompanies() {
+    var countryId = $('#CountryId').val();
+    var cityId = $('#CityId').val();
+
+    if (countryId) {
+    $.ajax({
+    url: '@Url.Action("GetAllDeliveryCompaniesAndRepresentatives", "Datalist")',
+    method: 'GET',
+    data: {
+    countryId: countryId,
+    cityId: cityId
+    },
+    success: function (data) {
+    $('#FilteredDeliveryCompanyId').empty(); // Clear the current options
+    $('#FilteredDeliveryCompanyId').append('<option value="-1" disabled selected>تعيين الطلبات للتوصيل</option>');
+
+    // Populate options from the response data
+    data.forEach(function (company) {
+    $('#FilteredDeliveryCompanyId').append(
+    `<option value="${company.id}" data-image="${company.logoUrl}">${company.name}</option>`
+    );
+    });
+
+    // Check the number of items and toggle visibility
+    if (data.length <= 1) {
+    $('#FilteredDeliveryCompanyId').closest('.delivery-assign-wrapper').hide();
+    } else {
+    $('#FilteredDeliveryCompanyId').closest('.delivery-assign-wrapper').hide();
+    }
+
+    // Reinitialize Select2 with custom placeholder and format
+    $('#FilteredDeliveryCompanyId').select2({
+    placeholder: {
+    id: '-1',
+    text: 'تعيين الطلبات للتوصيل',
+    image: '/mainicons/truck-regular.svg' // Use your truck icon as the placeholder image
+    },
+    allowClear: true,
+    templateResult: formatOption,
+    templateSelection: formatOption,
+    dir: 'rtl', // Right-to-left support for Arabic
+    minimumResultsForSearch: 1, // Always show the search box
+    width: '100%' // Ensure dropdown width fits the container
+    }).on('select2:open', function () {
+    // Hide the first option (the placeholder) when the dropdown is opened
+    setTimeout(function () {
+    // Hide only the option with value -1 (the placeholder)
+    $('.select2-results__option[data-select2-id="-1"]').hide();
+    }, 1);
+    });
+    }
+    });
+    } else {
+    // Hide the dropdown if no country is selected
+    $('#FilteredDeliveryCompanyId').closest('.delivery-assign-wrapper').hide();
+    }
+    }
+
+    // Handle the transfer action when a delivery company is selected
+    $('#FilteredDeliveryCompanyId').change(function () {
+    var selectedDeliveryCompanyId = $(this).val();
+    var selectedOrderIds = getSelectedOrderIds();
+
+    if (selectedDeliveryCompanyId && selectedOrderIds.length > 0) {
+    transferOrdersToDeliveryCompany(selectedOrderIds, selectedDeliveryCompanyId);
+    }
+    });
+
+    function transferOrdersToDeliveryCompany(orderIds, deliveryCompanyId) {
+    $.ajax({
+    url: '@Url.Action("TransferOrderWarehouse", "Order")',
+    type: 'POST',
+    data: {
+    orderIds: orderIds,
+    newDeliveryCompanyId: deliveryCompanyId
+    },
+    success: function (result) {
+    if (result.success) {
+    alert("تم نقل الطلبات بنجاح");
+    location.reload();
+    } else {
+    alert("فشل في نقل الطلبات");
+    }
+    },
+    error: function (xhr, status, error) {
+    console.error("Error occurred: " + error);
+    alert("فشل في نقل الطلبات");
+    }
+    });
+    }
+
+    // ---- تعيين الموظف بالنيابة ----
+    var failedStatuses     = [7, 30, 19, 20, 21, 22, 23, 24];
+    var incompleteStatuses = [18, 31, 25, 26, 27, 28, 29];
+
+    function shouldShowDelegateDropdown() {
+    var currentFilter = parseInt($('#OrderStatusId').val());
+    return failedStatuses.includes(currentFilter) || incompleteStatuses.includes(currentFilter);
+    }
+
+    function updateDelegateDropdownVisibility() {
+    var $wrapper = $('#assignDelegateWrapper');
+    if (!$wrapper.length) return;
+    if (shouldShowDelegateDropdown() && getSelectedOrderIds().length > 0) {
+    $wrapper.show();
+    } else {
+    $wrapper.hide();
+    }
+    }
+
+    // Load assignable users unconditionally so the dropdown is ready whenever shown.
+    if ($('#assignDelegateWrapper').length) {
+    $.ajax({
+    url: '@Url.Action("GetAssignableUsers", "DataList")',
+    method: 'GET',
+    success: function (data) {
+    var $sel = $('#AssignDelegateEmployeeId');
+    $sel.empty().append('<option value="-1" disabled selected>تعيين الموظف بالنيابة</option>');
+    data.forEach(function (u) {
+    $sel.append('<option value="' + u.id + '">' + u.name + '</option>');
+    });
+    $sel.select2({
+    placeholder: {
+    id: '-1',
+    text: 'تعيين الموظف بالنيابة'
+    },
+    allowClear: true,
+    templateResult: formatOption,
+    templateSelection: formatOption,
+    dir: 'rtl',
+    minimumResultsForSearch: 1,
+    width: '100%'
+    }).on('select2:open', function () {
+    setTimeout(function () {
+    $('.select2-results__option[data-select2-id="-1"]').hide();
+    }, 1);
+    });
+    }
+    });
+    }
+
+    $(document).on('change', 'input[type="checkbox"][name="selectedOrders"], #selectAll', function () {
+    updateDelegateDropdownVisibility();
+    });
+    updateDelegateDropdownVisibility();
+
+    $('#AssignDelegateEmployeeId').on('select2:select', function () {
+    var delegateId = $(this).val();
+    var selectedIds = getSelectedOrderIds();
+    if (!delegateId || delegateId === '-1' || selectedIds.length === 0) return;
+
+    $.ajax({
+    url: '@Url.Action("AssignOrdersToDelegate", "Order")',
+    type: 'POST',
+    data: { orderIds: selectedIds, delegateEmployeeId: delegateId },
+    success: function (result) {
+    if (result.success) {
+    showNotification("تم تعيين الموظف بالنيابة بنجاح", function () { location.reload(); }, '/static/info-icon.svg');
+    } else {
+    showNotification(result.message || "فشل في تعيين الموظف", null, '/static/info-icon.svg');
+    }
+    },
+    error: function () {
+    showNotification("حدث خطأ أثناء تعيين الموظف", null, '/static/info-icon.svg');
+    }
+    });
+    });
+
+    // Handle "التقدم للحالة التالية" button click
+    $('#advanceFailureStatusBtn').click(function () {
+    var $btn = $(this);
+    var selectedOrderIds = getSelectedOrderIds();
+
+    if (selectedOrderIds.length === 0) {
+    showNotification("الرجاء تحديد طلب واحد على الأقل", null, '/static/info-icon.svg');
+    return;
+    }
+
+    $btn.prop('disabled', true).addClass('disabled');
+
+    var incompleteStatusValues = [18, 25, 26, 27, 28, 29, 31];
+    var currentFilter = parseInt($('#OrderStatusId').val());
+    var isIncompleteFilter = incompleteStatusValues.includes(currentFilter);
+
+    if (isIncompleteFilter) {
+    // Incomplete statuses: advance directly without modal
+    showNotification(
+    "هل أنت متأكد من التقدم للحالة التالية لـ " + selectedOrderIds.length + " طلب؟",
+    function () {
+    $('#loadingIndicator').show();
+    $.ajax({
+    url: '@Url.Action("AdvanceFailureStatus", "Order")',
+    type: 'POST',
+    data: { ids: selectedOrderIds },
+    success: function (result) {
+    if (result.success) {
+    localStorage.removeItem('selectedOrderIds');
+    localStorage.removeItem('pendingFailureReasons');
+    showNotification("تم التقدم للحالة التالية بنجاح", function () { location.reload(); }, '/static/trash-can-regular.svg');
+    } else {
+    showNotification(result.message || "فشل في التقدم للحالة التالية", null, '/static/trash-can-regular.svg');
+    }
+    },
+    error: function (xhr, status, error) {
+    var response = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+    showNotification("خطأ: " + (response.message || error), null, '/static/trash-can-regular.svg');
+    },
+    complete: function () {
+    $('#loadingIndicator').hide();
+    $btn.prop('disabled', false).removeClass('disabled');
+    }
+    });
+    },
+    '/static/trash-can-regular.svg'
+    );
+    $btn.prop('disabled', false).removeClass('disabled');
+    } else if (selectedOrderIds.length === 1) {
+    // Single row: show modal for reason confirmation
+    var orderId = selectedOrderIds[0];
+    var $row = $('tr.order-row input[value="' + orderId + '"]').closest('tr');
+
+    globalOrderId = orderId;
+    globalOrderStatus = $row.data('order-status');
+    globalAdvanceMode = true;
+
+    $.ajax({
+    url: '/Order/FailureReasonModal',
+    type: 'GET',
+    success: function (data) {
+    $('#modal-container').html(data);
+
+    fetchFailureReasons('#statusChangeReason', function () {
+    var existingReason = $row.data('failure-reason');
+    if (existingReason) {
+    var matchingOption = $('#statusChangeReason option').filter(function () {
+    return $(this).val() === String(existingReason);
+    });
+    if (matchingOption.length > 0) {
+    $('#statusChangeReason').val(String(existingReason));
+    }
+    }
+
+    $('#statusChangeReason').select2({
+    placeholder: { id: '', text: 'اختر سبب الفشل', image: '/mainicons/circle-exclamation-regular.svg' },
+    allowClear: true,
+    templateResult: formatOption,
+    templateSelection: formatOption,
+    dir: "rtl",
+    minimumResultsForSearch: 1,
+    width: '100%',
+    dropdownParent: $('#reasonModal')
+    });
+
+    $('#reasonModal').on('shown.bs.modal', function () { document.body.classList.add('modal-open'); });
+    $('#reasonModal').on('hidden.bs.modal', function () {
+    document.body.classList.remove('modal-open');
+    $btn.prop('disabled', false).removeClass('disabled');
+    globalAdvanceMode = false;
+    });
+    $('#reasonModal').modal('show');
+    });
+    },
+    error: function () {
+    console.error('Error loading failure reason modal');
+    $btn.prop('disabled', false).removeClass('disabled');
+    globalAdvanceMode = false;
+    }
+    });
+    } else {
+    // Multiple rows: advance directly, inherit reason from previous status
+    showNotification(
+    "هل أنت متأكد من التقدم للحالة التالية لـ " + selectedOrderIds.length + " طلبات؟",
+    function () {
+    $('#loadingIndicator').show();
+    $.ajax({
+    url: '@Url.Action("AdvanceFailureStatus", "Order")',
+    type: 'POST',
+    data: { ids: selectedOrderIds },
+    success: function (result) {
+    if (result.success) {
+    localStorage.removeItem('selectedOrderIds');
+    localStorage.removeItem('pendingFailureReasons');
+    showNotification("تم التقدم للحالة التالية بنجاح", function () { location.reload(); }, '/static/trash-can-regular.svg');
+    } else {
+    showNotification(result.message || "فشل في التقدم للحالة التالية", null, '/static/trash-can-regular.svg');
+    }
+    },
+    error: function (xhr, status, error) {
+    var response = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+    showNotification("خطأ: " + (response.message || error), null, '/static/trash-can-regular.svg');
+    },
+    complete: function () {
+    $('#loadingIndicator').hide();
+    $btn.prop('disabled', false).removeClass('disabled');
+    }
+    });
+    },
+    '/static/trash-can-regular.svg'
+    );
+    $btn.prop('disabled', false).removeClass('disabled');
+    }
+    });
+
+    // Initialize inline failure reason selects
+    function initInlineFailureSelects() {
+    var $selects = $('.inline-failure-select').not('[data-select2-id]');
+    if ($selects.length === 0) return;
+    $.ajax({
+    url: '/DataList/GetAllFailureReasons',
+    type: 'GET',
+    dataType: 'json',
+    success: function (data) {
+    $selects.each(function () {
+    var $select = $(this);
+    var preselect = $select.data('preselect');
+
+    $select.append('<option value=""></option>');
+    $.each(data, function (i, reason) {
+    $select.append('<option value="' + reason.name + '">' + reason.name + '</option>');
+    });
+
+    $select.select2({
+    placeholder: { id: '', text: 'اختر سبب الفشل', image: '/mainicons/circle-exclamation-regular.svg' },
+    allowClear: true,
+    templateResult: formatOption,
+    templateSelection: formatOption,
+    dir: "rtl",
+    minimumResultsForSearch: 1,
+    width: '180px'
+    });
+    });
+    highlightFailureReasonCells();
+    }
+    });
+    }
+
+    initInlineFailureSelects();
+
+    function restorePendingFailureReasonUI() {
+    $.each(pendingFailureReasons, function (orderId, reason) {
+    var $tr = $('tr.order-row input[value="' + orderId + '"]').closest('tr');
+    if ($tr.length === 0) return;
+    var $td = $tr.find('td:has(.inline-failure-select)');
+    var $reasonLabel = $td.find('.text-danger');
+    if ($reasonLabel.length) {
+    $reasonLabel.text(reason).attr('data-copy-text', reason);
+    } else {
+    $td.find('.clear-reason-btn').before('<div class="text-danger fw-bold copyable" style="font-size:0.85em;cursor:pointer;" data-copy-text="' + reason + '" data-copy-label="سبب الفشل">' + reason + '</div>');
+    }
+    $tr.data('failure-reason', reason);
+    $tr.find('.clear-reason-btn').show();
+    $tr.find('input[type="checkbox"]').removeClass('needs-failure-reason').css('cursor', '');
+    });
+    highlightFailureReasonCells();
+    updateFailStatusBtnState();
+    applyFailureReasonFilteredTableView();
+    }
+
+    function highlightFailureReasonCells() {
+    $('.inline-failure-select').each(function () {
+    var $tr = $(this).closest('tr');
+    var reasonText = ($tr.find('.text-danger').text() || '').trim();
+
+    if (!reasonText) {
+    reasonText = String($tr.data('failure-reason') || '').trim();
+    }
+
+    var hasFailureReason = reasonText.length > 0;
+
+    $tr.toggleClass('failure', hasFailureReason);
+    $tr.toggleClass('failure-reason-row-active', hasFailureReason);
+
+    if (hasFailureReason) {
+    $tr.attr('data-inline-failure-active', 'true');
+    } else {
+    $tr.removeAttr('data-inline-failure-active');
+    }
+    });
+    }
+
+
+    function resetInlineFailureReasonImageInput($modal) {
+    var $pasteBox = $modal.find('.inline-failure-reason-image-paste-box');
+    var $fileInput = $modal.find('.inline-failure-reason-image-file');
+    var $error = $modal.find('.inline-failure-reason-image-error');
+
+    $fileInput.val('');
+    $error.hide();
+    $pasteBox.html('اختاري صورة أو اضغطي Ctrl + V للصق صورة سبب الفشل إذا متاحة');
+    }
+
+    function openInlineFailureReasonImageOptionalPopup(reason, onConfirm, onCancel) {
+    var selectedFile = null;
+    var confirmed = false;
+
+    $('#inlineFailureReasonImageModal').remove();
+
+    var modalHtml = ''
+    + '<div class="modal fade" id="inlineFailureReasonImageModal" tabindex="-1" role="dialog" aria-hidden="true">'
+    + '  <div class="modal-dialog modal-dialog-centered" role="document">'
+    + '    <div class="modal-content" dir="rtl" style="border-radius:16px;overflow:hidden;">'
+    + '      <div class="modal-header" style="background:#18a088;color:#fff;">'
+    + '        <h5 class="modal-title" style="font-weight:800;">صورة سبب فشل الطلب</h5>'
+    + '        <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="border:0;background:transparent;font-size:26px;line-height:1;color:#fff;">&times;</button>'
+    + '      </div>'
+    + '      <div class="modal-body">'
+    + '        <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;margin-bottom:12px;color:#334155;font-weight:700;">'
+    + '          سبب الفشل: <span style="color:#dc2626;">' + $('<div>').text(reason || '').html() + '</span>'
+    + '        </div>'
+    + '        <label class="form-label fw-bold">إضافة صورة الفشل <span class="text-muted">(اختياري)</span></label>'
+    + '        <div tabindex="0" class="inline-failure-reason-image-paste-box" style="min-height:135px;border:2px dashed #d1d5db;border-radius:12px;background:#f8fafc;display:flex;align-items:center;justify-content:center;text-align:center;color:#64748b;font-weight:700;cursor:pointer;padding:12px;outline:none;">اختاري صورة أو اضغطي Ctrl + V للصق صورة سبب الفشل إذا متاحة</div>'
+    + '        <input type="file" class="inline-failure-reason-image-file" accept="image/*" hidden />'
+    + '        <div class="inline-failure-reason-image-error text-danger mt-2" style="display:none;font-size:13px;font-weight:700;">الملف المختار يجب أن يكون صورة.</div>'
+    + '      </div>'
+    + '      <div class="modal-footer" style="gap:8px;justify-content:center;">'
+    + '        <button type="button" class="btn btn-secondary inline-failure-reason-image-cancel" data-dismiss="modal" data-bs-dismiss="modal">تراجع</button>'
+    + '        <button type="button" class="btn btn-success inline-failure-reason-image-confirm">حفظ</button>'
+    + '      </div>'
+    + '    </div>'
+    + '  </div>'
+    + '</div>';
+
+    $('body').append(modalHtml);
+
+    var $modal = $('#inlineFailureReasonImageModal');
+    var $pasteBox = $modal.find('.inline-failure-reason-image-paste-box');
+    var $fileInput = $modal.find('.inline-failure-reason-image-file');
+    var $error = $modal.find('.inline-failure-reason-image-error');
+
+    function showSelectedImage(file) {
+    if (!file) return;
+
+    if (!/^image\//i.test(file.type || '')) {
+    $error.show();
+    return;
+    }
+
+    selectedFile = file;
+    $error.hide();
+
+    var reader = new FileReader();
+    reader.onload = function (event) {
+    $pasteBox.html('<img src="' + event.target.result + '" alt="صورة سبب الفشل" style="max-width:100%;max-height:190px;object-fit:contain;border-radius:10px;" />');
+    };
+    reader.readAsDataURL(file);
+    }
+
+    function handlePaste(event) {
+    var clipboard = event.clipboardData || (event.originalEvent && event.originalEvent.clipboardData);
+    var items = clipboard && clipboard.items;
+
+    if (!items) return;
+
+    for (var i = 0; i < items.length; i++) {
+    if (items[i].type && items[i].type.indexOf('image') === 0) {
+    event.preventDefault();
+    var blob = items[i].getAsFile();
+
+    try {
+    var dt = new DataTransfer();
+    dt.items.add(blob);
+    $fileInput[0].files = dt.files;
+    } catch (e) { }
+
+    showSelectedImage(blob);
+    return;
+    }
+    }
+    }
+
+    $pasteBox.on('click', function () {
+    $fileInput.trigger('click');
+    });
+
+    $pasteBox.on('paste', handlePaste);
+    $modal.on('paste', handlePaste);
+
+    $fileInput.on('change', function () {
+    var file = this.files && this.files[0];
+    if (file) showSelectedImage(file);
+    });
+
+    $modal.find('.inline-failure-reason-image-confirm').on('click', function () {
+    confirmed = true;
+    $modal.modal('hide');
+    if (typeof onConfirm === 'function') {
+    onConfirm(selectedFile);
+    }
+    });
+
+    $modal.on('hidden.bs.modal', function () {
+    if (!confirmed && typeof onCancel === 'function') {
+    onCancel();
+    }
+    $modal.remove();
+    });
+
+    $modal.modal('show');
+
+    setTimeout(function () {
+    $pasteBox.trigger('focus');
+    }, 250);
+    }
+
+    function applyInlineFailureReasonUi($select, reason) {
+    $select.val(null).trigger('change.select2');
+
+    var $td = $select.closest('td');
+    var $tr = $select.closest('tr');
+    var $reasonLabel = $td.find('.text-danger');
+
+    if ($reasonLabel.length) {
+    $reasonLabel.text(reason).attr('data-copy-text', reason);
+    } else {
+    $tr.find('.clear-reason-btn').before('<div class="text-danger fw-bold copyable" style="font-size:0.85em;cursor:pointer;" data-copy-text="' + reason + '" data-copy-label="سبب الفشل">' + reason + '</div>');
+    }
+
+    $tr.find('.clear-reason-btn').show();
+    $tr.data('failure-reason', reason);
+    $tr.attr('data-failure-reason', reason);
+
+    var checkbox = $tr.find('input[type="checkbox"]');
+    checkbox.removeClass('needs-failure-reason').css('cursor', '');
+    applyCheckboxRestrictions();
+
+    if (!checkbox.is(':checked')) {
+    checkbox.trigger('click');
+    }
+
+    highlightFailureReasonCells();
+    updateFailStatusBtnState();
+    applyFailureReasonFilteredTableView();
+    }
+
+    function buildInlineFailureReasonFormData(orderId, orderStatus, reason, failureReasonImageFile) {
+    var formData = new FormData();
+    formData.append('id', orderId);
+    formData.append('orderStatus', orderStatus);
+    formData.append('reason', reason || '');
+
+    if (failureReasonImageFile) {
+    formData.append('failureReasonImageFile', failureReasonImageFile);
+    formData.append('failedReasonImageFile', failureReasonImageFile);
+    formData.append('failureImageFile', failureReasonImageFile);
+    formData.append('reasonImageFile', failureReasonImageFile);
+    formData.append('imageFile', failureReasonImageFile);
+    }
+
+    return formData;
+    }
+
+    function submitInlineFailureReasonWithOptionalImage($select, orderId, orderStatus, reason, failureReasonImageFile) {
+    $('#loadingIndicator').show();
+
+    var ajaxOptions = {
+    url: '/Order/UpdateStatus',
+    type: 'POST',
+    success: function (result) {
+    console.log('[inline-failure-select] UpdateStatus response:', result);
+    if (result.success) {
+    var toastText = result.action === 'status_changed'
+    ? 'تم تغيير حالة الطلب وحفظ سبب الفشل'
+    : result.action === 'reason_updated'
+    ? 'تم تحديث سبب الفشل'
+    : result.action === 'reason_created'
+    ? 'تم إضافة سبب الفشل'
+    : 'تم حفظ سبب الفشل';
+    showNotification(toastText, null, '/static/info-icon.svg');
+
+    applyInlineFailureReasonUi($select, reason);
+    $('#loadingIndicator').hide();
+    } else {
+    showNotification(result.message || 'فشل في تعديل حالة الطلب', null, '/static/trash-can-regular.svg');
+    $select.val(null).trigger('change');
+    $('#loadingIndicator').hide();
+    }
+    },
+    error: function (xhr, status, error) {
+    console.error('[inline-failure-select] AJAX error:', status, error, xhr.responseText);
+    showNotification('حدث خطأ أثناء حفظ سبب الفشل', null, '/static/trash-can-regular.svg');
+    $('#loadingIndicator').hide();
+    }
+    };
+
+    if (failureReasonImageFile) {
+    ajaxOptions.data = buildInlineFailureReasonFormData(orderId, orderStatus, reason, failureReasonImageFile);
+    ajaxOptions.processData = false;
+    ajaxOptions.contentType = false;
+    } else {
+    ajaxOptions.data = { id: orderId, orderStatus: orderStatus, reason: reason };
+    }
+
+    $.ajax(ajaxOptions);
+    }
+
+    $(document).on('change', '.inline-failure-select', function () {
+    var $select = $(this);
+    var reason = $select.val();
+    var orderId = $select.data('order-id');
+    var orderStatus = $select.data('order-status');
+
+    highlightFailureReasonCells();
+
+    if (!reason) {
+    if (isInDeliveryFilter()) {
+    delete pendingFailureReasons[orderId];
+    delete pendingFailureReasonImageFiles[String(orderId)];
+    setPendingFailureReasons(pendingFailureReasons);
+    var $tr = $select.closest('tr');
+    $tr.data('failure-reason', '');
+    $tr.attr('data-failure-reason', '');
+    $tr.find('.text-danger').text('');
+    $tr.find('.clear-reason-btn').hide();
+    applyCheckboxRestrictions();
+    updateFailStatusBtnState();
+    highlightFailureReasonCells();
+    applyFailureReasonFilteredTableView();
+    }
+    return;
+    }
+
+    if (!hasCountryAndDeliveryCompanySelected()) {
+    showCountryDeliveryRequiredNotification();
+    resetInlineFailureSelect($select);
+    return;
+    }
+
+    openInlineFailureReasonImageOptionalPopup(
+    reason,
+    function (failureReasonImageFile) {
+    if (isInDeliveryFilter()) {
+    // Frontend-only path for قيد_التوصيل — reason/image are held until changing to failure status
+    pendingFailureReasons[orderId] = reason;
+    setPendingFailureReasons(pendingFailureReasons);
+
+    if (failureReasonImageFile) {
+    pendingFailureReasonImageFiles[String(orderId)] = failureReasonImageFile;
+    } else {
+    delete pendingFailureReasonImageFiles[String(orderId)];
+    }
+
+    applyInlineFailureReasonUi($select, reason);
+
+    Toastify({
+    text: failureReasonImageFile
+    ? 'تم تحديد سبب الفشل وإضافة الصورة (سيُرسل عند تغيير الحالة)'
+    : 'تم تحديد سبب الفشل (سيُرسل عند تغيير الحالة)',
+    duration: 2000,
+    gravity: 'bottom',
+    position: 'center',
+    style: { background: '#ff9800', borderRadius: '8px', fontWeight: 'bold' }
+    }).showToast();
+    return;
+    }
+
+    // Existing AJAX path for failure-class statuses + optional image
+    submitInlineFailureReasonWithOptionalImage($select, orderId, orderStatus, reason, failureReasonImageFile);
+    },
+    function () {
+    resetInlineFailureSelect($select);
+    }
+    );
+    });
+
+
+    });
+</script>
+
+
+<script id="orders-products-tooltip-loader-script">
+    (function () {
+    var productsTooltipReady = false;
+    var firstPointerMoveConsumed = false;
+
+    function escapeHtml(value) {
+    return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+    }
+
+    function normalizeImageSrc(src) {
+    if (!src) return '';
+    if (src.indexOf('http://') === 0 || src.indexOf('https://') === 0 || src.indexOf('/') === 0) {
+    return src;
+    }
+
+    return '/' + src.replace(/^\/+/, '');
+    }
+
+    function getTooltipCloud(wrap) {
+    return wrap ? wrap.querySelector('.products-tooltip-cloud') : null;
+    }
+
+    function hideProductsTooltip(wrap) {
+    if (!wrap) return;
+    wrap.classList.remove('is-tooltip-active');
+    var cloud = getTooltipCloud(wrap);
+    if (cloud) {
+    cloud.hidden = true;
+    cloud.style.setProperty('display', 'none', 'important');
+    cloud.style.setProperty('opacity', '0', 'important');
+    cloud.style.setProperty('visibility', 'hidden', 'important');
+    }
+    }
+
+    function hideAllProductsTooltips() {
+    document.querySelectorAll('.products-tooltip-wrap').forEach(function (wrap) {
+    hideProductsTooltip(wrap);
+    });
+    }
+
+    function showProductsTooltip(wrap) {
+    if (!wrap) return;
+    var cloud = getTooltipCloud(wrap);
+    if (cloud) {
+    cloud.hidden = false;
+    cloud.style.setProperty('display', 'block', 'important');
+    cloud.style.setProperty('opacity', '1', 'important');
+    cloud.style.setProperty('visibility', 'visible', 'important');
+    }
+    wrap.classList.add('is-tooltip-active');
+    }
+
+    function renderProducts(wrap, products) {
+    var itemsBox = wrap.querySelector('.products-tooltip-items');
+    if (!itemsBox) {
+    return;
+    }
+
+    if (!products || !products.length) {
+    wrap.classList.add('no-products');
+    itemsBox.innerHTML = '<div class="products-tooltip-empty">لا توجد منتجات مسجلة لهذا الطلب</div>';
+    return;
+    }
+
+    wrap.classList.remove('no-products');
+    itemsBox.innerHTML = products.map(function (product) {
+    var imageHtml = product.image
+    ? '<img class="product-tooltip-image" src="' + escapeHtml(product.image) + '" alt="' + escapeHtml(product.name) + '" loading="lazy" onerror="this.style.display=\'none\';" />'
+    : '<span class="product-tooltip-image-placeholder"><i class="fa-solid fa-box-open"></i></span>';
+
+    return '<div class="product-tooltip-row">'
+    + imageHtml
+    + '<div>'
+    + '<div class="product-tooltip-name">' + escapeHtml(product.name || 'منتج') + '</div>'
+    + '<div class="product-tooltip-qty">عدد ' + escapeHtml(product.qty || '1') + ' قطعة</div>'
+    + '</div>'
+    + '</div>';
+    }).join('');
+    }
+
+    function extractProductsFromDetailsHtml(html) {
+    var container = document.createElement('div');
+    container.innerHTML = html;
+
+    var rows = Array.prototype.slice.call(container.querySelectorAll('#orderDetails_warehouseData tr'));
+
+    return rows.map(function (row) {
+    var cells = row.querySelectorAll('td');
+    var img = row.querySelector('img');
+    var image = img ? normalizeImageSrc(img.getAttribute('src')) : '';
+    var name = cells[1] ? cells[1].textContent.trim() : '';
+    var qty = cells[2] ? cells[2].textContent.trim() : '';
+
+    return {
+    image: image,
+    name: name || 'منتج',
+    qty: qty || '1'
+    };
+    }).filter(function (item) {
+    return item.name || item.image;
+    });
+    }
+
+    function loadProductsForTooltip(wrap) {
+    if (!wrap || wrap.dataset.productsLoaded === 'true' || wrap.dataset.productsLoading === 'true') {
+    return;
+    }
+
+    var orderId = wrap.getAttribute('data-order-id');
+    var itemsBox = wrap.querySelector('.products-tooltip-items');
+
+    if (!orderId || !itemsBox) {
+    return;
+    }
+
+    wrap.dataset.productsLoading = 'true';
+    wrap.classList.remove('no-products');
+    itemsBox.innerHTML = '<div class="products-tooltip-loading">جاري تحميل المنتجات...</div>';
+
+    fetch('/Order/DetailsPartial/' + encodeURIComponent(orderId), {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function (response) {
+    if (!response.ok) {
+    throw new Error('Failed to load details');
+    }
+
+    return response.text();
+    })
+    .then(function (html) {
+    var products = extractProductsFromDetailsHtml(html);
+    wrap.dataset.productsLoaded = 'true';
+    renderProducts(wrap, products);
+    })
+    .catch(function () {
+    itemsBox.innerHTML = '<div class="products-tooltip-empty">تعذر تحميل المنتجات</div>';
+    })
+    .finally(function () {
+    wrap.dataset.productsLoading = 'false';
+    });
+    }
+
+    function adjustTooltipDirection(wrap) {
+    if (!wrap) {
+    return;
+    }
+
+    var rect = wrap.getBoundingClientRect();
+    var header = document.querySelector('.fixed-top, header');
+    var headerBottom = header ? header.getBoundingClientRect().bottom : 0;
+    var safeTop = Math.max(headerBottom + 125, 165);
+
+    if (rect.top < safeTop) {
+    wrap.classList.add('tooltip-open-down');
+    } else {
+    wrap.classList.remove('tooltip-open-down');
+    }
+    }
+
+    function activateProductsTooltip(wrap) {
+    if (!wrap || !productsTooltipReady) {
+    return;
+    }
+
+    adjustTooltipDirection(wrap);
+    showProductsTooltip(wrap);
+    loadProductsForTooltip(wrap);
+    }
+
+    function deactivateProductsTooltip(wrap) {
+    hideProductsTooltip(wrap);
+    }
+
+    function markProductsTooltipReady() {
+    if (!firstPointerMoveConsumed) {
+    firstPointerMoveConsumed = true;
+    hideAllProductsTooltips();
+    return;
+    }
+
+    productsTooltipReady = true;
+    }
+
+    document.addEventListener('mousemove', function (event) {
+    markProductsTooltipReady();
+
+    var wrap = event.target.closest && event.target.closest('.products-tooltip-wrap');
+    if (!wrap) {
+    return;
+    }
+
+    activateProductsTooltip(wrap);
+    }, true);
+
+    document.addEventListener('mouseover', function (event) {
+    if (!productsTooltipReady) {
+    hideAllProductsTooltips();
+    return;
+    }
+
+    var wrap = event.target.closest && event.target.closest('.products-tooltip-wrap');
+    if (!wrap) {
+    return;
+    }
+
+    activateProductsTooltip(wrap);
+    }, true);
+
+    document.addEventListener('mouseout', function (event) {
+    var wrap = event.target.closest && event.target.closest('.products-tooltip-wrap');
+
+    if (!wrap) {
+    return;
+    }
+
+    var related = event.relatedTarget;
+    if (related && wrap.contains(related)) {
+    return;
+    }
+
+    deactivateProductsTooltip(wrap);
+    }, true);
+
+    document.addEventListener('focusin', function (event) {
+    var wrap = event.target.closest && event.target.closest('.products-tooltip-wrap');
+
+    if (!wrap) {
+    return;
+    }
+
+    productsTooltipReady = true;
+    activateProductsTooltip(wrap);
+    }, true);
+
+    document.addEventListener('focusout', function (event) {
+    var wrap = event.target.closest && event.target.closest('.products-tooltip-wrap');
+
+    if (!wrap) {
+    return;
+    }
+
+    deactivateProductsTooltip(wrap);
+    }, true);
+
+    document.addEventListener('DOMContentLoaded', hideAllProductsTooltips);
+    window.addEventListener('load', function () {
+    hideAllProductsTooltips();
+    setTimeout(hideAllProductsTooltips, 250);
+    setTimeout(hideAllProductsTooltips, 900);
+    });
+    })();
+</script>
+

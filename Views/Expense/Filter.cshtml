@@ -1,0 +1,90 @@
+﻿@using System.Globalization;
+@model List<lotus_blue.Models.Expense>
+@{
+    ViewData["Title"] = "  تفاصيل المصروفات";
+}
+<h2>تفاصيل المصاريف</h2>
+
+
+<form asp-action="Filter" method="post">
+
+    <div class="form-group">
+        <label for="selectedDay">اختر يومًا:</label>
+        <select name="selectedDay" class="form-control">
+            @for (int day = 1; day <= 31; day++)
+            {
+                <option value="@day">@day</option>
+            }
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="selectedMonth">اختر شهرًا:</label>
+        <select name="selectedMonth" class="form-control">
+            @for (int month = 1; month <= 12; month++)
+            {
+                <option value="@month">@DateTimeFormatInfo.CurrentInfo.GetMonthName(month)</option>
+            }
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="selectedYear">اختر عامًا:</label>
+        <select name="selectedYear" class="form-control">
+            @for (int year = DateTime.Now.Year; year >= DateTime.Now.Year - 2; year--)
+            {
+                <option value="@year">@year</option>
+            }
+        </select>
+    </div>
+   
+
+    <button type="submit" class="btn btn-primary">تفاصيل</button>
+</form>
+@if (Model != null)
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>الوصف</th>
+                <th>المبلغ</th>
+                <th>تاريخ الإضافة</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var expense in Model)
+            {
+                <tr>
+                    <td>@expense.Description</td>
+                    <td>@expense.Amount</td>
+                    <td>@expense.CreatedDate.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+
+<script>
+
+
+   
+
+
+    $(function () {
+        // Handle form submission with AJAX
+        $("#filterForm").submit(function (e) {
+            e.preventDefault();
+
+            var formData = $(this).serialize();
+
+            $.ajax({
+                type: "POST", // Use POST to send form data
+                url: "@Url.Action("Filter", "Expense")",
+                data: formData,
+                success: function (data) {
+                    // Replace the contents of the expenses table with the filtered data
+                    $("#expensesTable tbody").html(data);
+                }
+            });
+        });
+    });
+</script>

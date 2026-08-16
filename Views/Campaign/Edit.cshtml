@@ -1,0 +1,173 @@
+@model lotus_blue.ViewModels.CampaignViewModel
+@using static lotus_blue.Models.Common
+@{
+    ViewData["Title"] = "تعديل الحملة";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var allCountries = Enum.GetValues(typeof(Countries)).Cast<Countries>().ToList();
+    var selectedCountryVal = Model.SelectedCountries != null && Model.SelectedCountries.Count > 0
+        ? (int)Model.SelectedCountries[0]
+        : (int)Model.Country;
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>@ViewData["Title"]</h1>
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> العودة للقائمة
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form asp-action="Edit" method="post" enctype="multipart/form-data">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <input type="hidden" asp-for="Id" />
+                <input type="hidden" asp-for="ImageUrl" />
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label asp-for="ImageFile" class="control-label"></label>
+                            <input asp-for="ImageFile" type="file" class="form-control" accept="image/*" />
+                            <span asp-validation-for="ImageFile" class="text-danger"></span>
+                            <small class="form-text text-muted">اتركه فارغاً إذا لم ترد تغيير الصورة</small>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="control-label">الصورة الحالية</label>
+                            <div>
+                                <img src="@Model.ImageUrl" alt="Current Image" class="img-thumbnail" style="max-width: 200px; max-height: 200px; object-fit: cover;" />
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label asp-for="MainWarehouseId" class="control-label"></label>
+                            <select asp-for="MainWarehouseId" class="form-control" id="MainWarehouseId">
+                                <option value="">-- اختار المستودع الرئيسي --</option>
+                            </select>
+                            <span asp-validation-for="MainWarehouseId" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label asp-for="ManufacturingCompanyId" class="control-label"></label>
+                            <select asp-for="ManufacturingCompanyId" class="form-control" id="ManufacturingCompanyId">
+                                <option value="">-- اختار المتجر --</option>
+                            </select>
+                            <span asp-validation-for="ManufacturingCompanyId" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label asp-for="IsActive" class="control-label"></label>
+                            <select asp-for="IsActive" class="form-control">
+                                <option value="true">نشط</option>
+                                <option value="false">غير نشط</option>
+                            </select>
+                            <span asp-validation-for="IsActive" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label class="control-label fw-bold">البلد <span class="text-danger">*</span></label>
+                            <span asp-validation-for="SelectedCountries" class="text-danger d-block mb-1"></span>
+                            <div class="rounded p-2" style="border: 1px solid #dee2e6;">
+                                <table class="table table-sm table-hover mb-0">
+                                    <tbody>
+                                        @foreach (var country in allCountries)
+                                        {
+                                            <tr>
+                                                <td style="width: 40px;">
+                                                    <input type="checkbox"
+                                                           class="country-checkbox"
+                                                           name="SelectedCountries"
+                                                           value="@((int)country)"
+                                                           id="country_@((int)country)"
+                                                           checked="@(selectedCountryVal == (int)country ? "checked" : null)" />
+                                                </td>
+                                                <td>
+                                                    <label class="form-check-label w-100" for="country_@((int)country)">
+                                                        @country.ToString().Replace("_", " ")
+                                                    </label>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group mt-3">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> حفظ التغييرات
+                    </button>
+                    <a asp-action="Index" class="btn btn-secondary">إلغاء</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            var currentWarehouseId = @Model.MainWarehouseId;
+            var currentManufacturingCompanyId = @(Model.ManufacturingCompanyId ?? 0);
+
+            $.ajax({
+                url: '@Url.Action("GetMainWarehouses", "Datalist")',
+                type: 'GET',
+                success: function (data) {
+                    var dropdown = $('#MainWarehouseId');
+                    dropdown.empty();
+                    dropdown.append('<option value="">-- اختار المستودع الرئيسي --</option>');
+
+                    $.each(data, function (i, warehouse) {
+                        var option = $('<option></option>')
+                            .val(warehouse.id)
+                            .text(warehouse.name);
+
+                        if (warehouse.id === currentWarehouseId) {
+                            option.attr('selected', 'selected');
+                        }
+
+                        dropdown.append(option);
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error fetching Main Warehouses:', error);
+                }
+            });
+
+            $.ajax({
+                url: '@Url.Action("GetAllStores", "Datalist")',
+                type: 'GET',
+                success: function (data) {
+                    var dropdown = $('#ManufacturingCompanyId');
+                    dropdown.empty();
+                    dropdown.append('<option value="">-- اختار المتجر --</option>');
+
+                    $.each(data, function (i, store) {
+                        var option = $('<option></option>')
+                            .val(store.id)
+                            .text(store.name);
+
+                        if (store.id === currentManufacturingCompanyId) {
+                            option.attr('selected', 'selected');
+                        }
+
+                        dropdown.append(option);
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error fetching Stores:', error);
+                }
+            });
+        });
+    </script>
+}

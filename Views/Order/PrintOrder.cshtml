@@ -1,0 +1,1038 @@
+@model List<lotus_blue.Models.ViewModel.OrderViewModel>
+@{
+    Layout = "_EmptyLayout";
+    ViewData["Title"] = "     فاتورة الطلب  ";
+
+}
+@foreach (var Model in Model)
+{
+    @if (Model.ManufacturingCompanyId == 1)
+    {
+        <div class="print" id="Print">
+            <div id="pdf">
+                <div class="row">
+                    <div class="col text-left">
+                        <img src="/static/Lotusblueinvoicejpg.jpg" width="180" alt="" class="mt-3 ">
+                    </div>
+                    <div class="col text-end mb-2">
+                        WEB: https://lotusmyblue.com <br> Mail: lotusmyblue@gmail.com <br>TEL: +905526524492 <br>instagram:
+                        Lotusbluecosmetics
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col text-center">
+                        <h6 class="h6 fw-bold my-2" style="color:  #05126e; ">
+                            إرسال الفاتورة إلى العميل
+                        </h6>
+                    </div>
+                </div>
+                <div class="row col m-0 p-0">
+                    <div class="p-3 mr-1 text-end border border-dark col-6" style="height: 340px;">
+                        <h4 class=" text-center mt-2">
+                            المستلم
+                        </h4>
+                        <small class=" text-secondary" ">اسم العميل</small>
+                        <br>
+                        <small class=" fw-bold h6">@Model.CustomerName</small>
+                        <br>
+                        <br>
+                        <small class="text-secondary">المدينة</small>
+                        <br>
+                        <small class=" fw-bold h6"> @Model.State</small>
+
+                        <br>
+                        <br>
+                        <small class=" text-secondary">العنوان</small>
+                        <br>
+                        <small class="fw-bold h6">@Model.Address</small>
+                        <br>
+                        <br>
+                        <small class=" text-secondary">رقم الهاتف</small>
+                        <br>
+                        <small class="fw-bold h6">@Model.TelephoneNumber</small>
+                    </div>
+
+                    <div class="p-3 ml-1 text-end border border-dark col-6" style="height: 340px;">
+
+                        <h4 class=" text-center mt-2">المرسل</h4>
+                        <small class=" text-secondary">الشركة المرسلة</small>
+                        <br>
+                        <small class=" fw-bold h6">@Model.ManufacturingCompany.Name   </small>
+                        <br>
+
+                        <br>
+                        <small class="text-secondary">رقم هاتف الشركة</small>
+                        <br>
+                        <small class=" fw-bold h6">0 531 285 52 86</small>
+
+                        <br>
+                        <br>
+                        <small class=" text-secondary">الفرع</small>
+                        <br>
+                        <small class=" fw-bold h6"> @Model.State</small>
+                        <br>
+                        <br>
+                        <small class=" text-secondary">حالة الطلب</small>
+                        <br>
+                        @if (Model.IsPaid)
+                        {
+                            <small class=" fw-bold h6">تم التحويل حوالة بنكية</small>
+
+                        }
+                        else
+                        {
+
+                            <small class=" fw-bold h6"> غير مدقوع</small>
+
+                        }
+                    </div>
+                </div>
+
+                <div class="row text-end border border-dark p-2 mt-2 row col m-0" style="height: 320px; width:  100%; ">
+                    <div class="col-6 text-center">
+                        <br>
+                        @if (Model.QRCodeImageBase64 != null)
+                        {
+                            <a href="@Model.QRCodeUrl" target="_blank">
+                                <img src="data:image/png;base64,@Model.QRCodeImageBase64" width="200px" alt="QR Code" />
+                            </a>
+                        }
+
+                    </div>
+
+                    <div class="col-6">
+                        <small class=" text-secondary ">التاريخ</small>
+                        <br>
+                        <small class="text-right fw-bold h6">@Model.CreatedDate.ToString("yyyy-MM-dd")</small>
+                        <br>
+
+                        <br>
+
+                        <small class=" text-secondary ">تفاصيل الطلب</small>
+                        <br>
+                        <div class="d-inline flex-row-reverse">
+                        @foreach (var warehouse in Model.SelectedWarehouses)
+                        {
+                                <span class="fw-bold">@warehouse.WarehouseName</span>
+                                <span class="fw-bold">(@warehouse.Amount)</span>
+                                <td><img width="15" height="15" src="@warehouse.Image" /></td>
+
+                        }
+                        </div>
+
+
+
+                        <br>
+                        <br>
+                        <small class="text-secondary ">تنبيه</small>
+                        <br>
+                        <small class="fw-bold h6 ">يرجى عدم فتح الطلب للحفاظ على سلامة ومصداقية التسليم. شكرًا لك.</small>
+                        <br>
+
+                        <br>
+
+                        <small class=" text-secondary ">طريقة الدفع</small>
+                        <br>
+                        <small class=" fw-bold h6 ">الدفع عند الاستلام</small>
+                        <br>
+                    </div>
+                </div>
+                <div class="row col m-0 p-0 mt-2">
+                    <div class="mr-1 col text-center border border-dark">
+
+                        <h1 class="text-center  pt-3 fw-light h2">@Model.State </h1>
+
+                    </div>
+
+                    <div class="ml-1 col text-end p-2 border border-dark">
+
+                        <small class=" text-secondary ">ملاحظة</small>
+                        <br>
+                        <small class="fw-bold h6  ">يرجى ترك الطلب عند الباب</small>
+                        <br>
+                        <br>
+                        <small class="text- fw-bold h6   ">
+
+                            المنتج قابل للكسر
+                            <img width="35px" src="https://crm.lotusmyblue.com/public/images/warning.png" alt="" class="pb-2">
+                        </small>
+
+                    </div>
+                </div>
+
+                <div class="row border border-dark mt-2 p-2 col-12 m-0">
+
+                    <div class="col-6 text-left p-0">
+
+                        <small class="text-right text-secondary  ml-1"> المجموع :</small>
+                        <br>
+                        <small class="text-right fw-bold h4 ml-0">
+                            @Model.TotalPrice
+                            <small class="  text-secondary">@Common.GetCurrencyByCountryName(Model.Country.ToString())</small>
+                        </small>
+                    </div>
+
+                    <div class="col-6 text-end p-0">
+
+                        <small class="text-right text-secondary  "> : رقم الشحنة</small>
+                        <br>
+                        <small class="text-right fw-bold h4 "> @Model.Id</small>
+                        <br>
+
+                    </div>
+
+                </div>
+                <h6 class="text-center text-secondary mt-0" style="font-size: 13px;">
+                    MERKEZ MAH. MENEKSE SK. NO: 4 A AVCILAR/ İSTANBUL - https://lotusmyblue.com
+                </h6>
+            </div>
+
+        </div>
+    }
+    @if (Model.ManufacturingCompanyId == 2)
+    {
+        <div class="print" class="Moon-light">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <img class="m-0 p-1" width="120" src="/static/MoonLight.svg" />
+                    <p class="text-end">
+                        رقم الشحنة: #@Model.Id <br>
+                        <span>
+                            التاريخ: @Model.CreatedDate.ToString("yyyy-MM-dd")
+                        </span>
+                    </p>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3 d-flex justify-content-start">
+                        <div class="col-sm-6 d-flex justify-content-end">
+                            <div>
+                                <p class="text-end"><strong>المرسل</strong></p>
+                                <p class="text-end">
+                                <p class="text-end">
+                                    الشركة المرسلة
+
+                                    <br>
+                                    <span style="direction: rtl !important; display: inline-block;">
+                                            @Model.ManufacturingCompany.Name
+                                    </span>
+
+
+                                </p>
+                                <p class="text-end">
+                                    رقم الهاتف
+                                    <br>
+                                    <span>
+                                        +905353682345
+                                    </span>
+
+                                </p>
+
+
+
+                                <p class="text-end">
+                                    العنوان                                <br>
+                                    <span>
+                                            @Model.State
+                                    </span>
+
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="col-sm-6 d-flex justify-content-end">
+                            <div>
+                                <p class="text-end"><strong>المستلم</strong></p>
+                                <p class="text-end">
+                                    الاسم
+                                    <br>
+                                    <span>
+                                        @Model.CustomerName
+                                    </span>
+                                </p>
+                                <p class="text-end">
+                                    العنوان
+                                    <br>
+                                    <span>
+                                        @Model.State
+                                    </span>
+                                </p>
+                                <p class="text-end">
+                                    العنوان الكامل
+                                    <br>
+                                    <span>
+                                        @Model.Address
+                                    </span>
+                                </p>
+                                <p class="text-end">
+                                    رقم الهاتف
+                                    <br>
+                                    <span>
+                                        @Model.TelephoneNumber
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-responsive row" style="direction:rtl;">
+                        <table class="table col-6 w-50 h-50">
+                            <!-- Table headers -->
+                            <thead>
+                                <tr>
+                                    <th scope="col">الكمية </th>
+                                    <th scope="col">اسم المنتج</th>
+                                </tr>
+                            </thead>
+                            <!-- Table body -->
+                            <tbody>
+                                @foreach (var warehouse in Model.SelectedWarehouses)
+                                {
+
+
+
+                                    <tr>
+                                        <th>@warehouse.Amount</th>
+                                        <td>@warehouse.WarehouseName</td>
+                                        <td><img width="15" height="15" src="@warehouse.Image" /></td>
+                                    </tr>
+                                }
+                                <!-- Additional rows as necessary -->
+                            </tbody>
+                        </table>
+                        <div class="col-6 text-center">
+                            <br>
+                            @if (Model.QRCodeImageBase64 != null)
+                            {
+                                <a href="@Model.QRCodeUrl" target="_blank">
+                                    <img src="data:image/png;base64,@Model.QRCodeImageBase64" width="200px" alt="QR Code" />
+                                </a>
+                            }
+
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <p class="fw-bold"><span> @Model.TotalPrice @Common.GetCurrencyByCountryName(Model.Country.ToString())</span> السعر الاجمالي </p>
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <p class="fw-bold">
+                            حالة الطلب :
+                            <span>
+                                @if (Model.IsPaid == true)
+                                {
+                                    <text>تم التحويل حوالة بنكية</text>
+                                }
+                                else
+                                {
+                                    <text>غير مدفوع</text>
+                                }
+                            </span>
+                        </p>
+                    </div>
+
+
+                    <p class="text-center mt-4">.MoonLight ِشكرا لاختيارك منتجات شركة </p>
+                </div>
+            </div>
+        </div>
+
+    }
+    @if (Model.ManufacturingCompanyId == 4 || Model.ManufacturingCompanyId == 24)
+    {
+        <div class="print" id="Print" style="direction: rtl;  margin: 0 auto;">
+            <div class="container-fluid ">
+                <div class="row  mt-5">
+                    <div class="col-lg-3 d-flex justify-content-start align-items-center my-auto pe-0" style="width:30%">
+                        <img src="/static/Flare.svg" width="180" />
+                    </div>
+                    <div class="col-lg-9 border-red-fillin" style="width:70%">
+                        <div class="d-flex justify-content-between">
+
+                            <div class="align-items-center my-auto h2 ">
+                                فاتورة
+                            </div>
+
+                            <div>
+                                <div class="col-lg-12 fw-bold">
+                                    شركة Flare التركية
+                                </div>
+                                <div class="col-lg-12 ا5">
+                                    MERKEZ MAH. MENEKŞE SK.
+                                    <br />
+                                    NO: 4 A AVCILAR/ ISTANBUL
+                                </div>
+                                <div class="col-lg-12">
+                                    05343283065
+                                </div>
+                                <div class="col-lg-12">
+                                    www.flares.pro
+                                </div>
+                            </div>
+
+                        </div>
+
+
+                    </div>
+                </div>
+
+                <p class="text-center h3 mt-3"> إشعار سريع </p>
+
+                <div class="row d-flex justify-content-between mt-3">
+                    <div class="col-lg-6 border-red" style="width:49%">
+                        الشركة المرسلة : شركة Flare التركية
+                        <br />
+                        رقم الهاتف : 05343283065
+                        <br />
+                        المدينة : اسطنبول
+                        <br />
+                        الفرع : اسطنبول , تركيا
+                    </div>
+                    <div class="col-lg-6 border-red  text-left" style="width:49%">
+                        اسم العميل : @Model.CustomerName
+                        <br />
+                        رقم الهاتف : @Model.TelephoneNumber
+                        <br />
+                        المدينة : @Model.State
+                        <br />
+
+                        العنوان : @Model.Address
+                    </div>
+                </div>
+
+                <div class="row border-red d-flex justify-content-start mt-3">
+                    <p> التاريخ :@Model.CreatedDate</p>
+                    <p>   تفاصيل الطب </p>
+                    <p> @Model.SelectedWarehouses.First().WarehouseName  : @Model.SelectedWarehouses.First().Amount قطعة </p>
+                    @if (Model.IsPaid == true)
+                    {
+                        <p> حالة الطلب : تم التحويل حوالة بنكية</p>
+                    }
+                    else
+                    {
+                        <p> حالة الطلب : غير مدفوع</p>
+                    })
+                </div>
+
+
+                <div class="row d-flex justify-content-between mt-3 ">
+                    <div class="col-lg-6 border-red" style="width:49%">
+                        رقم الفاتورة : @Model.Id
+                    </div>
+                    <div class="col-lg-6 border-red text-left" style="width:49%">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                الأجمالي
+                            </div>
+                            <div>
+                                @Model.TotalPrice
+                                @Common.GetCurrencyByCountryName(Model.Country.ToString())
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+    }
+    @if (Model.ManufacturingCompanyId == 7 || Model.ManufacturingCompanyId == 25)
+    {
+        <div class="print" id="Print" style="direction: rtl;  margin: 0 auto;">
+
+            <div class="invoice LOXX-KING  ">
+                <div class="header">
+
+                    <h1 id="invoice-type"><img src="/static/LOXXKING.png" width="125" /></h1>
+                </div>
+
+                <div class="row mt-2">
+                    <div class="col-6">
+                        <p class="fw-bold"> المرسل</p>
+                        <p>   شركة lOXX KING الإيطالية   </p>
+                        <p> 05321531232</p>
+                        <p> ايطاليا - روما</p>
+                        <p> التاريخ - @Model.CreatedDate.ToString("yyyy-MM-dd")</p>
+
+                    </div>
+                    <div class="col-6">
+                        <p class="fw-bold"> المستلم</p>
+
+                        <p>   @Model.CustomerName </p>
+                        <p> @Model.TelephoneNumber</p>
+                        <p>  @Model.Address </p>
+                        <p>  @Model.State </p>
+
+                    </div>
+                </div>
+                <h4 style="color: #80D1F1;" class="text-center mt-3 mb-0">فاتورة الطلب</h4>
+
+                <table class="table-LOXX mt-1">
+                    <thead>
+                        <tr>
+                            <th class="description-col pe-3 text-start">اسم المنتج</th>
+                            <th class="quantity-col pe-3 text-start">الكمية</th>
+                            <th class="price-col pe-3 text-start">السعر </th>
+                            <th class="total-col text-start pe-3">السعر الأجمالي</th>
+                            <th class="no-print">Handlinger</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var warehouse in Model.SelectedWarehouses)
+                        {
+                            <tr>
+                                <td>@warehouse.WarehouseName</td>
+                                <td>@warehouse.Amount</td>
+                                <td>@(Model.TotalPrice / warehouse.Amount)</td>
+                                <td>@Model.TotalPrice @Common.GetCurrencyByCountryName(Model.Country.ToString())</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+
+
+                <table class="table-LOXX">
+                    <thead>
+                        <tr>
+                            <th width="50" class="p-2 text-start">
+                                <p style="color: #80D1F1; font-size: 1em; font-weight: bold;"><strong>رقم الوصل:</strong> <span>#@Model.Id</span></p>
+                            </th>
+
+                            <th width="50" class="p-2 ">
+                                <p style="color: #80D1F1; font-size: 1em; font-weight: bold;  text-align:left;"><strong>المبلع الإجمالي:</strong> <span id="total">@Model.TotalPrice @Common.GetCurrencyByCountryName(Model.Country.ToString())</span></p>
+                            </th>
+                        </tr>
+                    </thead>
+                </table>
+
+                <table class="table-LOXX">
+                    <thead>
+                        <tr>
+                            <th width="50" class="p-2 text-start">
+                                <p style="color: #80D1F1; font-size: 1em; font-weight: bold;"><strong> حالة الطلب:</strong></p>
+                            </th>
+
+                            <th width="50" class="p-2 ">
+                                <p style="color: #80D1F1; font-size: 2em; font-weight: bold;  text-align:left;">
+
+                                        @if (Model.IsPaid)
+                                        {
+                                            <span class="badge bg-success fw-bold text-white">تم التحويل حوالة بنكية</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success fw-bold text-white">غير مدفوع</span>
+                                        }
+                                </p>
+                            </th>
+
+                        </tr>
+                    </thead>
+                </table>
+
+
+
+                <p class="text-nowrap text-center " style="padding-top:180px !important">
+                    Via Fontana, 15
+                    00030 San Vito Romano RM
+                    Italy
+                </p>
+            </div>
+        </div>
+    }
+    @if (Model.ManufacturingCompanyId == 8)
+    {
+        <div class="card">
+            <div class="card-body">
+                <div class="container mb-5 mt-3">
+                    <div class="row d-flex align-items-baseline">
+                        <div class="col-xl-9">
+                            <p style="color: #7e8d9f;font-size: 20px;">Invoice >> <strong>ID: #123-123</strong></p>
+                        </div>
+                        <div class="col-xl-3 float-end">
+                            <a data-mdb-ripple-init class="btn btn-light text-capitalize border-0" data-mdb-ripple-color="dark">
+                                <i class="fas fa-print text-primary"></i> Print
+                            </a>
+                            <a data-mdb-ripple-init class="btn btn-light text-capitalize" data-mdb-ripple-color="dark">
+                                <i class="far fa-file-pdf text-danger"></i> Export
+                            </a>
+                        </div>
+                        <hr>
+                    </div>
+
+                    <div class="container">
+                        <div class="col-md-12">
+                            <div class="text-center">
+                                <i class="fab fa-mdb fa-4x ms-0" style="color:#5d9fc5 ;"></i>
+                                <p class="pt-0">MDBootstrap.com</p>
+                            </div>
+
+                        </div>
+
+
+                        <div class="row">
+                            <div class="col-xl-8">
+                                <ul class="list-unstyled">
+                                    <li class="text-muted">To: <span style="color:#5d9fc5 ;">John Lorem</span></li>
+                                    <li class="text-muted">Street, City</li>
+                                    <li class="text-muted">State, Country</li>
+                                    <li class="text-muted"><i class="fas fa-phone"></i> 123-456-789</li>
+                                </ul>
+                            </div>
+                            <div class="col-xl-4">
+                                <p class="text-muted">Invoice</p>
+                                <ul class="list-unstyled">
+                                    <li class="text-muted">
+                                        <i class="fas fa-circle" style="color:#84B0CA ;"></i> <span class="fw-bold">ID:</span>#123-456
+                                    </li>
+                                    <li class="text-muted">
+                                        <i class="fas fa-circle" style="color:#84B0CA ;"></i> <span class="fw-bold">Creation Date: </span>Jun 23,2021
+                                    </li>
+                                    <li class="text-muted">
+                                        <i class="fas fa-circle" style="color:#84B0CA ;"></i> <span class="me-1 fw-bold">Status:</span><span class="badge bg-warning text-black fw-bold">
+                                            Unpaid
+                                        </span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="row my-2 mx-1 justify-content-center">
+                            <table class="table table-striped table-borderless">
+                                <thead style="background-color:#84B0CA ;" class="text-white">
+                                    <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Description</th>
+                                        <th scope="col">Qty</th>
+                                        <th scope="col">Unit Price</th>
+                                        <th scope="col">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <th scope="row">1</th>
+                                        <td>Pro Package</td>
+                                        <td>4</td>
+                                        <td>$200</td>
+                                        <td>$800</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">2</th>
+                                        <td>Web hosting</td>
+                                        <td>1</td>
+                                        <td>$10</td>
+                                        <td>$10</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">3</th>
+                                        <td>Consulting</td>
+                                        <td>1 year</td>
+                                        <td>$300</td>
+                                        <td>$300</td>
+                                    </tr>
+                                </tbody>
+
+                            </table>
+                        </div>
+                        <div class="row">
+                            <div class="col-xl-8">
+                                <p class="ms-3">Add additional notes and payment information</p>
+
+                            </div>
+                            <div class="col-xl-3">
+                                <ul class="list-unstyled">
+                                    <li class="text-muted ms-3"><span class="text-black me-4">SubTotal</span>$1110</li>
+                                    <li class="text-muted ms-3 mt-2"><span class="text-black me-4">Tax(15%)</span>$111</li>
+                                </ul>
+                                <p class="text-black float-start">
+                                    <span class="text-black me-3"> Total Amount</span><span style="font-size: 25px;">$1221</span>
+                                </p>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-xl-10">
+                                <p>Thank you for your purchase</p>
+                            </div>
+                            <div class="col-xl-2">
+                                <button type="button" data-mdb-button-init data-mdb-ripple-init class="btn btn-primary text-capitalize"
+                                        style="background-color:#60bdf3 ;">
+                                    Pay Now
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    @if (Model.ManufacturingCompanyId == 10 || Model.ManufacturingCompanyId == 26)
+    {
+        <!-- Invoice 1 - Bootstrap Brain Component -->
+        <section class="py-3 py-md-5 rtl print">
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-12 col-lg-9 col-xl-8 col-xxl-7">
+                        <div class="row gy-3 mb-3">
+                            <div class="col-6">
+                                <h4 class="text-uppercase text-endx m-0">فاتورة</h4>
+                            </div>
+                            <div class="col-6">
+                                <a class="d-block text-start ltr" href="#!">
+                                    <img src="/static/finestblacksvg.png" class="img-fluid" alt="BootstrapBrain Logo" width="100" height="44">
+                                </a>
+                            </div>
+                            <div class="col-12">
+                                <h4>المرسل</h4>
+                                <address>
+                                    <strong>شركة Finest الصينية</strong><br>
+                                    الصين<br>
+                                    @Model.State<br>
+                                    +90536466764<br>
+                                    finestglobal.f@gmail.com
+                                </address>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-12 col-sm-6 col-md-8">
+                                <h4>المستلم</h4>
+                                <address>
+                                    <strong>@Model.CustomerName</strong><br>
+                                    @Model.Country.ToString()<br>
+                                    @Model.State<br>
+                                    @Model.Address<br>
+                                    @Model.TelephoneNumber<br>
+                                    @if (Model.IsPaid == true)
+                                    {
+                                        <span class="fw-bold">
+                                            <span class="fw-bold"> حالة الطلب : تم التحويل حوالة بنكية</span>
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="fw-bold"> حالة الطلب : غير مدفوع</span>
+                                    }
+                                </address>
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-4">
+                                <h4 class="row">
+                                    <span class="col-6">Invoice #</span>
+                                    <span class="col-6 text-sm-end">@Model.Id</span>
+                                </h4>
+                                <div class="row">
+
+                                    <span class="col-6">تاريخ  الطلب  </span>
+                                    <span class="col-6 text-sm-end">
+                                        @Model.CreatedDate.ToString("yyyy-MM-dd")
+                                    </span>
+                                    <span class="col-6">تاريخ التوصيل </span>
+                                    <span class="col-6 text-sm-end">@Model.CreatedDate.AddDays(3).ToString("yyyy-MM-dd")</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col" class="text-uppercase pb-2">القطع</th>
+                                                <th scope="col" class="text-uppercase pb-2">اسم المنتج</th>
+
+
+                                            </tr>
+                                        </thead>
+
+                                        <tbody class="table-group-divider">
+                                            @foreach (var warehouse in Model.SelectedWarehouses)
+                                            {
+                                                <tr>
+                                                    <th scope="row">@warehouse.Amount</th>
+                                                    <td>@warehouse.WarehouseName</td>
+                                                    <td class="text-end"></td>
+                                                    <td class="text-end"></td>
+                                                </tr>
+
+
+
+
+
+
+                                                <tr>
+                                                    <th scope="row" colspan="1" class="text-uppercase">الأجمالي</th>
+                                                    <td></td>
+                                                    <td class="text-end"></td>
+                                                    <td class="text-start" colspan="4">@Model.TotalPrice @Common.GetCurrencyByCountryName(Model.Country.ToString())</td>
+                                                </tr>
+
+
+                                            }
+                                        </tbody>
+
+
+                                        <tbody class="table-group-divider">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </section>
+    }
+}
+
+
+
+<style>
+
+
+
+    .LOXX-KING {
+        font-family: 'Roboto', sans-serif;
+        background-color: #f1f2f3;
+        padding: 20px;
+        margin: 0;
+        user-select: none;
+    }
+
+
+    .invoice {
+        max-width: 800px;
+        margin: auto;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1);
+        padding: 40px;
+        padding-bottom: 0px !important;
+    }
+
+    h1 {
+        margin: 0;
+        color: black;
+        cursor: pointer;
+    }
+
+    .table-LOXX {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        background-color: #fff;
+    }
+
+        .table-LOXX th,
+        .table-LOXX td {
+            border-bottom: 1px solid #e0e0e0;
+            padding: 16px;
+            text-align: left;
+        }
+
+        .table-LOXX th {
+            background-color: #fff;
+            color: black;
+        }
+
+        .table-LOXX td {
+            background-color: #fff;
+            text-align: right;
+        }
+
+
+    .description-col {
+        width: 35%;
+    }
+
+    .quantity-col,
+    .price-col {
+        width: 20%;
+    }
+
+    .total-col {
+        width: 25%;
+        text-align: right;
+    }
+
+    .totals {
+        text-align: right;
+        margin-top: 20px;
+        position: relative;
+    }
+
+    .no-print {
+        display: none;
+    }
+
+    @@media print {
+        .no-print {
+            display: none !important;
+        }
+    }
+
+    input[type="text"],
+    input[type="number"] {
+        width: calc(100%);
+        box-sizing: border-box;
+        word-wrap: break-word;
+        margin-top: 4px;
+        margin-bottom: 4px;
+        border: none;
+        border-bottom: 2px solid #f5f5f5;
+        outline: none;
+        background-color: transparent;
+    }
+
+    .add-row-btn,
+    .rmw-row-btn,
+    .print-row-btn,
+    button {
+        display: inline-block;
+        margin-top: 20px;
+        float: left;
+        padding: 14px 28px;
+        position: left;
+        margin-right: 5px;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 1em;
+        transition: background-color 0.3s ease, transform 0.3s ease;
+    }
+
+    .add-row-btn {
+        background-color: #189bcc;
+    }
+
+        .add-row-btn:hover {
+            background-color: #4b4e6c;
+        }
+
+    .rmw-row-btn {
+        background-color: #f68b70;
+    }
+
+        .rmw-row-btn:hover {
+            background-color: #f35a33;
+        }
+
+    .print-row-btn {
+        background-color: darkgrey;
+    }
+
+        .print-row-btn:hover {
+            background-color: grey;
+        }
+
+    button {
+        margin-top: 20px;
+        display: block;
+    }
+
+    .footer {
+        text-align: center;
+        margin-top: 40px;
+        font-size: 0.8em;
+        color: #666;
+    }
+
+    .tax-field strong {
+        margin-right: 10px;
+        white-space: nowrap;
+    }
+
+    .tax-field input {
+        width: 80px;
+        margin-left: 5px;
+    }
+
+    .tax {
+        display: flex;
+    }
+
+
+
+
+    /* Hide the Print div in normal view */
+    .print {
+        display: none;
+    }
+
+    /* Show the Print div when printing */
+    @@media print {
+        .print {
+            display: block;
+            transform: scale(0.90) scaleY(0.90); /* Set scale to 75% */
+            page-break-after: always !important; /* Force break after each invoice */
+            transform-origin: top !important;
+        }
+
+
+        .row {
+            page-break-inside: avoid; /* Prevent break inside rows */
+        }
+
+
+
+        .border-red {
+            border: 1px solid #d2302d !important;
+            border-radius: 8px !important;
+            color: black !important;
+            padding: 10px !important;
+        }
+
+        .border-red-fillin {
+            background-color: #d2302d; /* White background */
+
+            border: 1px solid #d2302d !important;
+            border-radius: 8px !important;
+            color: white !important;
+            padding: 10px !important;
+        }
+    }
+
+    /* Hide the Print div in normal view */
+    .Moon-light {
+        display: none;
+    }
+
+    /* Show the Print div when printing */
+    @@media print {
+        .Moon-light {
+            display: block;
+        }
+    }
+
+    .table-group-divider {
+        border-top: 2px solid #000000; /* Black border */
+    }
+
+
+
+    li, p, span, address {
+        font-size: 13px;
+    }
+
+    h5, th, td, h4, strong {
+        font-size: 16px
+    }
+
+    @@media print {
+        .print {
+            display: block;
+            transform: scale(0.90) scaleY(0.90); /* Set scale to 75% */
+            page-break-after: always !important; /* Force break after each invoice */
+            transform-origin: top !important;
+        }
+    }
+
+
+</style>
+<script>
+    // Function to open the print dialog when the page is loaded
+    window.onload = function () {
+        window.print();
+    };
+</script>

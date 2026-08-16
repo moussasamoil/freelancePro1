@@ -1,0 +1,154 @@
+@model lotus_blue.Models.ViewModel.PrintOrdersForDeliveryViewModel
+@{
+    Layout = "_EmptyLayout";
+    int orderCount = 0; // Counter to track number of orders
+    int ordersPerPage = 6; // Number of orders per page
+    int totalPages = (int)Math.Ceiling((double)Model.Orders.Count / ordersPerPage); // Total pages
+    int currentPage = 1; // Initial page number
+}
+<div class="container rtl my-4" style="width: 100%; direction: rtl; font-family: 'Arial', sans-serif;">
+
+    <!-- Header Section -->
+    <div style="text-align: center;">
+        <h3>فاتورة توصيل الطلبات</h3>
+    </div>
+
+    <!-- Operation Info -->
+    <div style="width: 100%;">
+        <div style="display: table; width: 100%;">
+            <div style="display: table-row;">
+                <div style="display: table-cell;">رقم العملية : @Model.OrderReportId</div>
+                <div style="display: table-cell;">اسم المندوب :  @Model.FirstDeliveryCompanyName</div>
+                <div style="display: table-cell;">الشعبة : @Model.DeliveryCompanyCountry</div>
+                <div style="display: table-cell;">التاريخ :@Model.TodayDate.ToString("yyyy:MM:dd")</div>
+                <div style="display: table-cell;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Orders Section -->
+    @foreach (var order in Model.Orders)
+    {
+        orderCount++; // Increment the order counter
+
+        <div style="border: 1px solid black; width: 100%; ">
+
+            <div style="display: table; width: 100%;">
+                <!-- First Column -->
+                <div style="display: table-cell; border-left: 1px solid black; text-align: center; vertical-align: middle; width: 5%; padding: 10px;">
+                    @orderCount
+                </div>
+
+                <!-- Second Column -->
+                <div style="display: table-cell; border-left: 1px solid black; width: 15%; ">
+                    <div style="border-bottom: 1px solid black; padding-right: 5px; padding-bottom: 5px;">رقم الوصل</div>
+                    <div style="border-bottom: 1px solid black; padding-right: 5px; padding-bottom: 5px;">تاريخ الوصل</div>
+                    <div style="border-bottom: 1px solid black; padding-right: 5px; padding-bottom: 5px;">عدد القطع</div>
+                    <div style="border-bottom: 1px solid black; padding-right: 5px; padding-bottom: 5px;">نوع الدفع</div>
+                    <div style="border-bottom: 1px solid black; padding-right: 5px; padding-bottom: 5px;">سعر الطلب</div>
+                    <div style="border-bottom: 1px solid black; padding-right: 5px; padding-bottom: 5px;">اسم الشركة</div>
+                    <div style="border-bottom: 1px solid black; padding-right: 5px; padding-bottom: 5px;">الدولة</div>
+                    <div style="padding-right: 5px;">المدينة</div>
+                </div>
+
+
+                <!-- Third Column -->
+                <div style="display: table-cell; border-left: 1px solid black; width: 20%; ">
+                    <div style="border-bottom: 1px solid black; padding-bottom: 5px; padding-right: 5px;">@order.Id</div>
+                    <div style="border-bottom: 1px solid black; padding-bottom: 5px; padding-right: 5px;">@order.CreatedDate.ToString("yyyy/MM/dd")</div>
+                    <div style="border-bottom: 1px solid black; padding-bottom: 5px; padding-right: 5px; ">@order.SelectedWarehouses.Sum(ow => ow.Amount)</div>
+                    <div style="border-bottom: 1px solid black; padding-bottom: 5px; padding-right: 5px;">عند الاستلام</div>
+                    <div style="border-bottom: 1px solid black; padding-bottom: 5px; padding-right: 5px;  ">@order.TotalPrice.ToString("N2") @Common.GetCurrencyByCountryName(order.Country.ToString())</div>
+                    <div style="border-bottom: 1px solid black; padding-bottom: 5px; padding-right: 5px; white-space: nowrap;">@order.ManufacturingCompanyName</div>
+                    <div style="border-bottom: 1px solid black; padding-bottom: 5px; padding-right: 5px;">@order.Country</div>
+                    <div style=" padding-right: 5px;">@order.State</div>
+                </div>
+
+                <!-- Fourth Column -->
+                <div style="display: table-cell; border-left: 1px solid black; width: 35%; ">
+                    <div style="border-bottom: 1px solid black; height:23px ;  padding-right: 5px;">
+                        مرسل الطلب: <strong>@order.ManufacturingCompany.Name</strong>
+                    </div>
+                    <div style="border-bottom: 1px solid black;  height: 75px; padding-right: 5px;">
+                        <div>اسم العميل: @order.CustomerName</div>
+                        <div>العنوان: @order.Address</div>
+                    </div>
+
+                    <div style="border-bottom: 1px solid black; height: 74px; padding-right: 5px;">
+                        <div>تفاصيل الطلب:</div>
+                        <div>
+                            @foreach (var warehouse in order.SelectedWarehouses)
+                            {
+                                <span>@warehouse.WarehouseName - @warehouse.Amount قطعة</span>
+                                @if (warehouse != order.SelectedWarehouses.Last())
+                                {
+                                    <span>, </span> <!-- Add comma between items, optional -->
+                                }
+                            }
+                        </div>
+                    </div>
+
+
+                    <div>
+                        <span style=" padding-right: 5px; padding-top:10px;">
+                            رقم التلفون
+                        </span>
+                        <span>
+                            @order.TelephoneNumber
+                        </span>
+                    </div>
+
+
+
+                </div>
+
+                <!-- Fifth Column -->
+                <div style="display: table-cell; width: 20%;  text-align: center;">
+                    <div>اخد الطلب بدون نقص وبحالة جيدة</div>
+                    <img src="data:image/png;base64,@order.QRCodeImageBase64" alt="QR Code" style="width: 100px;" />
+                    <div>
+
+                        <div style="font-weight: bold;">
+                            سعر الطلب:
+                            @if (order.IsPaid)
+                            {
+                                <text>0</text>
+                            }
+                            else
+                            {
+                                <text>@order.TotalPrice.ToString("N2") @Common.GetCurrencyByCountryName(order.Country.ToString())</text>
+                            }
+                        </div>
+
+                        <div style="font-weight: bold;">
+                            @if (order.IsPaid)
+                            {
+                                <text>تم التحويل حوالة بنكية</text>
+                            }
+                            else
+                            {
+                                <text>غير مدفوع</text>
+                            }
+                        </div>
+                    </div>
+                    <div>المعلومات الشخصية اخدت بموافقة العميل لهدف التواصل فقط</div>
+                </div>
+            </div>
+
+        </div>
+        <!-- Page break after every 5 orders and display page number -->
+        @if (orderCount % ordersPerPage == 0 && orderCount < Model.Orders.Count)
+        {
+            <div style="text-align: center; margin-top:10px;">@currentPage/@totalPages</div>
+            <div style="page-break-after: always;"></div>
+            currentPage++; // Increment page number
+        }
+    }
+    <!-- Last page number if not already displayed -->
+    @if (orderCount % ordersPerPage != 0 || orderCount == Model.Orders.Count)
+    {
+        <div style="text-align: center; margin-top:10px;">@currentPage/@totalPages</div>
+    }
+</div>

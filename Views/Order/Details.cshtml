@@ -1,0 +1,113 @@
+@model lotus_blue.Models.ViewModel.OrderViewModel
+@using lotus_blue.Services
+@using lotus_blue.OrderStatus
+@inject DynamicCommon DynamicCommon
+@{
+    Layout = "_OrderDetailsLayout";
+    ViewData["Title"] = "    تفاصيل الطلب  ";
+    var isAdmin = User.IsInRole("Admin");
+    var isEmbed = Context.Request.Query["embed"] == "true";
+    var isSplitView = Context.Request.Query["splitView"] == "true";
+    var isEmbeddedDetailsView = isEmbed || isSplitView;
+}
+
+
+@if (!isSplitView)
+{
+<header>
+    <div class="container-fluid">
+        <nav class="nav-shadow px-3 background-white-green py-0 fixed-top navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom">
+            <div class="d-flex justify-content-between w-100">
+                <div class="p-0 rtl">
+                    @if (isEmbeddedDetailsView)
+                    {
+                        <a class="px-2 py-1 text-black text-decoration-none d-inline-block" href="javascript:window.parent.postMessage('close-modal', '*');">
+                            <i class="fa-regular pt-1 fa-chevron-right"></i> رجوع
+                        </a>
+                    }
+                    else
+                    {
+                        <a class="px-2 py-1 text-black text-decoration-none d-inline-block" href="javascript:window.history.back();">
+                            <i class="fa-regular pt-1 fa-chevron-right"></i> رجوع
+                        </a>
+                    }
+
+                </div>
+                <div class="text-center pt-1 ">
+                    تفاصيل الطلب
+                </div>
+                <div class=" pt-1">
+                    <i class="fa-light text-green fa-book"></i>
+                </div>
+            </div>
+        </nav>
+    </div>
+</header>
+}
+
+@if (isSplitView)
+{
+    <style>
+        html, body {
+            background: #ffffff !important;
+            overflow-x: hidden !important;
+        }
+
+        body {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .order-details-partial {
+            padding-top: 6px !important;
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+            font-size: 12px !important;
+        }
+
+        .order-details-partial .container-fluid {
+            padding-left: 6px !important;
+            padding-right: 6px !important;
+        }
+
+        .order-details-partial h5,
+        .order-details-partial h6,
+        .order-details-partial dt,
+        .order-details-partial dd,
+        .order-details-partial .btn {
+            font-size: 12px !important;
+        }
+
+        .order-details-partial .btn {
+            padding: 4px 10px !important;
+        }
+
+        .order-details-partial img {
+            max-width: 100%;
+        }
+
+        .fixed-bottom {
+            display: none !important;
+        }
+    </style>
+}
+
+@await Html.PartialAsync("_DetailsPartial", Model)
+
+<div class="" id="modal-container"></div>
+
+@Html.Partial("_Notification")
+
+<script>
+    // On the standalone Details page, initOrderDetails is defined by the partial's IIFE.
+    // Call it here so all event handlers are wired up.
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof window.initOrderDetails === 'function') {
+            window.initOrderDetails(document.querySelector('.order-details-partial'));
+        }
+        // On the standalone page, refreshModalContent and refreshOrderTable are no-ops.
+        window.refreshModalContent = window.refreshModalContent || function () {};
+        window.refreshOrderTable = window.refreshOrderTable || function () {};
+        window.invalidateOrder = window.invalidateOrder || function () {};
+    });
+</script>
