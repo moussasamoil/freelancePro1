@@ -2412,15 +2412,14 @@
 
     .download-orders-count-badge {
     position: absolute;
-    left: -10px;
-    top: -7px;
+    right: 0%;
+    top: -5%;
     z-index: 5;
-    background-color: #dc143c;
-    color: #ffffff;
+    background-color: #e5ab5a;
+    color: #0c1523;
     border-radius: 999px;
     min-width: 18px;
     height: 18px;
-    padding: 0 5px;
     display: none;
     align-items: center;
     justify-content: center;
@@ -2430,7 +2429,7 @@
     line-height: 18px;
     white-space: nowrap;
     pointer-events: none;
-    box-shadow: 0 1px 4px rgba(220, 20, 60, 0.35);
+    box-shadow: 0 1px 4px #d7a969;
     }
 
     /* Style for the dropdown */
@@ -3344,33 +3343,49 @@
     <div class="d-flex  mt-3 justify-content-center align-items-center" style="gap: 8px;">
         @if (User.IsInRole("CallCenter") || canSeeDownloadOrdersCount)
         {
-            <span style="position:relative;display:inline-block;">
-                <a class="btn fw-bolder text-gold-v2 custom-box-shadow" href="/PrepareForDelivery">
-                    تنزيل الطلبات
-                </a>
+         <span style="position:relative;display:inline-block;" class="custom-box-shadow2">
+            <div class="d-none d-md-flex col-lg col-sm-12 p-relative me-lg-1 me-0 mt-2 mt-lg-0  ">
+                    <div  class="  d-flex justify-content-start align-items-center">
+                        <img src="/mainicons-dark-full/download.svg" width="25" height="25">
+                         <a class="btn text-gold-v2 me-1 px-0" href="/PrepareForDelivery">
+                          تنزيل الطلبات
+                        </a>
+                    </div>
+            </div>
+               
                 @if (canSeeDownloadOrdersCount)
                 {
                     <span id="downloadOrdersRemainingCountBadge" class="download-orders-count-badge">0</span>
                 }
-            </span>
+         </span>
         }
         @if (canSeeInvestigationOrdersCount)
         {
-            <span style="position:relative;display:inline-block;">
-                <a class="btn fw-bolder text-gold-v2 custom-box-shadow" href="/Home/NewOrdersUnderInvestigation">
-                    قيد التحقق
-                </a>
-                <span id="investigationOrdersCountBadge" class="download-orders-count-badge">0</span>
-            </span>
+        <span style="position:relative;display:inline-block;" class="custom-box-shadow2">
+            <div class="d-none d-md-flex col-lg col-sm-12 p-relative me-lg-1 me-0 mt-2 mt-lg-0  ">
+                    <div  class="  d-flex justify-content-start align-items-center">
+                        <img src="/mainicons-dark-full/check-circle.svg" width="25" height="25">
+                         <a class="btn text-gold-v2 me-1 px-0" href="/Home/NewOrdersUnderInvestigation">
+                         قيد التحقق
+                        </a>
+                    </div>
+            </div>
+                     <span id="investigationOrdersCountBadge" class="download-orders-count-badge">0</span>
+         </span>
+
         }
         @if (!User.IsInRole("CallCenter"))
-        {
-            <span style="position:relative;display:inline-block;">
-                <a class="btn fw-bolder text-gold-v2 custom-box-shadow" href="/Order">
-                    تحديث الحالات
-                </a>
-
-            </span>
+        {           
+        <span style="position:relative;display:inline-block;" class="custom-box-shadow2">
+            <div class="d-none d-md-flex col-lg col-sm-12 p-relative me-lg-1 me-0 mt-2 mt-lg-0  ">
+                    <div  class="  d-flex justify-content-start align-items-center">
+                        <img src="/mainicons-dark-full/refresh.svg" width="25" height="25">
+                         <a class="btn text-gold-v2 me-1 px-0" href="/Order">
+                         تحديث الحالات
+                        </a>
+                    </div>
+            </div>
+        </span>
         }
         @* Temporarily hidden — potential orders restricted to Admin only
     <a class="btn fw-bolder text-gold-v2 custom-box-shadow" href="/PotentialOrder">
@@ -3379,11 +3394,16 @@
     *@
         @if (User.IsInRole("Admin"))
         {
-            <span style="position:relative;display:inline-block;">
-                <a class="btn fw-bolder text-gold-v2 custom-box-shadow" href="/PotentialOrder">
-                    البيانات المدخلة
-                </a>
-            </span>
+            <span style="position:relative;display:inline-block;" class="custom-box-shadow2">
+            <div class="d-none d-md-flex col-lg col-sm-12 p-relative me-lg-1 me-0 mt-2 mt-lg-0  ">
+                    <div  class="  d-flex justify-content-start align-items-center">
+                        <img src="/mainicons-dark-full/database.svg" width="25" height="25">
+                         <a class="btn text-gold-v2 me-1 px-0" href="/PotentialOrder">
+                          البيانات المدخلة
+                        </a>
+                    </div>
+            </div>
+        </span>
         }
     </div>
 }
