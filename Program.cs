@@ -23,7 +23,6 @@ using Microsoft.AspNetCore.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
-
 // Connection String
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
