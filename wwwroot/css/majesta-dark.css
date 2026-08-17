@@ -1324,3 +1324,815 @@ html body #ordersTable {
     html body #ordersTable tbody tr:last-child td:last-child {
         border-bottom-right-radius: 9px !important;
     }
+
+
+
+    /* =========================================================
+   HOME POPUPS / DROPDOWNS - MAJESTA DARK
+   إنشاء طلب جديد + موجوداتي + اخر 10 عمليات
+   ========================================================= */
+
+
+/* =========================================================
+   1. موجوداتي + اخر 10 عمليات
+   ========================================================= */
+
+html body #MyAccountExistingsselect,
+html body #MyAccountExistingsselectEmployee,
+html body #Last10operationsOptionsselect,
+html body #Last10operationsOptionsselectEmployee {
+    background: #0d1728 !important;
+    background-color: #0d1728 !important;
+
+    color: #e7e1d8 !important;
+
+    border: 1px solid rgba(195, 155, 99, 0.38) !important;
+    border-top: 1px solid rgba(195, 155, 99, 0.22) !important;
+
+    border-radius: 0 0 9px 9px !important;
+
+    box-shadow:
+        0 8px 22px rgba(0, 0, 0, 0.42),
+        inset 0 0 8px rgba(231, 194, 115, 0.025)
+        !important;
+}
+
+
+/* Rows inside the dropdowns */
+html body #MyAccountExistingsselect > .row,
+html body #MyAccountExistingsselectEmployee > .row,
+html body #Last10operationsOptionsselect > .row,
+html body #Last10operationsOptionsselectEmployee > .row {
+    background: #0d1728 !important;
+    background-color: #0d1728 !important;
+
+    border-bottom:
+        1px solid rgba(195, 155, 99, 0.14) !important;
+}
+
+
+/* Hover */
+html body #Last10operationsOptionsselect > .row:hover,
+html body #Last10operationsOptionsselectEmployee > .row:hover,
+html body #MyAccountExistingsselect > .row:hover,
+html body #MyAccountExistingsselectEmployee > .row:hover {
+    background: #142033 !important;
+    background-color: #142033 !important;
+}
+
+
+/* Text that was hard-coded dark in JavaScript */
+html body #MyAccountExistingsselect [style*="#1d273b"],
+html body #MyAccountExistingsselectEmployee [style*="#1d273b"],
+html body #Last10operationsOptionsselect [style*="#111111"],
+html body #Last10operationsOptionsselectEmployee [style*="#111111"] {
+    color: #e7e1d8 !important;
+}
+
+
+/* Muted text */
+html body #MyAccountExistingsselect [style*="#6c757d"],
+html body #MyAccountExistingsselectEmployee [style*="#6c757d"],
+html body #Last10operationsOptionsselect [style*="#888888"],
+html body #Last10operationsOptionsselectEmployee [style*="#888888"] {
+    color: #aeb4bf !important;
+}
+
+
+/* Keep totals / main important numbers gold */
+html body #MyAccountExistingsselect .h4,
+html body #MyAccountExistingsselectEmployee .h4 {
+    color: #e7c273 !important;
+}
+
+
+/* Keep arrow/icon gold */
+html body #MyAccountExistingsselect i,
+html body #MyAccountExistingsselectEmployee i,
+html body #Last10operationsOptionsselect i,
+html body #Last10operationsOptionsselectEmployee i {
+    color: #e7c273 !important;
+}
+
+
+/* Dark scrollbar */
+html body #Last10operationsOptionsselect,
+html body #Last10operationsOptionsselectEmployee,
+html body #MyAccountExistingsselect,
+html body #MyAccountExistingsselectEmployee {
+    scrollbar-color: #c39b63 #101828 !important;
+    scrollbar-width: thin;
+}
+
+html body #Last10operationsOptionsselect::-webkit-scrollbar,
+html body #Last10operationsOptionsselectEmployee::-webkit-scrollbar,
+html body #MyAccountExistingsselect::-webkit-scrollbar,
+html body #MyAccountExistingsselectEmployee::-webkit-scrollbar {
+    width: 7px;
+}
+
+html body #Last10operationsOptionsselect::-webkit-scrollbar-track,
+html body #Last10operationsOptionsselectEmployee::-webkit-scrollbar-track,
+html body #MyAccountExistingsselect::-webkit-scrollbar-track,
+html body #MyAccountExistingsselectEmployee::-webkit-scrollbar-track {
+    background: #101828;
+}
+
+html body #Last10operationsOptionsselect::-webkit-scrollbar-thumb,
+html body #Last10operationsOptionsselectEmployee::-webkit-scrollbar-thumb,
+html body #MyAccountExistingsselect::-webkit-scrollbar-thumb,
+html body #MyAccountExistingsselectEmployee::-webkit-scrollbar-thumb {
+    background: #c39b63;
+    border-radius: 999px;
+}
+
+
+/* =========================================================
+   2. إنشاء طلب جديد - chooser + create modals
+   ========================================================= */
+
+html body #OrderTypeChooser .modal-content,
+html body #Create .modal-content,
+html body #CreatePotential .modal-content,
+html body #CreateLead .modal-content {
+    background: #0d1728 !important;
+    background-color: #0d1728 !important;
+
+    color: #e7e1d8 !important;
+
+    border: 1px solid rgba(195, 155, 99, 0.42) !important;
+
+    box-shadow:
+        0 18px 50px rgba(0, 0, 0, 0.55),
+        0 0 12px rgba(195, 155, 99, 0.10)
+        !important;
+}
+
+
+/* Modal header */
+html body #OrderTypeChooser .modal-header,
+html body #Create .modal-header,
+html body #CreatePotential .modal-header,
+html body #CreateLead .modal-header {
+    background: #0c1523 !important;
+    background-color: #0c1523 !important;
+
+    color: #e7c273 !important;
+
+    border-bottom:
+        1px solid rgba(195, 155, 99, 0.30) !important;
+}
+
+
+/* Modal body */
+html body #OrderTypeChooser .modal-body,
+html body #Create .modal-body,
+html body #CreatePotential .modal-body,
+html body #CreateLead .modal-body {
+    background: #0d1728 !important;
+    background-color: #0d1728 !important;
+
+    color: #d8dbe1 !important;
+}
+
+
+/* Modal footer */
+html body #OrderTypeChooser .modal-footer,
+html body #Create .modal-footer,
+html body #CreatePotential .modal-footer,
+html body #CreateLead .modal-footer {
+    background: #0c1523 !important;
+    background-color: #0c1523 !important;
+
+    border-top:
+        1px solid rgba(195, 155, 99, 0.28) !important;
+}
+
+
+/* Remove white boxes INSIDE these specific modals */
+html body #OrderTypeChooser .bg-white,
+html body #Create .bg-white,
+html body #CreatePotential .bg-white,
+html body #CreateLead .bg-white,
+
+html body #OrderTypeChooser .background-white-green,
+html body #Create .background-white-green,
+html body #CreatePotential .background-white-green,
+html body #CreateLead .background-white-green,
+
+html body #OrderTypeChooser .card,
+html body #Create .card,
+html body #CreatePotential .card,
+html body #CreateLead .card,
+
+html body #OrderTypeChooser .custom-box-shadow,
+html body #Create .custom-box-shadow,
+html body #CreatePotential .custom-box-shadow,
+html body #CreateLead .custom-box-shadow {
+    background: #101b2d !important;
+    background-color: #101b2d !important;
+
+    color: #d8dbe1 !important;
+
+    border-color:
+        rgba(195, 155, 99, 0.28) !important;
+}
+
+
+/* Labels and text */
+html body #OrderTypeChooser label,
+html body #OrderTypeChooser .modal-title,
+
+html body #Create label,
+html body #Create .modal-title,
+
+html body #CreatePotential label,
+html body #CreatePotential .modal-title,
+
+html body #CreateLead label,
+html body #CreateLead .modal-title {
+    color: #e7e1d8 !important;
+}
+
+
+/* Original text-black / text-dark */
+html body #OrderTypeChooser .text-black,
+html body #OrderTypeChooser .text-dark,
+
+html body #Create .text-black,
+html body #Create .text-dark,
+
+html body #CreatePotential .text-black,
+html body #CreatePotential .text-dark,
+
+html body #CreateLead .text-black,
+html body #CreateLead .text-dark {
+    color: #e7e1d8 !important;
+}
+
+
+/* Inputs */
+html body #Create input,
+html body #Create textarea,
+html body #Create select,
+html body #Create .form-control,
+
+html body #CreatePotential input,
+html body #CreatePotential textarea,
+html body #CreatePotential select,
+html body #CreatePotential .form-control,
+
+html body #CreateLead input,
+html body #CreateLead textarea,
+html body #CreateLead select,
+html body #CreateLead .form-control {
+    background: #101b2d !important;
+    background-color: #101b2d !important;
+
+    color: #ffffff !important;
+
+    border:
+        1px solid rgba(195, 155, 99, 0.34) !important;
+
+    box-shadow: none !important;
+}
+
+
+/* Placeholders */
+html body #Create input::placeholder,
+html body #Create textarea::placeholder,
+
+html body #CreatePotential input::placeholder,
+html body #CreatePotential textarea::placeholder,
+
+html body #CreateLead input::placeholder,
+html body #CreateLead textarea::placeholder {
+    color: #9ca3af !important;
+    opacity: 1 !important;
+}
+
+
+/* Select2 inside create forms */
+html body #Create .select2-selection,
+html body #CreatePotential .select2-selection,
+html body #CreateLead .select2-selection {
+    background: #101b2d !important;
+    background-color: #101b2d !important;
+
+    border:
+        1px solid rgba(195, 155, 99, 0.34) !important;
+}
+
+html body #Create .select2-selection__rendered,
+html body #CreatePotential .select2-selection__rendered,
+html body #CreateLead .select2-selection__rendered {
+    color: #ffffff !important;
+}
+
+
+/* Close X */
+html body #OrderTypeChooser .btn-close,
+html body #Create .btn-close,
+html body #CreatePotential .btn-close,
+html body #CreateLead .btn-close {
+    filter: invert(1) brightness(2) !important;
+}
+
+
+/* Modal dark backdrop */
+html body:has(#OrderTypeChooser.show) .modal-backdrop,
+html body:has(#Create.show) .modal-backdrop,
+html body:has(#CreatePotential.show) .modal-backdrop,
+html body:has(#CreateLead.show) .modal-backdrop {
+    background: #020813 !important;
+    opacity: 0.78 !important;
+}
+
+
+/* Select2 dropdown is appended to BODY, not always inside modal */
+html body:has(#Create.show) .select2-container--open .select2-dropdown,
+html body:has(#CreatePotential.show) .select2-container--open .select2-dropdown,
+html body:has(#CreateLead.show) .select2-container--open .select2-dropdown {
+    background: #0d1728 !important;
+    background-color: #0d1728 !important;
+
+    color: #e7e1d8 !important;
+
+    border:
+        1px solid rgba(195, 155, 99, 0.40) !important;
+}
+
+html body:has(#Create.show) .select2-results__option,
+html body:has(#CreatePotential.show) .select2-results__option,
+html body:has(#CreateLead.show) .select2-results__option {
+    background: #0d1728 !important;
+    color: #e7e1d8 !important;
+}
+
+html body:has(#Create.show) .select2-results__option--highlighted,
+html body:has(#CreatePotential.show) .select2-results__option--highlighted,
+html body:has(#CreateLead.show) .select2-results__option--highlighted {
+    background: #172338 !important;
+    color: #e7c273 !important;
+}
+
+/* =========================================================
+   ORDER TYPE CHOOSER - FINAL DARK FIX
+   إنشاء طلب جديد popup
+   ========================================================= */
+
+
+/* Main chooser */
+html body #OrderTypeChooser .modal-content {
+    background: #0d1728 !important;
+    background-color: #0d1728 !important;
+    color: #e7e1d8 !important;
+
+    border: 1px solid rgba(195, 155, 99, 0.42) !important;
+
+    box-shadow:
+        0 18px 45px rgba(0, 0, 0, 0.55),
+        0 0 10px rgba(195, 155, 99, 0.10)
+        !important;
+}
+
+
+/* Header */
+html body #OrderTypeChooser .modal-header {
+    background: #0c1523 !important;
+    background-color: #0c1523 !important;
+
+    color: #f1f1f1 !important;
+
+    border-bottom:
+        1px solid rgba(195, 155, 99, 0.35) !important;
+}
+
+
+/* Title: إنشاء الطلبات */
+html body #OrderTypeChooser .modal-title,
+html body #OrderTypeChooser .modal-header h1,
+html body #OrderTypeChooser .modal-header h2,
+html body #OrderTypeChooser .modal-header h3,
+html body #OrderTypeChooser .modal-header h4,
+html body #OrderTypeChooser .modal-header h5,
+html body #OrderTypeChooser .modal-header h6 {
+    color: #f1f1f1 !important;
+}
+
+
+/* Body */
+html body #OrderTypeChooser .modal-body {
+    background: #0d1728 !important;
+    background-color: #0d1728 !important;
+    color: #d8dbe1 !important;
+}
+
+
+/* =========================================================
+   THE 3 CHOICES
+   طلب جديد
+   إدخال البيانات
+   طلب محتمل
+   ========================================================= */
+
+html body #OrderTypeChooser .modal-body .card,
+html body #OrderTypeChooser .modal-body a,
+html body #OrderTypeChooser .modal-body button,
+html body #OrderTypeChooser .modal-body .custom-box-shadow {
+    background: #101b2d !important;
+    background-color: #101b2d !important;
+
+    border-color: rgba(195, 155, 99, 0.20) !important;
+
+    color: #e7e1d8 !important;
+
+    box-shadow:
+        inset 0 0 0 1px rgba(195, 155, 99, 0.08),
+        0 2px 8px rgba(0, 0, 0, 0.10)
+        !important;
+}
+
+
+/* IMPORTANT:
+   force all headings inside chooser to visible color
+*/
+html body #OrderTypeChooser .modal-body h1,
+html body #OrderTypeChooser .modal-body h2,
+html body #OrderTypeChooser .modal-body h3,
+html body #OrderTypeChooser .modal-body h4,
+html body #OrderTypeChooser .modal-body h5,
+html body #OrderTypeChooser .modal-body h6 {
+    color: #e7c273 !important;
+}
+
+
+
+/* Description text - brighter and easier to read */
+html body #OrderTypeChooser .modal-body p,
+html body #OrderTypeChooser .modal-body small {
+    color: #eeeeee !important;
+    opacity: 1 !important;
+
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    line-height: 1.7 !important;
+}
+
+/* Any span/div that inherited the old black color */
+html body #OrderTypeChooser .modal-body span {
+    color: inherit;
+}
+
+
+/* Override Bootstrap white-theme classes */
+html body #OrderTypeChooser .text-black,
+html body #OrderTypeChooser .text-dark {
+    color: #e7e1d8 !important;
+}
+
+
+/* Override inline #1d273b from old theme */
+html body #OrderTypeChooser [style*="#1d273b"],
+html body #OrderTypeChooser [style*="#1D273B"],
+html body #OrderTypeChooser [style*="rgb(29, 39, 59)"] {
+    color: #e7e1d8 !important;
+}
+
+
+/* Override inline black */
+html body #OrderTypeChooser [style*="color:black"],
+html body #OrderTypeChooser [style*="color: black"],
+html body #OrderTypeChooser [style*="#000"],
+html body #OrderTypeChooser [style*="#111"] {
+    color: #e7e1d8 !important;
+}
+
+
+/* =========================================================
+   MAKE EACH CHOICE LOOK LIKE CLIENT DARK DESIGN
+   ========================================================= */
+
+html body #OrderTypeChooser .modal-body .card:hover,
+html body #OrderTypeChooser .modal-body a:hover,
+html body #OrderTypeChooser .modal-body button:hover {
+    background: #142033 !important;
+    background-color: #142033 !important;
+
+    border-color: rgba(231, 194, 115, 0.42) !important;
+
+    box-shadow:
+        inset 0 0 0 1px rgba(231, 194, 115, 0.12),
+        0 0 10px rgba(195, 155, 99, 0.08)
+        !important;
+}
+
+
+/* Heading becomes brighter on hover */
+html body #OrderTypeChooser .modal-body .card:hover h1,
+html body #OrderTypeChooser .modal-body .card:hover h2,
+html body #OrderTypeChooser .modal-body .card:hover h3,
+html body #OrderTypeChooser .modal-body .card:hover h4,
+html body #OrderTypeChooser .modal-body .card:hover h5,
+html body #OrderTypeChooser .modal-body .card:hover h6,
+
+html body #OrderTypeChooser .modal-body a:hover h1,
+html body #OrderTypeChooser .modal-body a:hover h2,
+html body #OrderTypeChooser .modal-body a:hover h3,
+html body #OrderTypeChooser .modal-body a:hover h4,
+html body #OrderTypeChooser .modal-body a:hover h5,
+html body #OrderTypeChooser .modal-body a:hover h6 {
+    color: #f0cd82 !important;
+}
+
+
+/* =========================================================
+   HEADER BUTTONS: تراجع / انتهى
+   ========================================================= */
+
+html body #OrderTypeChooser .modal-header a,
+html body #OrderTypeChooser .modal-header button {
+    color: #c5cad3 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+html body #OrderTypeChooser .modal-header a:hover,
+html body #OrderTypeChooser .modal-header button:hover {
+    color: #e7c273 !important;
+}
+
+
+/* Bootstrap close icon if used */
+html body #OrderTypeChooser .btn-close {
+    filter: invert(1) brightness(1.8) !important;
+}
+
+
+/* Keep links clean */
+html body #OrderTypeChooser a {
+    text-decoration: none !important;
+}
+
+
+
+/* =========================================================
+   ORDER TYPE CHOOSER - DESCRIPTION VISIBILITY FIX
+   ========================================================= */
+
+/* Remove faded/opacity effect from the three option cards */
+html body #OrderTypeChooser .modal-body .card,
+html body #OrderTypeChooser .modal-body .custom-box-shadow,
+html body #OrderTypeChooser .modal-body .card *,
+html body #OrderTypeChooser .modal-body .custom-box-shadow * {
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+
+/* Description text */
+html body #OrderTypeChooser .modal-body p,
+html body #OrderTypeChooser .modal-body small,
+html body #OrderTypeChooser .modal-body .text-muted,
+html body #OrderTypeChooser .modal-body .text-secondary,
+html body #OrderTypeChooser .modal-body .text-black-50,
+html body #OrderTypeChooser .modal-body .opacity-25,
+html body #OrderTypeChooser .modal-body .opacity-50,
+html body #OrderTypeChooser .modal-body .opacity-75 {
+    color: #f1f3f6 !important;
+    -webkit-text-fill-color: #f1f3f6 !important;
+
+    opacity: 1 !important;
+
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    line-height: 1.7 !important;
+
+    text-shadow: none !important;
+}
+
+
+/* Keep the main titles stronger than descriptions */
+html body #OrderTypeChooser .modal-body h1,
+html body #OrderTypeChooser .modal-body h2,
+html body #OrderTypeChooser .modal-body h3,
+html body #OrderTypeChooser .modal-body h4,
+html body #OrderTypeChooser .modal-body h5,
+html body #OrderTypeChooser .modal-body h6 {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+
+    opacity: 1 !important;
+
+    font-weight: 700 !important;
+}
+
+
+
+/* =========================================================
+   FINAL BORDER FIX FOR SELECT2 TOP FILTERS
+   Put border on the REAL wrapper
+   ========================================================= */
+
+/* Exact wrappers */
+html body div:has(> #OrderStatusId),
+html body div:has(> #CountryId),
+html body div:has(> #CityId),
+html body div:has(> #EmployeeId),
+html body div:has(> #ProductId),
+html body div:has(> #DeliveryCompanyId),
+html body div:has(> #DeliveryRepresentativeId),
+html body div:has(> #ManufacturingCompanyId) {
+
+    background: #0d1728 !important;
+
+    border: 1px solid rgba(195, 155, 99, 0.35) !important;
+    border-radius: 8px !important;
+
+    min-height: 42px !important;
+
+    box-sizing: border-box !important;
+
+    box-shadow:
+        inset 0 0 5px rgba(231, 194, 115, 0.025)
+        !important;
+
+    overflow: visible !important;
+}
+
+
+/* Make generated Select2 fill the bordered wrapper */
+html body div:has(> #OrderStatusId) > .select2-container,
+html body div:has(> #CountryId) > .select2-container,
+html body div:has(> #CityId) > .select2-container,
+html body div:has(> #EmployeeId) > .select2-container,
+html body div:has(> #ProductId) > .select2-container,
+html body div:has(> #DeliveryCompanyId) > .select2-container,
+html body div:has(> #DeliveryRepresentativeId) > .select2-container,
+html body div:has(> #ManufacturingCompanyId) > .select2-container {
+
+    width: 100% !important;
+    height: 40px !important;
+
+    background: transparent !important;
+
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+
+/* Remove Select2's own border because wrapper now owns the border */
+html body div:has(> #OrderStatusId) .select2-selection,
+html body div:has(> #CountryId) .select2-selection,
+html body div:has(> #CityId) .select2-selection,
+html body div:has(> #EmployeeId) .select2-selection,
+html body div:has(> #ProductId) .select2-selection,
+html body div:has(> #DeliveryCompanyId) .select2-selection,
+html body div:has(> #DeliveryRepresentativeId) .select2-selection,
+html body div:has(> #ManufacturingCompanyId) .select2-selection {
+
+    width: 100% !important;
+    height: 40px !important;
+
+    background: transparent !important;
+    background-color: transparent !important;
+
+    border: 0 !important;
+    outline: 0 !important;
+
+    box-shadow: none !important;
+}
+
+
+/* Vertical alignment */
+html body div:has(> #OrderStatusId) .select2-selection__rendered,
+html body div:has(> #CountryId) .select2-selection__rendered,
+html body div:has(> #CityId) .select2-selection__rendered,
+html body div:has(> #EmployeeId) .select2-selection__rendered,
+html body div:has(> #ProductId) .select2-selection__rendered,
+html body div:has(> #DeliveryCompanyId) .select2-selection__rendered,
+html body div:has(> #DeliveryRepresentativeId) .select2-selection__rendered,
+html body div:has(> #ManufacturingCompanyId) .select2-selection__rendered {
+
+    height: 40px !important;
+    line-height: 40px !important;
+}
+
+
+/* Slight gold glow only while opened/focused */
+html body div:has(> select.select2-hidden-accessible:focus),
+html body div:has(> .select2-container--open) {
+
+    border-color: rgba(231, 194, 115, 0.55) !important;
+
+    box-shadow:
+        0 0 5px rgba(195, 155, 99, 0.12)
+        !important;
+}
+
+
+/* =========================================================
+   ALL TOP DASHBOARD FILTERS - SAME OUTER BORDER
+   ========================================================= */
+
+/* Existing normal dashboard boxes */
+html body .custom-inpage-dropdown,
+
+/* All Select2 filter boxes */
+html body .select2-container .select2-selection--single {
+    background: #0d1728 !important;
+    background-color: #0d1728 !important;
+
+    border: 1px solid rgba(195, 155, 99, 0.35) !important;
+    border-radius: 8px !important;
+
+    min-height: 42px !important;
+    height: 42px !important;
+
+    box-shadow:
+        inset 0 0 5px rgba(231, 194, 115, 0.025)
+        !important;
+}
+
+
+/* Center Select2 contents vertically */
+html body .select2-container .select2-selection--single
+.select2-selection__rendered {
+    height: 40px !important;
+    line-height: 40px !important;
+}
+
+
+/* Do not let Select2 add another strange outline */
+html body .select2-container--focus
+.select2-selection--single,
+html body .select2-container--open
+.select2-selection--single {
+    border-color: rgba(231, 194, 115, 0.55) !important;
+
+    box-shadow:
+        0 0 5px rgba(195, 155, 99, 0.12)
+        !important;
+}
+
+/* =========================================================
+   BORDER FIX - GENDER / PAGE / SHIFT
+   ========================================================= */
+
+html body div:has(> #GenderId),
+html body div:has(> #OrderSourceId),
+html body div:has(> #WorkShift) {
+    background: #0d1728 !important;
+
+    border: 1px solid rgba(195, 155, 99, 0.35) !important;
+    border-radius: 8px !important;
+
+    min-height: 42px !important;
+
+    box-sizing: border-box !important;
+
+    box-shadow:
+        inset 0 0 5px rgba(231, 194, 115, 0.025)
+        !important;
+
+    overflow: visible !important;
+}
+
+
+/* Select2 must fill the new border */
+html body div:has(> #GenderId) > .select2-container,
+html body div:has(> #OrderSourceId) > .select2-container,
+html body div:has(> #WorkShift) > .select2-container {
+    width: 100% !important;
+    height: 40px !important;
+
+    background: transparent !important;
+
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+
+/* Remove inner Select2 border */
+html body div:has(> #GenderId) .select2-selection,
+html body div:has(> #OrderSourceId) .select2-selection,
+html body div:has(> #WorkShift) .select2-selection {
+    width: 100% !important;
+    height: 40px !important;
+
+    background: transparent !important;
+    background-color: transparent !important;
+
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+}
+
+
+/* Center the text and icon */
+html body div:has(> #GenderId) .select2-selection__rendered,
+html body div:has(> #OrderSourceId) .select2-selection__rendered,
+html body div:has(> #WorkShift) .select2-selection__rendered {
+    height: 40px !important;
+    line-height: 40px !important;
+}
