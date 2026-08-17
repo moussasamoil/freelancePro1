@@ -902,3 +902,92 @@ function populatePotentialOrderStores() {
         }
     });
 }
+
+
+
+/* =========================================================
+   MAJESTA DARK - REMOVE SELECT2 CYAN INLINE STYLE
+   ========================================================= */
+
+$(document).on(
+    'select2:select select2:clear change',
+    'select.drop-down-design',
+    function () {
+
+        if (
+            !window.location.pathname
+                .toLowerCase()
+                .startsWith('/home/index')
+        ) {
+            return;
+        }
+
+        const select = this;
+
+        setTimeout(function () {
+
+            const $container = $(select)
+                .next('.select2-container');
+
+            if (!$container.length) return;
+
+
+            // Outer Select2 container
+            const container = $container[0];
+
+            container.style.setProperty(
+                'background-color',
+                '#0d1728',
+                'important'
+            );
+
+            container.style.setProperty(
+                'box-shadow',
+                'none',
+                'important'
+            );
+
+
+            // Visible Select2 selection
+            const selection = $container
+                .find('.select2-selection--single')[0];
+
+            if (selection) {
+
+                selection.style.setProperty(
+                    'background-color',
+                    '#0d1728',
+                    'important'
+                );
+
+                selection.style.setProperty(
+                    'box-shadow',
+                    'none',
+                    'important'
+                );
+            }
+
+
+            // Selected text
+            $container
+                .find('.select2-selection__rendered')
+                .css({
+                    color: '#ffffff',
+                    backgroundColor: 'transparent'
+                });
+
+            // Custom content inside selected value
+            $container
+                .find(
+                    '.select2-selection__rendered div,' +
+                    '.select2-selection__placeholder'
+                )
+                .css({
+                    backgroundColor: 'transparent',
+                    color: '#ffffff',
+                    boxShadow: 'none'
+                });
+
+        }, 0);
+    }
+);
