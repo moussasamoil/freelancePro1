@@ -2218,3 +2218,265 @@ html body header + .d-flex.investigation-hide-original-ui .text-green::before {
 
 
 
+/* =========================================================
+   MAIN SEARCH BOX - GOLD SEARCH ICON
+   ========================================================= */
+
+html body .custom-width-search-input .input_with_icon {
+    position: relative !important;
+}
+
+
+/* Search input */
+html body .custom-width-search-input #searchInput {
+    position: relative !important;
+
+    background: #0d1728 !important;
+    background-color: #0d1728 !important;
+
+    color: #ffffff !important;
+
+    border: 1px solid rgba(195, 155, 99, 0.35) !important;
+    border-radius: 8px !important;
+
+    /* space for search icon on RIGHT */
+    padding-right: 46px !important;
+
+    /* space for X when user types */
+    padding-left: 40px !important;
+
+    box-shadow:
+        inset 0 0 6px rgba(0, 0, 0, 0.16) !important;
+}
+
+
+/* Placeholder */
+html body .custom-width-search-input #searchInput::placeholder {
+    color: #aeb4bf !important;
+    opacity: 1 !important;
+}
+
+
+/* =========================================================
+   GOLD MAGNIFYING GLASS - RIGHT SIDE
+   ========================================================= */
+
+html body .custom-width-search-input .search-icon {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    position: absolute !important;
+
+    right: 14px !important;
+    left: auto !important;
+
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+
+    width: 22px !important;
+    height: 22px !important;
+
+    z-index: 20 !important;
+
+    pointer-events: none !important;
+
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+
+/* Gold icon */
+html body .custom-width-search-input .search-icon i {
+    color: #d7aa5d !important;
+    -webkit-text-fill-color: #d7aa5d !important;
+
+    font-size: 17px !important;
+
+    opacity: 1 !important;
+    visibility: visible !important;
+
+    text-shadow:
+        0 0 5px rgba(215, 170, 93, 0.45) !important;
+
+    filter:
+        drop-shadow(0 0 3px rgba(215, 170, 93, 0.35)) !important;
+}
+
+
+/* =========================================================
+   CLEAR X - LEFT SIDE WHEN SEARCHING
+   ========================================================= */
+
+html body .custom-width-search-input #searchingshow {
+    position: absolute !important;
+
+    left: 14px !important;
+    right: auto !important;
+
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+
+    z-index: 20 !important;
+}
+
+html body .custom-width-search-input #searchingshow i {
+    color: #d7aa5d !important;
+    -webkit-text-fill-color: #d7aa5d !important;
+
+    font-size: 15px !important;
+}
+
+
+
+
+
+/* =========================================================
+   MAIN SEARCH - FORCE GOLD MAGNIFYING GLASS
+   Pure CSS, does not depend on FontAwesome
+   ========================================================= */
+
+html body .custom-width-search-input .input_with_icon {
+    position: relative !important;
+    overflow: visible !important;
+}
+
+
+/* Hide the old FontAwesome search icon */
+html body .custom-width-search-input
+#searchInput + .search-icon {
+    display: none !important;
+}
+
+
+/* Give space for the new icon */
+html body .custom-width-search-input #searchInput {
+    padding-right: 48px !important;
+}
+
+
+/* Magnifying glass circle */
+html body .custom-width-search-input
+.input_with_icon::before {
+    content: "" !important;
+
+    position: absolute !important;
+
+    right: 17px !important;
+    top: 50% !important;
+
+    width: 13px !important;
+    height: 13px !important;
+
+    border: 2px solid #d7aa5d !important;
+    border-radius: 50% !important;
+
+    box-sizing: border-box !important;
+
+    transform: translateY(-60%) !important;
+
+    z-index: 99999 !important;
+    pointer-events: none !important;
+
+    box-shadow:
+        0 0 4px rgba(215, 170, 93, 0.55),
+        0 0 8px rgba(215, 170, 93, 0.20)
+        !important;
+}
+
+
+/* Magnifying glass handle */
+html body .custom-width-search-input
+.input_with_icon::after {
+    content: "" !important;
+
+    position: absolute !important;
+
+    right: 12px !important;
+    top: calc(50% + 5px) !important;
+
+    width: 8px !important;
+    height: 2px !important;
+
+    background: #d7aa5d !important;
+    border-radius: 2px !important;
+
+    transform: rotate(45deg) !important;
+    transform-origin: center !important;
+
+    z-index: 99999 !important;
+    pointer-events: none !important;
+
+    box-shadow:
+        0 0 4px rgba(215, 170, 93, 0.50)
+        !important;
+}
+
+
+
+
+/* =========================================================
+   DATE FILTER - GOLD CALENDAR ICON
+   ========================================================= */
+
+html body .mj-date-filter {
+    position: relative !important;
+}
+
+
+/* Date filter box */
+html body .mj-date-filter #custom-datepicker {
+    background: #0d1728 !important;
+    background-color: #0d1728 !important;
+
+    color: #d8dbe1 !important;
+
+    border: 1px solid rgba(195, 155, 99, 0.35) !important;
+    border-radius: 8px !important;
+
+    height: 42px !important;
+
+    /* make room for calendar */
+    padding-right: 48px !important;
+
+    cursor: pointer !important;
+}
+
+
+/* Placeholder */
+html body .mj-date-filter #custom-datepicker::placeholder {
+    color: #c8ccd4 !important;
+    opacity: 1 !important;
+}
+
+
+/* Gold calendar icon */
+html body .mj-date-filter::after {
+    content: "" !important;
+
+    position: absolute !important;
+
+    right: 14px !important;
+    left: auto !important;
+
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+
+    width: 22px !important;
+    height: 22px !important;
+
+    background-image:
+        url("/mainicons-dark-full/calendar.svg") !important;
+
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: contain !important;
+
+    pointer-events: none !important;
+
+    z-index: 20 !important;
+
+    filter:
+        drop-shadow(0 0 4px rgba(215, 170, 93, 0.55))
+        !important;
+}
