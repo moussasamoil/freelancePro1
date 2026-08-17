@@ -3338,9 +3338,52 @@
 
 </div>
 
+
+
+
+<div class="d-flex mb-3   mt-3 justify-content-between mx-auto align-items-center width-99 investigation-hide-original-ui">
+
+    @* Use opacity:0 instead of display:none so the selector keeps its layout slot and
+    the search bar stays horizontally centered. pointer-events:none so it isn't interactable while invisible.
+    Permanently hidden for CallCenter — they can't change page size. *@
+    <div class="form-group d-none d-md-block align-items-center" style="@(Model.IsCallCenter ? "opacity:0;pointer-events:none;" : "")">
+
+        <label for="pageSize" class="me-2">أظهر:</label>
+
+        <select id="pageSize" name="pageSize" class="custom-shadow-small me-2">
+
+            @foreach (var size in new int?[] { 10, 20, 35, 50, 100, 200, 300, 500, 1000, 2000 })
+            {
+                if (Model.PaginationViewModel.PageSize == size)
+                {
+                    <option value="@size" selected>@size</option>
+                }
+                else
+                {
+                    <option value="@size">@size</option>
+                }
+            }
+        </select>
+        <label for="pageSize">مدخلات</label>
+    </div>
+
+<div class="custom-width-search-input d-flex align-items-center  w-sm-100">
+        <div class="input-group flex-grow-1 input_with_icon">
+            <input type="text" id="searchInput" name="search" style="unicode-bidi: plaintext;" class="pe-5 w-100 custom-box-shadow
+            Search search-input" placeholder="ابحث عن الطلبات...">
+
+            <span class="icon search-icon">
+                <i class="fa-solid text-green fa-magnifying-glass fa-rotate-90"></i>
+            </span>
+            <span id="searchingshow" class="icon clear-search-icon cursor-pointer">
+                <i class="fa-solid text-green text-green fa-circle-xmark "></i>
+            </span>
+        </div>
+    </div>
+
 @if (!isInvestigationPage)
 {
-    <div class="d-flex  mt-3 justify-content-center align-items-center" style="gap: 8px;">
+    <div class="d-flex  justify-content-center align-items-center" style="gap: 8px;">
         @if (User.IsInRole("CallCenter") || canSeeDownloadOrdersCount)
         {
          <span style="position:relative;display:inline-block;" class="custom-box-shadow2">
@@ -3406,8 +3449,34 @@
         </span>
         }
     </div>
+}    
+ @if (User.IsInRole("Admin"))
+{
+    <div class="d-none d-md-block mj-date-filter">
+        <input id="custom-datepicker"
+               class="form-control custom-datepicker"
+               placeholder="فلتر حسب التاريخ"
+               readonly>
+
+        <script src="/js/datepicker.min.js"></script>
+    </div>
+}
+else
+{
+    <div class="d-none d-md-block hidden mj-date-filter">
+        <input id="custom-datepicker"
+               class="form-control custom-datepicker"
+               placeholder="فلتر حسب التاريخ"
+               readonly>
+
+        <script src="/js/datepicker.min.js"></script>
+    </div>
+
+    <div class="d-none d-md-block">
+    </div>
 }
 
+</div>  
 @if (canSeeInvestigationOrdersCount)
 {
     <script id="investigation-orders-count-script">
@@ -3538,75 +3607,6 @@
         })();
     </script>
 }
-
-<div class="d-flex mb-3   mt-3 justify-content-between mx-auto align-items-center width-99 investigation-hide-original-ui">
-
-    @* Use opacity:0 instead of display:none so the selector keeps its layout slot and
-    the search bar stays horizontally centered. pointer-events:none so it isn't interactable while invisible.
-    Permanently hidden for CallCenter — they can't change page size. *@
-    <div class="form-group d-none d-md-block align-items-center" style="@(Model.IsCallCenter ? "opacity:0;pointer-events:none;" : "")">
-
-        <label for="pageSize" class="me-2">أظهر:</label>
-
-        <select id="pageSize" name="pageSize" class="custom-shadow-small me-2">
-
-            @foreach (var size in new int?[] { 10, 20, 35, 50, 100, 200, 300, 500, 1000, 2000 })
-            {
-                if (Model.PaginationViewModel.PageSize == size)
-                {
-                    <option value="@size" selected>@size</option>
-                }
-                else
-                {
-                    <option value="@size">@size</option>
-                }
-            }
-        </select>
-        <label for="pageSize">مدخلات</label>
-    </div>
-
-
-    <div class="custom-width-search-input pb-5 w-sm-100">
-        <div class="input-group flex-grow-1 input_with_icon">
-            <input type="text" id="searchInput" name="search" style="unicode-bidi: plaintext;" class="pe-5 w-100 custom-box-shadow
-            Search search-input" placeholder="ابحث عن الطلبات...">
-
-            <span class="icon search-icon">
-                <i class="fa-solid text-green fa-magnifying-glass fa-rotate-90"></i>
-            </span>
-            <span id="searchingshow" class="icon clear-search-icon cursor-pointer">
-                <i class="fa-solid text-green text-green fa-circle-xmark "></i>
-            </span>
-        </div>
-    </div>
- @if (User.IsInRole("Admin"))
-{
-    <div class="d-none d-md-block mj-date-filter">
-        <input id="custom-datepicker"
-               class="form-control custom-datepicker"
-               placeholder="فلتر حسب التاريخ"
-               readonly>
-
-        <script src="/js/datepicker.min.js"></script>
-    </div>
-}
-else
-{
-    <div class="d-none d-md-block hidden mj-date-filter">
-        <input id="custom-datepicker"
-               class="form-control custom-datepicker"
-               placeholder="فلتر حسب التاريخ"
-               readonly>
-
-        <script src="/js/datepicker.min.js"></script>
-    </div>
-
-    <div class="d-none d-md-block">
-    </div>
-}
-
-</div>   @* IMPORTANT: closes the d-flex controls row *@
-
 
 
 @if (Model.DebugQuery != null)
@@ -9551,8 +9551,8 @@ else
 
 
     .custom-width-search-input {
-    width: 37%;
-    height: 16px;
+    width: 20%;
+    height: 20px;
     }
 
 
